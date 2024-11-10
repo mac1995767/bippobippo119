@@ -1,0 +1,25 @@
+{
+  "name": "horoscope",
+  "version": "1.0.0",
+  "description": "# 환경설정",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KWANHYUNKIM/horoscope.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/KWANHYUNKIM/horoscope/issues"
+  },
+  "homepage": "https://github.com/KWANHYUNKIM/horoscope#readme",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "horoscope": "^2.0.1"
+  }
+}
