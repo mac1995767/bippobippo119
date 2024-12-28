@@ -21,7 +21,7 @@
 
 - **프론트엔드**: React, Vue.js 등
 - **백엔드**: Node.js, Express 등
-- **데이터베이스**: MongoDB, PostgreSQL 등
+- **데이터베이스**: MongoDB, PostgreSQL (15.8.1) 등
 - **기타**: TensorFlow.js 등
 
 ## 설치 방법

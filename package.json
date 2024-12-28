@@ -18,8 +18,14 @@
   },
   "homepage": "https://github.com/KWANHYUNKIM/horoscope#readme",
   "dependencies": {
+    "@tensorflow/tfjs-node": "^4.22.0",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
-    "horoscope": "^2.0.1"
+    "horoscope": "^2.0.1",
+    "kafka-node": "^5.0.0",
+    "mongoose": "^8.8.1",
+    "pg": "^8.13.1",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.5"
   }
 }
