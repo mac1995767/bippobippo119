@@ -1,61 +1,46 @@
-// client/src/App.js
-
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Bar } from 'react-chartjs-2';
+import React from "react";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 function App() {
-  const [horoscope, setHoroscope] = useState(null);
-  const [sign, setSign] = useState('aries');
-
-  useEffect(() => {
-    fetchHoroscope();
-  }, [sign]);
-
-  const fetchHoroscope = async () => {
-    try {
-      const res = await axios.get(`/api/horoscope/${sign}`);
-      setHoroscope(res.data);
-    } catch (err) {
-      console.error('Error fetching horoscope:', err);
-    }
-  };
-
-  const handleSignChange = (e) => {
-    setSign(e.target.value);
-  };
+  const horoscopes = [
+    {
+      sign: "양자리",
+      horoscope: "오늘은 새로운 도전을 시도하기 좋은 날입니다.",
+    },
+    {
+      sign: "황소자리",
+      horoscope: "자신의 직감을 믿고 행동에 옮기세요.",
+    },
+    {
+      sign: "쌍둥이자리",
+      horoscope: "주변 사람들과의 대화에서 중요한 정보를 얻을 수 있습니다.",
+    },
+    {
+      sign: "사자자리",
+      horoscope: "자신감을 가지고 중요한 결정을 내려보세요.",
+    },
+  ];
 
   return (
-    <div className="App">
-      <h1>운세 웹사이트</h1>
-      <select value={sign} onChange={handleSignChange}>
-        <option value="aries">양자리</option>
-        <option value="taurus">황소자리</option>
-        {/* 다른 별자리 추가 */}
-      </select>
+    <div className="container mt-5">
+      {/* 제목 */}
+      <header className="text-center mb-5">
+        <h1>2024년 12월 28일 오늘의 운세</h1>
+      </header>
 
-      {horoscope && (
-        <div>
-          <h2>{horoscope.sign} 운세</h2>
-          <p>{horoscope.horoscope}</p>
-          <h3>추천</h3>
-          <p>{horoscope.recommendation}</p>
-
-          {/* 데이터 시각화 예시 */}
-          <Bar
-            data={{
-              labels: ['운세 만족도', '추천 정확도'],
-              datasets: [
-                {
-                  label: '점수',
-                  data: [80, 90],
-                  backgroundColor: ['rgba(75, 192, 192, 0.6)', 'rgba(153, 102, 255, 0.6)'],
-                },
-              ],
-            }}
-          />
-        </div>
-      )}
+      {/* 운세 리스트 */}
+      <div className="row">
+        {horoscopes.map((horoscope, index) => (
+          <div className="col-md-6 mb-4" key={index}>
+            <div className="card shadow-sm">
+              <div className="card-body">
+                <h5 className="card-title">{horoscope.sign}</h5>
+                <p className="card-text">{horoscope.horoscope}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

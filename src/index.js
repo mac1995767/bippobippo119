@@ -5,7 +5,10 @@ const sequelize = require('./config/database');
 const { initializeModel } = require('./ai/predict');
 const sendMessage = require('./kafka/producer');
 const Horoscope = require('./models/Horoscope'); // 운세 데이터를 저장할 모델
-const horoscopeRoutes = require('./routes/horoscope');
+const horoscopeRoutes = require('./routes/horoscopeRoutes');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./swagger/swagger');
+
 
 dotenv.config();
 
@@ -36,6 +39,7 @@ app.get('/', (req, res) => {
   res.send('안녕하세요! 운세 웹사이트 서버가 실행 중입니다.');
 });
 
+/** 
 app.use('/api', horoscopeRoutes);
 
 // 새로운 운세 데이터를 받아 MongoDB에 저장하는 엔드포인트
@@ -51,6 +55,14 @@ app.post('/api/horoscope', async (req, res) => {
     res.status(500).json({ message: '운세 데이터를 저장하는 중 오류가 발생했습니다.' });
   }
 });
+*/
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+app.use(express.json());
+
+app.use('/api/horoscope',horoscopeRoutes);
+
 
 // 서버 시작
 const PORT = process.env.PORT || 3000;

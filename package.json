@@ -4,7 +4,7 @@
   "description": "# 환경설정",
   "main": "index.js",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "PORT=3001 node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -26,6 +26,8 @@
     "mongoose": "^8.8.1",
     "pg": "^8.13.1",
     "pg-hstore": "^2.3.4",
-    "sequelize": "^6.37.5"
+    "sequelize": "^6.37.5",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   }
 }
