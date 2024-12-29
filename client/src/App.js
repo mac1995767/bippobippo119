@@ -1,25 +1,25 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios"; // Axios로 API 호출
 import "bootstrap/dist/css/bootstrap.min.css";
 
 function App() {
-  const horoscopes = [
-    {
-      sign: "양자리",
-      horoscope: "오늘은 새로운 도전을 시도하기 좋은 날입니다.",
-    },
-    {
-      sign: "황소자리",
-      horoscope: "자신의 직감을 믿고 행동에 옮기세요.",
-    },
-    {
-      sign: "쌍둥이자리",
-      horoscope: "주변 사람들과의 대화에서 중요한 정보를 얻을 수 있습니다.",
-    },
-    {
-      sign: "사자자리",
-      horoscope: "자신감을 가지고 중요한 결정을 내려보세요.",
-    },
-  ];
+  const [horoscopes, setHoroscopes] = useState([]); // API 데이터를 저장할 상태
+  const [error, setError] = useState(null); // 에러 상태
+
+  useEffect(() => {
+    // API 호출 함수
+    const fetchHoroscopes = async () => {
+      try {
+        const response = await axios.get("http://localhost:3001/api/horoscope"); // 백엔드 API 호출
+        setHoroscopes(response.data); // 데이터를 상태에 저장
+      } catch (err) {
+        console.error("Error fetching horoscopes:", err);
+        setError("데이터를 불러오는 데 실패했습니다.");
+      }
+    };
+
+    fetchHoroscopes(); // 컴포넌트 로드 시 데이터 호출
+  }, []);
 
   return (
     <div className="container mt-5">
@@ -28,14 +28,24 @@ function App() {
         <h1>2024년 12월 28일 오늘의 운세</h1>
       </header>
 
+      {/* 에러 처리 */}
+      {error && (
+        <div className="alert alert-danger text-center" role="alert">
+          {error}
+        </div>
+      )}
+
       {/* 운세 리스트 */}
       <div className="row">
         {horoscopes.map((horoscope, index) => (
           <div className="col-md-6 mb-4" key={index}>
             <div className="card shadow-sm">
               <div className="card-body">
-                <h5 className="card-title">{horoscope.sign}</h5>
-                <p className="card-text">{horoscope.horoscope}</p>
+                <h5 className="card-title">{horoscope.zodiac} - {horoscope.year}</h5>
+                <p className="card-text">{horoscope.general_horoscope}</p>
+                <p className="card-text">
+                  <strong>세부 운세:</strong> {horoscope.specific_horoscope}
+                </p>
               </div>
             </div>
           </div>

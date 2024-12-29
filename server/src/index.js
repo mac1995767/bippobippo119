@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/mongoose');
 const sequelize = require('./config/database');
@@ -13,6 +14,8 @@ const swaggerSpec = require('./swagger/swagger');
 dotenv.config();
 
 const app = express();
+
+app.use(cors());
 
 // 미들웨어 설정
 app.use(express.json());
