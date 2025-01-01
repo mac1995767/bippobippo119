@@ -1,74 +1,61 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-from bs4 import BeautifulSoup
-import time
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
+from pymongo import MongoClient
+from datetime import datetime, timedelta
 
-# ChromeDriver 설정
-options = webdriver.ChromeOptions()
-options.add_argument("--no-sandbox")
-options.add_argument("--disable-dev-shm-usage")
+# GPT-2 모델 및 토크나이저 로드
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+model = GPT2LMHeadModel.from_pretrained("gpt2")
 
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+# MongoDB 연결 설정
+client = MongoClient("mongodb://localhost:27017/")
+db = client["horoscope_db"]
+collection = db["horoscope"]
 
-# Google 뉴스 페이지 접속
-query = "오늘의운세"
-url = f"https://news.google.com/search?q={query}&hl=ko&gl=KR&ceid=KR:ko"
-print(f"접속 중: {url}")
-driver.get(url)
+# 띠 리스트
+zodiacs = [
+    "쥐띠", "소띠", "범띠", "토끼띠", 
+    "용띠", "뱀띠", "말띠", "양띠", 
+    "원숭이띠", "닭띠", "개띠", "돼지띠"
+]
 
-# 페이지 로딩 확인 및 대기
-try:
-    WebDriverWait(driver, 10).until(
-        lambda d: d.execute_script("return document.readyState") == "complete"
-    )
-except Exception as e:
-    print("페이지 로딩 실패:", e)
-    driver.quit()
+# 띠 계산 함수
+def calculate_zodiac(year):
+    return zodiacs[(year - 4) % 12]
 
-# 뉴스 제목과 상대 링크 추출
-print("뉴스 항목 탐색 시작")
-articles = []
-try:
-    news_items = WebDriverWait(driver, 10).until(
-        EC.presence_of_all_elements_located((By.CSS_SELECTOR, "a.JtKRv"))
-    )
-    print(f"탐색된 뉴스 항목 수: {len(news_items)}")
+# 운세 생성 함수
+def generate_horoscope(prompt):
+    inputs = tokenizer.encode(prompt, return_tensors="pt")
+    outputs = model.generate(inputs, max_length=100, num_return_sequences=1)
+    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return generated_text
 
-    for item in news_items:
-        title = item.text
-        relative_link = item.get_attribute("href")
-        full_link = f"https://news.google.com{relative_link[1:]}" if relative_link.startswith("./") else relative_link
+# 시작 날짜 및 종료 날짜 설정
+start_date = datetime(2011, 1, 1)
+end_date = datetime(2025, 1, 1)
+current_date = start_date
 
-        # 각 기사 페이지 접속
-        try:
-            driver.get(full_link)
-            WebDriverWait(driver, 10).until(
-                lambda d: d.execute_script("return document.readyState") == "complete"
-            )
+# 날짜별 데이터 생성 및 저장
+while current_date <= end_date:
+    year = current_date.year
+    zodiac = calculate_zodiac(year)
+    prompt = f"{zodiac} {current_date.strftime('%Y년 %m월 %d일')}의 운세는"
+    
+    print(f"Generating for: {prompt}")
 
-            # BeautifulSoup으로 기사 내용 파싱
-            article_soup = BeautifulSoup(driver.page_source, "html.parser")
-            title_meta = article_soup.find("meta", {"name": "title"})["content"] if article_soup.find("meta", {"name": "title"}) else title
-            content_paragraphs = article_soup.find_all("p")
-            content = "\n".join(p.get_text(separator="\n") for p in content_paragraphs)
+    # GPT-2를 사용해 운세 생성
+    horoscope = generate_horoscope(prompt)
 
-            articles.append({"title": title_meta, "link": full_link, "content": content})
-            print({"title": title_meta, "link": full_link, "content": content[:100]})
+    # MongoDB에 저장할 데이터
+    data = {
+        "date": current_date.strftime('%Y-%m-%d'),
+        "year": year,
+        "zodiac": zodiac,
+        "horoscope": horoscope
+    }
+    collection.insert_one(data)  # MongoDB에 데이터 저장
+    print(f"Saved: {data}")
 
-        except Exception as e:
-            print(f"Error accessing {full_link}: {e}")
-        finally:
-            driver.back()
-            time.sleep(1)
-except Exception as e:
-    print("뉴스 항목 탐색 중 오류:", e)
+    # 다음 날짜로 이동
+    current_date += timedelta(days=1)
 
-# 드라이버 종료
-driver.quit()
-
-print("크롤링 완료! 결과:")
-print(articles)
+print("운세 데이터 생성 및 저장 완료!")

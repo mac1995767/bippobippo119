@@ -42,15 +42,11 @@ app.get('/', (req, res) => {
   res.send('안녕하세요! 운세 웹사이트 서버가 실행 중입니다.');
 });
 
-
-app.use('/api', horoscopeRoutes);
-
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(express.json());
 
 app.use('/api/horoscope',horoscopeRoutes);
-
 
 // 서버 시작
 const PORT = process.env.PORT || 3000;
