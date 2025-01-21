@@ -63,58 +63,83 @@ const HospitalListPage = () => {
     : dummyHospitals;
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6 text-center">전국 병원 리스트</h1>
+    <div className="bg-gray-50 min-h-screen">
+      {/* 헤더 */}
+      <header className="bg-gradient-to-r from-blue-400 to-purple-500 text-white p-6 shadow-md">
+        <div className="container mx-auto flex flex-col items-center">
+          <h1 className="text-3xl font-bold">삐뽀삐뽀119</h1>
+          <p className="text-lg mt-2">
+            선택한 지역의 병원을 쉽게 찾아보세요
+          </p>
+        </div>
+      </header>
 
       {/* 지역 선택 버튼 */}
-      <div className="flex flex-wrap justify-center gap-4 mb-6">
-        {regions.map((region) => (
-          <button
-            key={region}
-            className={`px-4 py-2 rounded-lg ${
-              selectedRegion === region
-                ? "bg-blue-500 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-            }`}
-            onClick={() => setSelectedRegion(region)}
-          >
-            {region}
-          </button>
-        ))}
-      </div>
+      <section className="container mx-auto mt-8 p-6">
+        <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
+          지역별 병원 검색
+        </h2>
+        <div className="flex flex-wrap justify-center gap-4">
+          {regions.map((region) => (
+            <button
+              key={region}
+              className={`px-6 py-3 rounded-full transition ${
+                selectedRegion === region
+                  ? "bg-blue-500 text-white shadow-lg"
+                  : "bg-gray-200 text-gray-700 hover:bg-blue-100"
+              }`}
+              onClick={() => setSelectedRegion(region)}
+            >
+              {region}
+            </button>
+          ))}
+        </div>
+      </section>
 
       {/* 병원 리스트 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredHospitals.length > 0 ? (
-          filteredHospitals.map((hospital) => {
-            const currentHours = hospital.schedule[today] || "운영 시간 정보 없음";
-            const isOpen = currentHours !== "휴무" && currentHours !== "운영 시간 정보 없음";
+      <section className="container mx-auto mt-10 p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredHospitals.length > 0 ? (
+            filteredHospitals.map((hospital) => {
+              const currentHours =
+                hospital.schedule[today] || "운영 시간 정보 없음";
+              const isOpen =
+                currentHours !== "휴무" &&
+                currentHours !== "운영 시간 정보 없음";
 
-            return (
-              <div key={hospital.id} className="bg-white shadow-md rounded-lg overflow-hidden">
-                <img
-                  src={hospital.image}
-                  alt={hospital.name}
-                  className="w-full h-48 object-cover"
-                />
-                <div className="p-4">
-                  <h2 className="text-lg font-bold">{hospital.name}</h2>
-                  <p className="text-sm text-gray-500">{hospital.location}</p>
-                  <p
-                    className={`mt-2 font-bold ${
-                      isOpen ? "text-green-500" : "text-red-500"
-                    }`}
-                  >
-                    {isOpen ? `현재 운영 중 (${currentHours})` : "현재 휴무"}
-                  </p>
+              return (
+                <div
+                  key={hospital.id}
+                  className="bg-white shadow-lg rounded-lg overflow-hidden hover:shadow-2xl transition"
+                >
+                  <img
+                    src={hospital.image}
+                    alt={hospital.name}
+                    className="w-full h-48 object-cover"
+                  />
+                  <div className="p-4">
+                    <h3 className="text-lg font-bold text-gray-800">
+                      {hospital.name}
+                    </h3>
+                    <p className="text-sm text-gray-500">{hospital.location}</p>
+                    <p
+                      className={`mt-2 font-bold ${
+                        isOpen ? "text-green-500" : "text-red-500"
+                      }`}
+                    >
+                      {isOpen ? `현재 운영 중 (${currentHours})` : "현재 휴무"}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            );
-          })
-        ) : (
-          <p className="text-center text-gray-500">선택한 지역에 병원이 없습니다.</p>
-        )}
-      </div>
+              );
+            })
+          ) : (
+            <p className="text-center text-gray-500">
+              선택한 지역에 병원이 없습니다.
+            </p>
+          )}
+        </div>
+      </section>
     </div>
   );
 };
