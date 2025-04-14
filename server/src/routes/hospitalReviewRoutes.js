@@ -125,7 +125,7 @@ router.get('/:id/reviews', async (req, res) => {
         COUNT(DISTINCT l.id) as like_count,
         GROUP_CONCAT(DISTINCT i.image_url) as image_urls
       FROM hospital_reviews r
-      LEFT JOIN users u ON r.user_id = u.id
+      LEFT JOIN hospital_users u ON r.id = u.id
       LEFT JOIN hospital_review_likes l ON r.id = l.review_id
       LEFT JOIN hospital_review_images i ON r.id = i.review_id
       WHERE r.hospital_id = ? AND r.status = 1
@@ -176,13 +176,13 @@ router.get('/:id/reviews', async (req, res) => {
 });
 
 // 리뷰 작성 (자동 키워드 분석)
-router.post('/:hospitalId/reviews', authenticateToken, async (req, res) => {
+router.post('/:id/reviews', authenticateToken, async (req, res) => {
   const connection = await pool.getConnection();
   
   try {
     await connection.beginTransaction();
     
-    const { hospitalId } = req.params;
+    const { id } = req.params;
     const { content, visitDate, images } = req.body;
     const userId = req.user.id;
 
@@ -191,7 +191,7 @@ router.post('/:hospitalId/reviews', authenticateToken, async (req, res) => {
       `INSERT INTO hospital_reviews 
        (hospital_id, user_id, hospital_type, content, visit_date) 
        VALUES (?, ?, ?, ?, ?)`,
-      [hospitalId, userId, 'nursing', content, visitDate]
+      [id, userId, 'nursing', content, visitDate]
     );
 
     const reviewId = result.insertId;
