@@ -73,7 +73,9 @@ export const fetchHospitalKeywordStats = async (hospitalId) => {
 
 export const fetchHospitalReviews = async (hospitalId) => {
   try {
+    console.log('Fetching reviews for hospital:', hospitalId);
     const response = await axios.get(`${baseUrl}/api/nursing-hospitals/${hospitalId}/reviews`);
+    console.log('Reviews response:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error fetching reviews:', error);

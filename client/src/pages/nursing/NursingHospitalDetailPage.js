@@ -28,7 +28,7 @@ const NursingHospitalDetailPage = () => {
         if (hospitalData) {
           setHospital(hospitalData);
           setKeywordStats(statsData);
-          setReviews(reviewsData);
+          setReviews(reviewsData.reviews || []);
         } else {
           throw new Error('병원 정보를 찾을 수 없습니다.');
         }

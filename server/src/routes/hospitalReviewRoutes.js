@@ -41,43 +41,6 @@ const analyzeReviewKeywords = (content) => {
   return keywords;
 };
 
-// 요양병원 상세 정보 조회
-router.get('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    console.log('Searching for hospital with ykiho:', id);
-    
-    // Elasticsearch에서 ykiho로 병원 정보 조회
-    const response = await client.search({
-      index: 'hospitals',
-      body: {
-        query: {
-          bool: {
-            must: [
-              { term: { 'ykiho.keyword': id } },
-              { term: { 'category.keyword': '요양병원' } }
-            ]
-          }
-        }
-      }
-    });
-
-    console.log('Elasticsearch response:', JSON.stringify(response, null, 2));
-    const result = (typeof response.body !== 'undefined') ? response.body : response;
-    
-    if (!result.hits.hits.length) {
-      console.log('No hospital found with ykiho:', id);
-      return res.status(404).json({ message: '요양병원을 찾을 수 없습니다.' });
-    }
-
-    const hospital = result.hits.hits[0]._source;
-    console.log('Found hospital:', hospital);
-    res.json(hospital);
-  } catch (error) {
-    console.error('요양병원 정보 조회 중 오류:', error);
-    res.status(500).json({ message: '요양병원 정보 조회 중 오류가 발생했습니다.' });
-  }
-});
 
 // 요양병원 키워드 통계 조회
 router.get('/:id/keyword-stats', async (req, res) => {
@@ -109,6 +72,7 @@ router.get('/:id/keyword-stats', async (req, res) => {
 router.get('/:id/reviews', async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('Fetching reviews for hospital ID:', id);
     const { page = 1, limit = 10, sort = 'latest' } = req.query;
     const offset = (page - 1) * limit;
 
@@ -125,14 +89,16 @@ router.get('/:id/reviews', async (req, res) => {
         COUNT(DISTINCT l.id) as like_count,
         GROUP_CONCAT(DISTINCT i.image_url) as image_urls
       FROM hospital_reviews r
-      LEFT JOIN hospital_users u ON r.id = u.id
+      LEFT JOIN hospital_users u ON r.user_id = u.id
       LEFT JOIN hospital_review_likes l ON r.id = l.review_id
       LEFT JOIN hospital_review_images i ON r.id = i.review_id
-      WHERE r.hospital_id = ? AND r.status = 1
+      WHERE r.ykiho = ? AND r.status = 1
       GROUP BY r.id
       ORDER BY ${orderBy}
       LIMIT ? OFFSET ?
     `, [id, parseInt(limit), offset]);
+
+    console.log('Found reviews:', reviews);
 
     // 각 리뷰의 키워드 정보 조회
     for (let review of reviews) {
@@ -189,9 +155,9 @@ router.post('/:id/reviews', authenticateToken, async (req, res) => {
     // 리뷰 작성
     const [result] = await connection.query(
       `INSERT INTO hospital_reviews 
-       (hospital_id, user_id, hospital_type, content, visit_date) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [id, userId, 'nursing', content, visitDate]
+       (hospital_id, ykiho, user_id, hospital_type, content, visit_date) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, id, userId, 'nursing', content, visitDate]
     );
 
     const reviewId = result.insertId;
@@ -416,5 +382,44 @@ router.post('/reviews/:reviewId/like', authenticateToken, async (req, res) => {
     res.status(500).json({ message: '좋아요 처리 중 오류가 발생했습니다.' });
   }
 });
+
+// 요양병원 상세 정보 조회
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('Searching for hospital with ykiho:', id);
+    
+    // Elasticsearch에서 ykiho로 병원 정보 조회
+    const response = await client.search({
+      index: 'hospitals',
+      body: {
+        query: {
+          bool: {
+            must: [
+              { term: { 'ykiho.keyword': id } },
+              { term: { 'category.keyword': '요양병원' } }
+            ]
+          }
+        }
+      }
+    });
+
+    console.log('Elasticsearch response:', JSON.stringify(response, null, 2));
+    const result = (typeof response.body !== 'undefined') ? response.body : response;
+    
+    if (!result.hits.hits.length) {
+      console.log('No hospital found with ykiho:', id);
+      return res.status(404).json({ message: '요양병원을 찾을 수 없습니다.' });
+    }
+
+    const hospital = result.hits.hits[0]._source;
+    console.log('Found hospital:', hospital);
+    res.json(hospital);
+  } catch (error) {
+    console.error('요양병원 정보 조회 중 오류:', error);
+    res.status(500).json({ message: '요양병원 정보 조회 중 오류가 발생했습니다.' });
+  }
+});
+
 
 module.exports = router; 

@@ -8,7 +8,6 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
-  const [keywordTypes, setKeywordTypes] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -27,16 +26,6 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
 
   const getApiEndpoint = () => {
     return hospitalType === 'nursing' ? 'nursing-hospitals' : 'hospitals';
-  };
-
-  // 키워드 타입 조회
-  const fetchKeywordTypes = async () => {
-    try {
-      const response = await axios.get('/api/nursing-hospitals/keyword-types');
-      setKeywordTypes(response.data);
-    } catch (error) {
-      console.error('키워드 타입 조회 중 오류:', error);
-    }
   };
 
   // 리뷰 목록 조회
@@ -58,7 +47,6 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
 
   useEffect(() => {
     fetchReviews();
-    fetchKeywordTypes();
   }, [hospitalId, pagination.page, sort]);
 
   // 리뷰 작성
@@ -112,7 +100,9 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
 
   const handleStartWriting = () => {
     if (!user) {
-      setShowLoginAlert(true);
+      if (window.confirm('리뷰 작성을 위해서는 로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) {
+        navigate('/login');
+      }
       return;
     }
     setIsWriting(true);
@@ -127,14 +117,12 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
             <span className="text-gray-500">총 {pagination.total}개의 리뷰</span>
           </div>
         </div>
-        {user && !isWriting && (
-          <button
-            onClick={handleStartWriting}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-          >
-            리뷰 작성
-          </button>
-        )}
+        <button
+          onClick={handleStartWriting}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+        >
+          리뷰 작성
+        </button>
       </div>
 
       {/* 리뷰 작성 폼 */}
