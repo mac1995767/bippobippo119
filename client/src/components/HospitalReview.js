@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Rating } from '@mui/material';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const HospitalReview = ({ hospitalId, hospitalType }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
-  const [stats, setStats] = useState({ averageRating: 0 });
+  const [keywordTypes, setKeywordTypes] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -18,7 +18,6 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
   const [sort, setSort] = useState('latest');
   const [isWriting, setIsWriting] = useState(false);
   const [newReview, setNewReview] = useState({
-    rating: 0,
     content: '',
     visitDate: '',
     images: []
@@ -30,18 +29,26 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
     return hospitalType === 'nursing' ? 'nursing-hospitals' : 'hospitals';
   };
 
+  // 키워드 타입 조회
+  const fetchKeywordTypes = async () => {
+    try {
+      const response = await axios.get('/api/nursing-hospitals/keyword-types');
+      setKeywordTypes(response.data);
+    } catch (error) {
+      console.error('키워드 타입 조회 중 오류:', error);
+    }
+  };
+
   // 리뷰 목록 조회
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const endpoint = getApiEndpoint();
-      const response = await fetch(
-        `/api/${endpoint}/${hospitalId}/reviews?page=${pagination.page}&limit=${pagination.limit}&sort=${sort}`
+      const response = await axios.get(
+        `/api/nursing-hospitals/${hospitalId}/reviews?page=${pagination.page}&limit=${pagination.limit}&sort=${sort}`
       );
-      const data = await response.json();
+      const data = response.data;
       setReviews(data.reviews);
       setPagination(data.pagination);
-      setStats(data.stats);
     } catch (error) {
       console.error('리뷰 조회 중 오류:', error);
     } finally {
@@ -51,28 +58,30 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
 
   useEffect(() => {
     fetchReviews();
+    fetchKeywordTypes();
   }, [hospitalId, pagination.page, sort]);
 
   // 리뷰 작성
   const handleSubmitReview = async (e) => {
     e.preventDefault();
     try {
-      const endpoint = getApiEndpoint();
-      const response = await fetch(`/api/${endpoint}/${hospitalId}/reviews`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
+      const response = await axios.post(
+        `/api/nursing-hospitals/${hospitalId}/reviews`,
+        {
           ...newReview,
           hospitalType
-        })
-      });
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
 
-      if (response.ok) {
+      if (response.status === 201) {
         setIsWriting(false);
-        setNewReview({ rating: 0, content: '', visitDate: '', images: [] });
+        setNewReview({ content: '', visitDate: '', images: [] });
         fetchReviews();
       }
     } catch (error) {
@@ -83,15 +92,17 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
   // 리뷰 좋아요
   const handleLike = async (reviewId) => {
     try {
-      const endpoint = getApiEndpoint();
-      const response = await fetch(`/api/${endpoint}/reviews/${reviewId}/like`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+      const response = await axios.post(
+        `/api/nursing-hospitals/reviews/${reviewId}/like`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
         }
-      });
+      );
 
-      if (response.ok) {
+      if (response.status === 200) {
         fetchReviews();
       }
     } catch (error) {
@@ -113,59 +124,24 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
         <div>
           <h2 className="text-2xl font-bold">리뷰</h2>
           <div className="flex items-center mt-2">
-            <Rating value={stats.averageRating} precision={0.5} readOnly />
-            <span className="ml-2">{stats.averageRating.toFixed(1)}</span>
-            <span className="ml-2 text-gray-500">({pagination.total}개의 리뷰)</span>
+            <span className="text-gray-500">총 {pagination.total}개의 리뷰</span>
           </div>
         </div>
-        <div className="mb-6">
+        {user && !isWriting && (
           <button
             onClick={handleStartWriting}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
           >
-            리뷰 작성하기
+            리뷰 작성
           </button>
-        </div>
+        )}
       </div>
-
-      {/* 로그인 알림 모달 */}
-      {showLoginAlert && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <h3 className="text-lg font-semibold mb-4">로그인이 필요합니다</h3>
-            <p className="text-gray-600 mb-6">
-              리뷰를 작성하려면 로그인이 필요합니다. 로그인하시겠습니까?
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowLoginAlert(false)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-              >
-                취소
-              </button>
-              <button
-                onClick={() => navigate('/login')}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              >
-                로그인하기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 리뷰 작성 폼 */}
       {isWriting && (
         <form onSubmit={handleSubmitReview} className="mb-8 p-4 bg-gray-50 rounded">
           <div className="mb-4">
-            <label className="block mb-2">평점</label>
-            <Rating
-              value={newReview.rating}
-              onChange={(_, value) => setNewReview(prev => ({ ...prev, rating: value }))}
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block mb-2">방문일</label>
+            <label className="block mb-2 font-medium">방문일</label>
             <input
               type="date"
               value={newReview.visitDate}
@@ -175,11 +151,12 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
             />
           </div>
           <div className="mb-4">
-            <label className="block mb-2">내용</label>
+            <label className="block mb-2 font-medium">상세 후기</label>
             <textarea
               value={newReview.content}
               onChange={(e) => setNewReview(prev => ({ ...prev, content: e.target.value }))}
               className="w-full p-2 border rounded h-32"
+              placeholder="병원에 대한 상세한 후기를 작성해주세요. 시설, 서비스, 비용 등에 대한 구체적인 경험을 공유해주시면 자동으로 키워드가 분석됩니다."
               required
             />
           </div>
@@ -187,13 +164,13 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
             <button
               type="button"
               onClick={() => setIsWriting(false)}
-              className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+              className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
             >
               취소
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
             >
               작성완료
             </button>
@@ -209,7 +186,6 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
           className="p-2 border rounded"
         >
           <option value="latest">최신순</option>
-          <option value="rating">평점순</option>
           <option value="likes">좋아요순</option>
         </select>
       </div>
@@ -219,60 +195,32 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
         <div className="text-center py-8">로딩중...</div>
       ) : (
         <div className="space-y-6">
-          {reviews.map((review) => (
-            <div key={review.id} className="p-4 border rounded">
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex items-center">
-                  <img
-                    src={review.profile_image || '/default-profile.png'}
-                    alt={review.username}
-                    className="w-10 h-10 rounded-full"
-                  />
-                  <div className="ml-3">
-                    <div className="font-semibold">{review.username}</div>
-                    <div className="text-sm text-gray-500">
-                      {format(new Date(review.visit_date), 'yyyy년 M월 d일 방문')}
-                    </div>
+          {reviews.map(review => (
+            <div key={review.id} className="bg-white p-4 rounded shadow">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="font-medium">{review.user.name}</div>
+                  <div className="text-gray-500 text-sm">
+                    {new Date(review.visitDate).toLocaleDateString()}
                   </div>
                 </div>
-                <Rating value={review.rating} readOnly size="small" />
+                <div className="text-gray-500 text-sm">
+                  {new Date(review.createdAt).toLocaleDateString()}
+                </div>
               </div>
-              <p className="my-3">{review.content}</p>
-              {review.images && review.images.length > 0 && (
-                <div className="flex gap-2 mt-3">
-                  {review.images.map((image, index) => (
-                    <img
+              {review.keywords && review.keywords.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {review.keywords.map((keyword, index) => (
+                    <span
                       key={index}
-                      src={image}
-                      alt={`리뷰 이미지 ${index + 1}`}
-                      className="w-24 h-24 object-cover rounded"
-                    />
+                      className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                    >
+                      {keyword.label}
+                    </span>
                   ))}
                 </div>
               )}
-              <div className="mt-3 flex items-center text-sm text-gray-500">
-                <button
-                  onClick={() => handleLike(review.id)}
-                  className={`flex items-center ${review.isLiked ? 'text-blue-500' : ''}`}
-                >
-                  <svg
-                    className="w-5 h-5 mr-1"
-                    fill={review.isLiked ? 'currentColor' : 'none'}
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                    />
-                  </svg>
-                  <span>{review.like_count}</span>
-                </button>
-                <span className="mx-2">•</span>
-                <span>{format(new Date(review.created_at), 'yyyy.MM.dd')}</span>
-              </div>
+              <p className="text-gray-700 whitespace-pre-line">{review.content}</p>
             </div>
           ))}
         </div>
@@ -294,6 +242,33 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
               {i + 1}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* 로그인 알림 모달 */}
+      {showLoginAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl">
+            <h3 className="text-lg font-semibold mb-4">로그인이 필요합니다</h3>
+            <p className="mb-4">리뷰를 작성하려면 먼저 로그인해주세요.</p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowLoginAlert(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  setShowLoginAlert(false);
+                  navigate('/login');
+                }}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                로그인하기
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -61,4 +61,24 @@ export const fetchAutoComplete = async (query) => {
   }
 };
 
+export const fetchHospitalKeywordStats = async (hospitalId) => {
+  try {
+    const response = await axios.get(`${baseUrl}/api/nursing-hospitals/${hospitalId}/keyword-stats`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching keyword stats:', error);
+    throw error;
+  }
+};
+
+export const fetchHospitalReviews = async (hospitalId) => {
+  try {
+    const response = await axios.get(`${baseUrl}/api/nursing-hospitals/${hospitalId}/reviews`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    throw error;
+  }
+};
+
 //console.log(`🔗 API Base URL: ${baseURL}`);

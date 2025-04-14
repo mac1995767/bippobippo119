@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Rating } from '@mui/material';
-import HospitalReview from '../../components/HospitalReview';
-import { fetchNursingHospitalDetail } from '../../service/api';
+import { fetchNursingHospitalDetail, fetchHospitalKeywordStats, fetchHospitalReviews } from '../../service/api';
 import { IoMdBed } from 'react-icons/io';
-import { FaUserMd, FaUserNurse, FaPhoneAlt, FaMapMarkerAlt, FaStar } from 'react-icons/fa';
+import { FaUserMd, FaUserNurse, FaPhoneAlt, FaMapMarkerAlt } from 'react-icons/fa';
 import { MdKeyboardArrowLeft } from 'react-icons/md';
 import { BsImage, BsCheckCircle, BsInfoCircle } from 'react-icons/bs';
 
@@ -12,30 +10,55 @@ const NursingHospitalDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [hospital, setHospital] = useState(null);
+  const [keywordStats, setKeywordStats] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchHospital = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await fetchNursingHospitalDetail(id);
-                
-        if (response) {
-          setHospital(response);
+        const [hospitalData, statsData, reviewsData] = await Promise.all([
+          fetchNursingHospitalDetail(id),
+          fetchHospitalKeywordStats(id),
+          fetchHospitalReviews(id)
+        ]);
+        
+        if (hospitalData) {
+          setHospital(hospitalData);
+          setKeywordStats(statsData);
+          setReviews(reviewsData);
         } else {
           throw new Error('병원 정보를 찾을 수 없습니다.');
         }
       } catch (err) {
-        console.error('Error fetching hospital:', err);
+        console.error('Error fetching data:', err);
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchHospital();
+    fetchData();
   }, [id]);
+
+  const handleReviewClick = () => {
+    navigate(`/nursing-hospitals/${id}/reviews`);
+  };
+
+  // 아이콘 매핑 함수
+  const getIconComponent = (iconName) => {
+    const iconMap = {
+      'BsImage': <BsImage className="text-green-500" />,
+      'BsCheckCircle': <BsCheckCircle className="text-yellow-500" />,
+      'BsInfoCircle': <BsInfoCircle className="text-blue-500" />,
+      'FaUserMd': <FaUserMd className="text-purple-500" />,
+      'FaUserNurse': <FaUserNurse className="text-pink-500" />,
+      'IoMdBed': <IoMdBed className="text-blue-500" />
+    };
+    return iconMap[iconName] || <BsInfoCircle className="text-gray-500" />;
+  };
 
   if (loading) {
     return (
@@ -75,17 +98,6 @@ const NursingHospitalDetailPage = () => {
     );
   }
 
-  // 임시 리뷰 특징 데이터 (실제로는 API에서 가져와야 함)
-  const reviewFeatures = [
-    { icon: <BsImage className="text-green-500" />, text: "전망이 좋아요", count: 254 },
-    { icon: <BsCheckCircle className="text-yellow-500" />, text: "깨끗이 관리해요", count: 188 },
-    { icon: <BsInfoCircle className="text-blue-500" />, text: "주차하기 편해요", count: 133 }
-  ];
-
-  const handleReviewClick = () => {
-    navigate(`/nursing-hospitals/${id}/reviews`);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 상단 네비게이션 */}
@@ -122,7 +134,7 @@ const NursingHospitalDetailPage = () => {
             {/* 리뷰 요약 섹션 */}
             <div className="bg-white rounded-2xl shadow-md p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">후기 (4,462)</h2>
+                <h2 className="text-2xl font-bold">후기 ({reviews.length})</h2>
                 <button
                   onClick={handleReviewClick}
                   className="text-blue-500 hover:text-blue-600 font-medium"
@@ -131,26 +143,15 @@ const NursingHospitalDetailPage = () => {
                 </button>
               </div>
 
-              <div className="flex items-center mb-6">
-                <div className="text-5xl font-bold mr-4">4.5</div>
-                <div className="flex items-center">
-                  <div className="flex text-yellow-400 mb-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <FaStar key={star} className={star <= 4.5 ? "text-yellow-400" : "text-gray-300"} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
               <h3 className="font-medium text-gray-900 mb-4">한눈에 보는 특징</h3>
-              <div className="space-y-3">
-                {reviewFeatures.map((feature, index) => (
-                  <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {keywordStats.map((stat, index) => (
+                  <div key={index} className="flex items-center justify-between bg-gray-50 p-4 rounded-lg hover:bg-gray-100 transition-colors">
                     <div className="flex items-center">
-                      {feature.icon}
-                      <span className="ml-2">{feature.text}</span>
+                      {getIconComponent(stat.icon)}
+                      <span className="ml-2 font-medium">{stat.label}</span>
                     </div>
-                    <span className="text-gray-500">{feature.count}</span>
+                    <span className="text-gray-500">{stat.count}명</span>
                   </div>
                 ))}
               </div>
@@ -232,45 +233,6 @@ const NursingHospitalDetailPage = () => {
                   </a>
                 </div>
               )}
-            </div>
-
-            {/* 치료 정보 */}
-            <div className="bg-white rounded-2xl shadow-md p-6">
-              <h2 className="text-2xl font-bold mb-4">치료 정보</h2>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">치료 가능 질환</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {hospital.treatments?.map((treatment, index) => (
-                      <span key={index} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                        {treatment}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">특화 치료</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {hospital.specialTreatments?.map((treatment, index) => (
-                      <span key={index} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
-                        {treatment}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold">리뷰</h2>
-                <button
-                  onClick={handleReviewClick}
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                >
-                  모든 리뷰 보기
-                </button>
-              </div>
             </div>
           </div>
 
