@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
@@ -14,7 +15,12 @@ const Footer = () => {
             빠르고, 정확한 의료정보 검색을 경험하세요.
           </p>
         </div>
-
+        <div className="flex flex-col items-center text-center space-y-2">
+          <h3 className="text-lg font-semibold">🔗 주요 서비스</h3>
+            <a href="/about" className="text-gray-400 hover:text-white transition">
+              회사 소개
+            </a>
+        </div>
         {/* 주요 서비스 링크 */}
         {/*
         <div className="flex flex-col items-center text-center space-y-2">

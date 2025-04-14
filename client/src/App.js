@@ -37,6 +37,7 @@ import CategoryTypeManagementPage from './pages/admin/CategoryTypeManagementPage
 import NursingHospitalList from './components/NursingHospitalList';
 import NursingHospitalDetailPage from "./pages/nursing/NursingHospitalDetailPage";
 import NursingHospitalReviewPage from "./pages/nursing/NursingHospitalReviewPage";
+import AboutPage from './components/AboutPage';
 
 const App = () => {
   const { isLoggedIn, userRole, handleLogout } = useAuth();
@@ -81,6 +82,7 @@ const App = () => {
               <Route path="/auth/naver/callback" element={<NaverCallback />} />
               <Route path="/auth/google/callback" element={<GoogleCallback />} />
               <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
+              <Route path="/about" element={<AboutPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>

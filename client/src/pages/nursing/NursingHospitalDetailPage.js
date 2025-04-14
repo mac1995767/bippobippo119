@@ -184,6 +184,23 @@ const NursingHospitalDetailPage = () => {
                 </div>
               </div>
 
+              {/* 병원 유형 및 위탁병원 정보 */}
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-3">병원 유형</h3>
+                <div className="flex flex-wrap gap-2">
+                  {hospital.category && (
+                    <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                      {hospital.category}
+                    </span>
+                  )}
+                  {hospital.veteran_hospital && (
+                    <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">
+                      위탁병원
+                    </span>
+                  )}
+                </div>
+              </div>
+
               {/* 진료과 정보 */}
               {hospital.major && hospital.major.length > 0 && (
                 <div className="mt-6">

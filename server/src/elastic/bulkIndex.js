@@ -102,7 +102,9 @@ async function bulkIndex() {
           location: location,
           hospUrl: h.hospUrl || "-",
           telno: h.telno || "-",
+          veteran_hospital: h.veteran_hospital,
           schedule
+          
         });
       }
 

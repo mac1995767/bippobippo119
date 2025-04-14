@@ -4,6 +4,7 @@ import { fetchHospitals } from "../service/api";
 import HospitalMajorList from "./HospitalMajorList";
 import OperatingStatus from "./OperatingStatus";
 import DistanceInfo from "./DistanceInfo";
+import { encryptId } from '../utils/encryption';
 
 const filterRegions = [
   { label: "전국", icon: "🌍" },
@@ -39,8 +40,6 @@ const NursingHospitalList = () => {
 
   // 필터 상태
   const [selectedRegion, setSelectedRegion] = useState("전국");
-  const [selectedService, setSelectedService] = useState("전체");
-  const [selectedFacility, setSelectedFacility] = useState("전체");
 
   // 데이터 가져오기
   const fetchHospitalsData = async () => {
@@ -155,7 +154,18 @@ const NursingHospitalList = () => {
                   onClick={() => handleHospitalClick(hospital._id)}
                 >
                   {/* 병원 이미지 */}
-                  <div className="w-full h-[180px] bg-gray-200 flex items-center justify-center">
+                  <div className="w-full h-[180px] bg-gray-200 flex items-center justify-center relative">
+                    {/* 병원 유형 및 위탁병원 정보 */}
+                    <div className="absolute top-3 left-3 flex gap-2">
+                      <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-md text-xs font-semibold">
+                        {hospital.category || '요양병원'}
+                      </div>
+                      {hospital.veteran_hospital && (
+                        <div className="bg-red-100 text-red-700 px-3 py-1 rounded-md text-xs font-semibold">
+                          위탁병원
+                        </div>
+                      )}
+                    </div>
                     {hospital.image ? (
                       <img
                         src={hospital.image}
