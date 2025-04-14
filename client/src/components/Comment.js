@@ -2,8 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { api } from '../utils/api';
 import axios from 'axios';
 import { getApiUrl } from '../utils/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Comment = ({ onSubmit, boardId }) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [content, setContent] = useState('');
   const [showMention, setShowMention] = useState(false);
   const [mentionPosition, setMentionPosition] = useState({ top: 0, left: 0 });
@@ -11,6 +15,7 @@ const Comment = ({ onSubmit, boardId }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [taggedHospitals, setTaggedHospitals] = useState([]);
   const [hospitalDetails, setHospitalDetails] = useState({});
+  const [showLoginAlert, setShowLoginAlert] = useState(false);
   const textareaRef = useRef(null);
 
   useEffect(() => {
@@ -124,6 +129,12 @@ const Comment = ({ onSubmit, boardId }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // 로그인 체크
+    if (!user) {
+      setShowLoginAlert(true);
+      return;
+    }
     
     // 댓글 내용이 비어있는지 확인
     const trimmedContent = content.trim();
@@ -242,6 +253,33 @@ const Comment = ({ onSubmit, boardId }) => {
           </button>
         </div>
       </form>
+
+      {/* 로그인 알림 모달 */}
+      {showLoginAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">로그인이 필요합니다</h3>
+            <p className="text-gray-600 mb-6">댓글을 작성하려면 로그인이 필요합니다.</p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowLoginAlert(false)}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  setShowLoginAlert(false);
+                  navigate('/login');
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                로그인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 멘션 제안 */}
       {showMention && (

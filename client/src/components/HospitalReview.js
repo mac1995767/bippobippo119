@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Rating } from '@mui/material';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const HospitalReview = ({ hospitalId, hospitalType }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
   const [stats, setStats] = useState({ averageRating: 0 });
   const [pagination, setPagination] = useState({
@@ -22,6 +24,7 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
     images: []
   });
   const [loading, setLoading] = useState(false);
+  const [showLoginAlert, setShowLoginAlert] = useState(false);
 
   const getApiEndpoint = () => {
     return hospitalType === 'nursing' ? 'nursing-hospitals' : 'hospitals';
@@ -96,8 +99,16 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
     }
   };
 
+  const handleStartWriting = () => {
+    if (!user) {
+      setShowLoginAlert(true);
+      return;
+    }
+    setIsWriting(true);
+  };
+
   return (
-    <div className="mt-8">
+    <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-bold">리뷰</h2>
@@ -107,15 +118,41 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
             <span className="ml-2 text-gray-500">({pagination.total}개의 리뷰)</span>
           </div>
         </div>
-        {user && !isWriting && (
+        <div className="mb-6">
           <button
-            onClick={() => setIsWriting(true)}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            onClick={handleStartWriting}
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
           >
-            리뷰 작성
+            리뷰 작성하기
           </button>
-        )}
+        </div>
       </div>
+
+      {/* 로그인 알림 모달 */}
+      {showLoginAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">로그인이 필요합니다</h3>
+            <p className="text-gray-600 mb-6">
+              리뷰를 작성하려면 로그인이 필요합니다. 로그인하시겠습니까?
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowLoginAlert(false)}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => navigate('/login')}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              >
+                로그인하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 리뷰 작성 폼 */}
       {isWriting && (
