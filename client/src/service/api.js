@@ -29,7 +29,7 @@ export const fetchNursingHospitals = async (params) => {
 // 요양병원 상세 정보 가져오기
 export const fetchNursingHospitalDetail = async (id) => {
   try {
-    const response = await axios.get(`${baseUrl}/api/nursing-hospitals/${id}`);
+    const response = await axios.get(`${baseUrl}/api/nursing-hospitals/hospital/${id}`);
     return response.data;
   } catch (error) {
     console.error("❌ Error fetching nursing hospital detail:", error);
@@ -63,7 +63,7 @@ export const fetchAutoComplete = async (query) => {
 
 export const fetchHospitalKeywordStats = async (hospitalId) => {
   try {
-    const response = await axios.get(`${baseUrl}/api/nursing-hospitals/${hospitalId}/keyword-stats`);
+    const response = await axios.get(`${baseUrl}/api/nursing-hospitals/hospital/${hospitalId}/keyword-stats`);
     return response.data;
   } catch (error) {
     console.error('Error fetching keyword stats:', error);
@@ -71,14 +71,39 @@ export const fetchHospitalKeywordStats = async (hospitalId) => {
   }
 };
 
-export const fetchHospitalReviews = async (hospitalId) => {
+// 요양병원 리뷰 목록 조회 (페이지네이션 및 정렬 포함)
+export const fetchHospitalReviews = async (hospitalId, page = 1, limit = 10, sort = 'latest') => {
   try {
     console.log('Fetching reviews for hospital:', hospitalId);
-    const response = await axios.get(`${baseUrl}/api/nursing-hospitals/${hospitalId}/reviews`);
+    const response = await axios.get(`${baseUrl}/api/nursing-hospitals/hospital/${hospitalId}/reviews`, {
+      params: { page, limit, sort }
+    });
     console.log('Reviews response:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error fetching reviews:', error);
+    throw error;
+  }
+};
+
+// 요양병원 리뷰 작성
+export const submitHospitalReview = async (hospitalId, reviewData) => {
+  try {
+    console.log('Submitting review for hospital:', hospitalId);
+    const response = await axios.post(
+      `${baseUrl}/api/nursing-hospitals/hospital/${hospitalId}/reviews`,
+      reviewData,
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      }
+    );
+    console.log('Review submission response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error submitting review:', error);
     throw error;
   }
 };

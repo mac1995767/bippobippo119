@@ -4,6 +4,12 @@ const { authenticateToken, isAdmin } = require('./authRoutes');
 const pool = require('../config/mysql');
 const client = require('../config/elasticsearch'); // ✅ Elasticsearch 클라이언트 가져오기
 
+// 디버깅용 미들웨어
+router.use((req, res, next) => {
+  console.log('요청이 들어왔습니다:', req.method, req.path);
+  next();
+});
+
 // 키워드 자동 분석 함수
 const analyzeReviewKeywords = (content) => {
   const keywords = [];
@@ -41,35 +47,47 @@ const analyzeReviewKeywords = (content) => {
   return keywords;
 };
 
-
-// 요양병원 키워드 통계 조회
-router.get('/:id/keyword-stats', async (req, res) => {
+// 요양병원 상세 정보 조회
+router.get('/hospital/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('Searching for hospital with ykiho:', id);
     
-    const [stats] = await pool.query(`
-      SELECT 
-        hkt.id,
-        hkt.name,
-        hkt.label,
-        hkt.icon,
-        COUNT(hrk.id) as count
-      FROM hospital_review_keyword_types hkt
-      LEFT JOIN hospital_review_keywords hrk ON hkt.id = hrk.keyword_type_id
-      LEFT JOIN hospital_reviews hr ON hrk.review_id = hr.id
-      WHERE hr.hospital_id = ? AND hr.status = 1
-      GROUP BY hkt.id, hkt.name, hkt.label, hkt.icon
-    `, [id]);
+    // Elasticsearch에서 ykiho로 병원 정보 조회
+    const response = await client.search({
+      index: 'hospitals',
+      body: {
+        query: {
+          bool: {
+            must: [
+              { term: { 'ykiho.keyword': id } },
+              { term: { 'category.keyword': '요양병원' } }
+            ]
+          }
+        }
+      }
+    });
 
-    res.json(stats);
+    console.log('Elasticsearch response:', JSON.stringify(response, null, 2));
+    const result = (typeof response.body !== 'undefined') ? response.body : response;
+    
+    if (!result.hits.hits.length) {
+      console.log('No hospital found with ykiho:', id);
+      return res.status(404).json({ message: '요양병원을 찾을 수 없습니다.' });
+    }
+
+    const hospital = result.hits.hits[0]._source;
+    console.log('Found hospital:', hospital);
+    res.json(hospital);
   } catch (error) {
-    console.error('키워드 통계 조회 중 오류:', error);
-    res.status(500).json({ message: '키워드 통계를 가져오는 중 오류가 발생했습니다.' });
+    console.error('요양병원 정보 조회 중 오류:', error);
+    res.status(500).json({ message: '요양병원 정보 조회 중 오류가 발생했습니다.' });
   }
 });
 
 // 요양병원 리뷰 목록 조회 (키워드 포함)
-router.get('/:id/reviews', async (req, res) => {
+router.get('/hospital/:id/reviews', async (req, res) => {
+  console.log('리뷰 조회 라우트에 요청이 들어왔습니다:', req.params.id);
   try {
     const { id } = req.params;
     console.log('Fetching reviews for hospital ID:', id);
@@ -122,7 +140,7 @@ router.get('/:id/reviews', async (req, res) => {
     const [[{ total }]] = await pool.query(
       `SELECT COUNT(DISTINCT r.id) as total
        FROM hospital_reviews r
-       WHERE r.hospital_id = ? AND r.status = 1`,
+       WHERE r.ykiho = ? AND r.status = 1`,
       [id]
     );
 
@@ -141,8 +159,35 @@ router.get('/:id/reviews', async (req, res) => {
   }
 });
 
+// 요양병원 키워드 통계 조회
+router.get('/hospital/:id/keyword-stats', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const [stats] = await pool.query(`
+      SELECT 
+        hkt.id,
+        hkt.name,
+        hkt.label,
+        hkt.icon,
+        COUNT(hrk.id) as count
+      FROM hospital_review_keyword_types hkt
+      LEFT JOIN hospital_review_keywords hrk ON hkt.id = hrk.keyword_type_id
+      LEFT JOIN hospital_reviews hr ON hrk.review_id = hr.id
+      WHERE hr.hospital_id = ? AND hr.status = 1
+      GROUP BY hkt.id, hkt.name, hkt.label, hkt.icon
+    `, [id]);
+
+    res.json(stats);
+  } catch (error) {
+    console.error('키워드 통계 조회 중 오류:', error);
+    res.status(500).json({ message: '키워드 통계를 가져오는 중 오류가 발생했습니다.' });
+  }
+});
+
 // 리뷰 작성 (자동 키워드 분석)
-router.post('/:id/reviews', authenticateToken, async (req, res) => {
+router.post('/hospital/:id/reviews', authenticateToken, async (req, res) => {
+  console.log('리뷰 작성 라우트에 요청이 들어왔습니다:', req.params.id);
   const connection = await pool.getConnection();
   
   try {
@@ -196,75 +241,6 @@ router.post('/:id/reviews', authenticateToken, async (req, res) => {
     res.status(500).json({ message: '리뷰 작성 중 오류가 발생했습니다.' });
   } finally {
     connection.release();
-  }
-});
-
-// 병원별 리뷰 조회
-router.get('/:id/reviews', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { page = 1, limit = 10, sort = 'latest' } = req.query;
-    const offset = (page - 1) * limit;
-
-    // 정렬 조건 설정
-    let orderBy = 'r.created_at DESC';
-    if (sort === 'rating') orderBy = 'r.rating DESC';
-    else if (sort === 'likes') orderBy = 'like_count DESC';
-
-    // 리뷰 데이터 조회
-    const [reviews] = await pool.query(
-      `SELECT 
-        r.*,
-        u.username,
-        u.profile_image,
-        COUNT(DISTINCT l.id) as like_count,
-        GROUP_CONCAT(DISTINCT i.image_url) as image_urls
-      FROM hospital_reviews r
-      LEFT JOIN hospital_users u ON r.id = u.id
-      LEFT JOIN hospital_review_likes l ON r.id = l.review_id
-      LEFT JOIN hospital_review_images i ON r.id = i.review_id
-      WHERE r.hospital_id = ? AND r.status = 1
-      GROUP BY r.id
-      ORDER BY ${orderBy}
-      LIMIT ? OFFSET ?`,
-      [id, parseInt(limit), offset]
-    );
-
-    // 전체 리뷰 수 조회
-    const [[{ total }]] = await pool.query(
-      `SELECT COUNT(DISTINCT r.id) as total
-       FROM hospital_reviews r
-       WHERE r.hospital_id = ? AND r.status = 1`,
-      [id]
-    );
-
-    // 평균 평점 조회
-    const [[{ avgRating }]] = await pool.query(
-      `SELECT AVG(rating) as avgRating
-       FROM hospital_reviews
-       WHERE hospital_id = ? AND status = 1`,
-      [id]
-    );
-
-    res.json({
-      reviews: reviews.map(review => ({
-        ...review,
-        images: review.image_urls ? review.image_urls.split(',') : [],
-        image_urls: undefined
-      })),
-      pagination: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(total / limit)
-      },
-      stats: {
-        averageRating: avgRating || 0
-      }
-    });
-  } catch (error) {
-    console.error('리뷰 조회 중 오류:', error);
-    res.status(500).json({ message: '리뷰 조회 중 오류가 발생했습니다.' });
   }
 });
 
@@ -382,44 +358,5 @@ router.post('/reviews/:reviewId/like', authenticateToken, async (req, res) => {
     res.status(500).json({ message: '좋아요 처리 중 오류가 발생했습니다.' });
   }
 });
-
-// 요양병원 상세 정보 조회
-router.get('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    console.log('Searching for hospital with ykiho:', id);
-    
-    // Elasticsearch에서 ykiho로 병원 정보 조회
-    const response = await client.search({
-      index: 'hospitals',
-      body: {
-        query: {
-          bool: {
-            must: [
-              { term: { 'ykiho.keyword': id } },
-              { term: { 'category.keyword': '요양병원' } }
-            ]
-          }
-        }
-      }
-    });
-
-    console.log('Elasticsearch response:', JSON.stringify(response, null, 2));
-    const result = (typeof response.body !== 'undefined') ? response.body : response;
-    
-    if (!result.hits.hits.length) {
-      console.log('No hospital found with ykiho:', id);
-      return res.status(404).json({ message: '요양병원을 찾을 수 없습니다.' });
-    }
-
-    const hospital = result.hits.hits[0]._source;
-    console.log('Found hospital:', hospital);
-    res.json(hospital);
-  } catch (error) {
-    console.error('요양병원 정보 조회 중 오류:', error);
-    res.status(500).json({ message: '요양병원 정보 조회 중 오류가 발생했습니다.' });
-  }
-});
-
 
 module.exports = router; 

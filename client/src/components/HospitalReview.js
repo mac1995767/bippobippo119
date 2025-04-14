@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { fetchHospitalReviews, submitHospitalReview } from '../service/api';
 
 const HospitalReview = ({ hospitalId, hospitalType }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
+  const [totalReviews, setTotalReviews] = useState(0);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -32,12 +33,13 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        `/api/nursing-hospitals/${hospitalId}/reviews?page=${pagination.page}&limit=${pagination.limit}&sort=${sort}`
-      );
-      const data = response.data;
+      const data = await fetchHospitalReviews(hospitalId, pagination.page, pagination.limit, sort);
       setReviews(data.reviews);
-      setPagination(data.pagination);
+      setTotalReviews(data.total);
+      setPagination(prev => ({
+        ...prev,
+        totalPages: Math.ceil(data.total / pagination.limit)
+      }));
     } catch (error) {
       console.error('리뷰 조회 중 오류:', error);
     } finally {
@@ -52,57 +54,39 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
   // 리뷰 작성
   const handleSubmitReview = async (e) => {
     e.preventDefault();
-    try {
-      const response = await axios.post(
-        `/api/nursing-hospitals/${hospitalId}/reviews`,
-        {
-          ...newReview,
-          hospitalType
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
-      if (response.status === 201) {
-        setIsWriting(false);
-        setNewReview({ content: '', visitDate: '', images: [] });
-        fetchReviews();
+    if (!user) {
+      if (window.confirm('리뷰 작성을 위해서는 로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) {
+        navigate('/login');
       }
+      return;
+    }
+
+    try {
+      const reviewData = {
+        content: newReview.content,
+        visitDate: newReview.visitDate,
+        images: newReview.images
+      };
+
+      await submitHospitalReview(hospitalId, reviewData);
+      setIsWriting(false);
+      setNewReview({ content: '', visitDate: '', images: [] });
+      fetchReviews();
     } catch (error) {
       console.error('리뷰 작성 중 오류:', error);
-    }
-  };
-
-  // 리뷰 좋아요
-  const handleLike = async (reviewId) => {
-    try {
-      const response = await axios.post(
-        `/api/nursing-hospitals/reviews/${reviewId}/like`,
-        {},
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+      if (error.message === '로그인이 필요합니다.') {
+        if (window.confirm('리뷰 작성을 위해서는 로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) {
+          navigate('/login');
         }
-      );
-
-      if (response.status === 200) {
-        fetchReviews();
+      } else {
+        alert('리뷰 작성 중 오류가 발생했습니다. 다시 시도해주세요.');
       }
-    } catch (error) {
-      console.error('좋아요 처리 중 오류:', error);
     }
   };
 
   const handleStartWriting = () => {
     if (!user) {
-      if (window.confirm('리뷰 작성을 위해서는 로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?')) {
-        navigate('/login');
-      }
+      setShowLoginAlert(true);
       return;
     }
     setIsWriting(true);
@@ -114,15 +98,17 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
         <div>
           <h2 className="text-2xl font-bold">리뷰</h2>
           <div className="flex items-center mt-2">
-            <span className="text-gray-500">총 {pagination.total}개의 리뷰</span>
+            <span className="text-gray-500">총 {totalReviews}개의 리뷰</span>
           </div>
         </div>
-        <button
-          onClick={handleStartWriting}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-        >
-          리뷰 작성
-        </button>
+        {user && !isWriting && (
+          <button
+            onClick={handleStartWriting}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          >
+            리뷰 작성
+          </button>
+        )}
       </div>
 
       {/* 리뷰 작성 폼 */}
