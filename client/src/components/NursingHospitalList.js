@@ -4,6 +4,7 @@ import { fetchHospitals } from "../service/api";
 import HospitalMajorList from "./HospitalMajorList";
 import OperatingStatus from "./OperatingStatus";
 import DistanceInfo from "./DistanceInfo";
+import HealthCenterBanner from './HealthCenterBanner';
 import { encryptId } from '../utils/encryption';
 
 const filterRegions = [
@@ -104,6 +105,9 @@ const NursingHospitalList = () => {
 
   return (
     <div className="sticky top-16 z-50 bg-gray-50">
+      {/* 건강증진센터 배너 */}
+      <HealthCenterBanner />
+      
       {/* 필터 섹션 */}
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto p-4 px-4 md:px-40">

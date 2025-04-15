@@ -38,6 +38,7 @@ import NursingHospitalList from './components/NursingHospitalList';
 import NursingHospitalDetailPage from "./pages/nursing/NursingHospitalDetailPage";
 import NursingHospitalReviewPage from "./pages/nursing/NursingHospitalReviewPage";
 import AboutPage from './components/AboutPage';
+import HealthCenterList from './components/HealthCenterList';
 
 const App = () => {
   const { isLoggedIn, userRole, handleLogout } = useAuth();
@@ -83,6 +84,7 @@ const App = () => {
               <Route path="/auth/google/callback" element={<GoogleCallback />} />
               <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
               <Route path="/about" element={<AboutPage />} />
+              <Route path="/health-centers" element={<HealthCenterList />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
