@@ -173,13 +173,13 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
             <div key={review.id} className="bg-white p-4 rounded shadow">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <div className="font-medium">{review.user.name}</div>
+                  <div className="font-medium">{review.user?.name || '익명'}</div>
                   <div className="text-gray-500 text-sm">
-                    {new Date(review.visitDate).toLocaleDateString()}
+                    {review.visitDate ? new Date(review.visitDate).toLocaleDateString() : '날짜 정보 없음'}
                   </div>
                 </div>
                 <div className="text-gray-500 text-sm">
-                  {new Date(review.createdAt).toLocaleDateString()}
+                  {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : '날짜 정보 없음'}
                 </div>
               </div>
               {review.keywords && review.keywords.length > 0 && (
@@ -194,7 +194,7 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
                   ))}
                 </div>
               )}
-              <p className="text-gray-700 whitespace-pre-line">{review.content}</p>
+              <p className="text-gray-700 whitespace-pre-line">{review.content || '내용 없음'}</p>
             </div>
           ))}
         </div>
