@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { fetchHospitalReviews, submitHospitalReview } from '../service/api';
+import { fetchHospitalReviews, submitHospitalReview, updateHospitalReview, deleteHospitalReview } from '../service/api';
 
 const HospitalReview = ({ hospitalId, hospitalType }) => {
   const { user } = useAuth();
@@ -17,6 +17,8 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
   });
   const [sort, setSort] = useState('latest');
   const [isWriting, setIsWriting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingReviewId, setEditingReviewId] = useState(null);
   const [newReview, setNewReview] = useState({
     content: '',
     visitDate: '',
@@ -68,8 +70,15 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
         images: newReview.images
       };
 
-      await submitHospitalReview(hospitalId, reviewData);
+      if (isEditing) {
+        await updateHospitalReview(hospitalId, editingReviewId, reviewData);
+      } else {
+        await submitHospitalReview(hospitalId, reviewData);
+      }
+
       setIsWriting(false);
+      setIsEditing(false);
+      setEditingReviewId(null);
       setNewReview({ content: '', visitDate: '', images: [] });
       fetchReviews();
     } catch (error) {
@@ -84,12 +93,63 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
     }
   };
 
+  // 리뷰 수정 시작
+  const handleStartEdit = (review) => {
+    setEditingReviewId(review.id);
+    setIsEditing(true);
+    setIsWriting(true);
+    setNewReview({
+      content: review.content,
+      visitDate: review.visit_date ? review.visit_date.split('T')[0] : '',
+      images: review.image_urls || []
+    });
+  };
+
+  // 리뷰 삭제
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm('정말로 이 리뷰를 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      await deleteHospitalReview(hospitalId, reviewId);
+      fetchReviews();
+    } catch (error) {
+      console.error('리뷰 삭제 중 오류:', error);
+      alert('리뷰 삭제 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  };
+
   const handleStartWriting = () => {
     if (!user) {
       setShowLoginAlert(true);
       return;
     }
     setIsWriting(true);
+  };
+
+  // 날짜 포맷팅 함수 수정
+  const formatDate = (dateString, includeTime = false) => {
+    if (!dateString) return '날짜 정보 없음';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return '날짜 정보 없음';
+      }
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      
+      if (includeTime) {
+        return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
+      }
+      return `${year}년 ${month}월 ${day}일`;
+    } catch (error) {
+      console.error('날짜 포맷팅 오류:', error);
+      return '날짜 정보 없음';
+    }
   };
 
   return (
@@ -111,7 +171,7 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
         )}
       </div>
 
-      {/* 리뷰 작성 폼 */}
+      {/* 리뷰 작성/수정 폼 */}
       {isWriting && (
         <form onSubmit={handleSubmitReview} className="mb-8 p-4 bg-gray-50 rounded">
           <div className="mb-4">
@@ -137,7 +197,12 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => setIsWriting(false)}
+              onClick={() => {
+                setIsWriting(false);
+                setIsEditing(false);
+                setEditingReviewId(null);
+                setNewReview({ content: '', visitDate: '', images: [] });
+              }}
               className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
             >
               취소
@@ -146,7 +211,7 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
               type="submit"
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
             >
-              작성완료
+              {isEditing ? '수정완료' : '작성완료'}
             </button>
           </div>
         </form>
@@ -170,31 +235,68 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
       ) : (
         <div className="space-y-6">
           {reviews.map(review => (
-            <div key={review.id} className="bg-white p-4 rounded shadow">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="font-medium">{review.user?.name || '익명'}</div>
-                  <div className="text-gray-500 text-sm">
-                    {review.visitDate ? new Date(review.visitDate).toLocaleDateString() : '날짜 정보 없음'}
+            <div key={review.id} className="bg-white p-6 rounded-lg shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
+              <div className="flex flex-col gap-2">
+                {/* 상단 영역: 사용자 정보 및 날짜 */}
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 font-medium">
+                        {review.username ? review.username.charAt(0).toUpperCase() : '익'}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">{review.username || '익명'}</div>
+                      <div className="text-sm text-gray-500">
+                        방문: {formatDate(review.visit_date)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-gray-500">
+                      작성: {formatDate(review.created_at)}
+                    </div>
+                    {user && user.id === review.user_id && (
+                      <div className="flex gap-2 mt-1">
+                        <button
+                          onClick={() => handleStartEdit(review)}
+                          className="text-sm text-blue-600 hover:text-blue-800"
+                        >
+                          수정
+                        </button>
+                        <span className="text-gray-300">|</span>
+                        <button
+                          onClick={() => handleDeleteReview(review.id)}
+                          className="text-sm text-red-600 hover:text-red-800"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="text-gray-500 text-sm">
-                  {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : '날짜 정보 없음'}
+
+                {/* 리뷰 내용 */}
+                <div className="py-3">
+                  <p className="text-gray-800 leading-relaxed whitespace-pre-line">
+                    {review.content || '내용 없음'}
+                  </p>
                 </div>
+
+                {/* 키워드 태그 */}
+                {review.keywords && review.keywords.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
+                    {review.keywords.map((keyword, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-blue-50 text-blue-700 text-sm rounded-full font-medium"
+                      >
+                        #{keyword.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-              {review.keywords && review.keywords.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {review.keywords.map((keyword, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
-                    >
-                      {keyword.label}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <p className="text-gray-700 whitespace-pre-line">{review.content || '내용 없음'}</p>
             </div>
           ))}
         </div>

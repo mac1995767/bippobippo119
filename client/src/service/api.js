@@ -108,4 +108,44 @@ export const submitHospitalReview = async (hospitalId, reviewData) => {
   }
 };
 
+// 요양병원 리뷰 수정
+export const updateHospitalReview = async (hospitalId, reviewId, reviewData) => {
+  try {
+    console.log('Updating review:', reviewId);
+    const response = await axios.put(
+      `${baseUrl}/api/nursing-hospitals/hospital/${hospitalId}/reviews/${reviewId}`,
+      reviewData,
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      }
+    );
+    console.log('Review update response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating review:', error);
+    throw error;
+  }
+};
+
+// 요양병원 리뷰 삭제
+export const deleteHospitalReview = async (hospitalId, reviewId) => {
+  try {
+    console.log('Deleting review:', reviewId);
+    const response = await axios.delete(
+      `${baseUrl}/api/nursing-hospitals/hospital/${hospitalId}/reviews/${reviewId}`,
+      {
+        withCredentials: true
+      }
+    );
+    console.log('Review delete response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    throw error;
+  }
+};
+
 //console.log(`🔗 API Base URL: ${baseURL}`);

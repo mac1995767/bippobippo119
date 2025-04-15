@@ -245,84 +245,107 @@ router.post('/hospital/:id/reviews', authenticateToken, async (req, res) => {
 });
 
 // 리뷰 수정
-router.put('/reviews/:reviewId', authenticateToken, async (req, res) => {
+router.put('/hospital/:id/reviews/:reviewId', authenticateToken, async (req, res) => {
+  console.log('리뷰 수정 라우트에 요청이 들어왔습니다:', req.params.reviewId);
+  const connection = await pool.getConnection();
+  
   try {
-    const { reviewId } = req.params;
-    const { rating, content, visitDate } = req.body;
+    await connection.beginTransaction();
+    
+    const { id, reviewId } = req.params;
+    const { content, visitDate, images } = req.body;
     const userId = req.user.id;
 
-    // 리뷰 존재 여부와 작성자 확인
-    const [[review]] = await pool.query(
-      'SELECT * FROM hospital_reviews WHERE id = ?',
-      [reviewId]
+    // 리뷰 소유권 확인
+    const [review] = await connection.query(
+      'SELECT * FROM hospital_reviews WHERE id = ? AND user_id = ? AND ykiho = ?',
+      [reviewId, userId, id]
     );
 
-    if (!review) {
-      return res.status(404).json({ message: '리뷰를 찾을 수 없습니다.' });
-    }
-
-    if (review.user_id !== userId) {
+    if (!review.length) {
       return res.status(403).json({ message: '리뷰를 수정할 권한이 없습니다.' });
     }
 
     // 리뷰 수정
-    await pool.query(
-      `UPDATE hospital_reviews 
-       SET rating = ?, content = ?, visit_date = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-      [rating, content, visitDate, reviewId]
+    await connection.query(
+      'UPDATE hospital_reviews SET content = ?, visit_date = ? WHERE id = ?',
+      [content, visitDate, reviewId]
     );
 
-    // 이미지 처리 (기존 이미지 삭제 후 새 이미지 추가)
-    if (req.body.images) {
-      await pool.query('DELETE FROM hospital_review_images WHERE review_id = ?', [reviewId]);
+    // 키워드 분석 및 업데이트
+    const keywords = analyzeReviewKeywords(content);
+    
+    // 기존 키워드 삭제
+    await connection.query('DELETE FROM hospital_review_keywords WHERE review_id = ?', [reviewId]);
+    
+    // 새로운 키워드 추가
+    for (const keywordId of keywords) {
+      await connection.query(
+        'INSERT INTO hospital_review_keywords (review_id, keyword_type_id) VALUES (?, ?)',
+        [reviewId, keywordId]
+      );
+    }
+
+    // 이미지 처리
+    if (images && images.length > 0) {
+      // 기존 이미지 삭제
+      await connection.query('DELETE FROM hospital_review_images WHERE review_id = ?', [reviewId]);
       
-      if (req.body.images.length > 0) {
-        const imageValues = req.body.images.map(imageUrl => [reviewId, imageUrl]);
-        await pool.query(
-          `INSERT INTO hospital_review_images (review_id, image_url) VALUES ?`,
-          [imageValues]
+      // 새로운 이미지 추가
+      for (const imageUrl of images) {
+        await connection.query(
+          'INSERT INTO hospital_review_images (review_id, image_url) VALUES (?, ?)',
+          [reviewId, imageUrl]
         );
       }
     }
 
-    res.json({ message: '리뷰가 수정되었습니다.' });
+    await connection.commit();
+    res.json({ message: '리뷰가 성공적으로 수정되었습니다.' });
   } catch (error) {
+    await connection.rollback();
     console.error('리뷰 수정 중 오류:', error);
     res.status(500).json({ message: '리뷰 수정 중 오류가 발생했습니다.' });
+  } finally {
+    connection.release();
   }
 });
 
-// 리뷰 삭제 (소프트 삭제)
-router.delete('/reviews/:reviewId', authenticateToken, async (req, res) => {
+// 리뷰 삭제
+router.delete('/hospital/:id/reviews/:reviewId', authenticateToken, async (req, res) => {
+  console.log('리뷰 삭제 라우트에 요청이 들어왔습니다:', req.params.reviewId);
+  const connection = await pool.getConnection();
+  
   try {
-    const { reviewId } = req.params;
+    await connection.beginTransaction();
+    
+    const { id, reviewId } = req.params;
     const userId = req.user.id;
 
-    // 리뷰 존재 여부와 작성자 확인
-    const [[review]] = await pool.query(
-      'SELECT * FROM hospital_reviews WHERE id = ?',
-      [reviewId]
+    // 리뷰 소유권 확인
+    const [review] = await connection.query(
+      'SELECT * FROM hospital_reviews WHERE id = ? AND user_id = ? AND ykiho = ?',
+      [reviewId, userId, id]
     );
 
-    if (!review) {
-      return res.status(404).json({ message: '리뷰를 찾을 수 없습니다.' });
-    }
-
-    if (review.user_id !== userId) {
+    if (!review.length) {
       return res.status(403).json({ message: '리뷰를 삭제할 권한이 없습니다.' });
     }
 
-    // 소프트 삭제 처리
-    await pool.query(
+    // 리뷰 삭제 (실제로는 상태만 변경)
+    await connection.query(
       'UPDATE hospital_reviews SET status = 0 WHERE id = ?',
       [reviewId]
     );
 
-    res.json({ message: '리뷰가 삭제되었습니다.' });
+    await connection.commit();
+    res.json({ message: '리뷰가 성공적으로 삭제되었습니다.' });
   } catch (error) {
+    await connection.rollback();
     console.error('리뷰 삭제 중 오류:', error);
     res.status(500).json({ message: '리뷰 삭제 중 오류가 발생했습니다.' });
+  } finally {
+    connection.release();
   }
 });
 
