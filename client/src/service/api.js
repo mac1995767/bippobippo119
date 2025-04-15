@@ -148,4 +148,25 @@ export const deleteHospitalReview = async (hospitalId, reviewId) => {
   }
 };
 
+// 건강증진센터 API
+export const fetchHealthCenters = async (params = {}) => {
+  try {
+    const response = await axios.get(`${baseUrl}/api/health-centers`, { params });
+    return response.data;
+  } catch (error) {
+    console.error('건강증진센터 목록 조회 실패:', error);
+    throw error;
+  }
+};
+
+export const fetchHealthCenterDetail = async (id) => {
+  try {
+    const response = await axios.get(`${baseUrl}/api/health-centers/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error('건강증진센터 상세 조회 실패:', error);
+    throw error;
+  }
+};
+
 //console.log(`🔗 API Base URL: ${baseURL}`);

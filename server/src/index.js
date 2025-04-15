@@ -21,6 +21,7 @@ const HospitalOrigin = require('./models/HospitalOrigin');
 const hospitalOriginRoutes = require('./routes/hospitalOriginRoutes');
 const path = require('path');
 const fs = require('fs');
+const healthCenterRoutes = require('./routes/healthCenterRoutes');
 
 const app = express();
 
@@ -114,6 +115,7 @@ app.use('/api/nursing-hospitals/search', hospitalSearchRouter);  // 요양병원
 app.use('/aip/chat', chatRouter);
 app.use('/api/boards', boardRoutes);
 app.use('/api/origins', hospitalOriginRoutes);
+app.use('/api/health-centers', healthCenterRoutes);
 
 // 등록된 라우트 목록 출력
 app._router.stack.forEach(function(r){
