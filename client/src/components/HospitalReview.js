@@ -154,13 +154,7 @@ const HospitalReview = ({ hospitalId, hospitalType }) => {
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-2xl font-bold">리뷰</h2>
-          <div className="flex items-center mt-2">
-            <span className="text-gray-500">총 {totalReviews}개의 리뷰</span>
-          </div>
-        </div>
+      <div className="flex justify-end mb-6">
         {user && !isWriting && (
           <button
             onClick={handleStartWriting}

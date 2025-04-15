@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaStar } from 'react-icons/fa';
+import { FaArrowLeft } from 'react-icons/fa';
 import HospitalReview from '../../components/HospitalReview';
 import { useAuth } from '../../contexts/AuthContext';
-import { fetchHospitals } from '../../service/api';
+import { fetchNursingHospitalDetail } from '../../service/api';
 
 const NursingHospitalReviewPage = () => {
   const { id } = useParams();
@@ -17,13 +17,10 @@ const NursingHospitalReviewPage = () => {
     const fetchHospital = async () => {
       try {
         setLoading(true);
-        const response = await fetchHospitals({
-          id: id,
-          category: "요양병원"
-        });
+        const response = await fetchNursingHospitalDetail(id);
         
-        if (response && response.data && response.data.length > 0) {
-          setHospital(response.data[0]);
+        if (response) {
+          setHospital(response);
         } else {
           throw new Error('병원 정보를 찾을 수 없습니다.');
         }
@@ -91,19 +88,7 @@ const NursingHospitalReviewPage = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h1 className="text-3xl font-bold mb-4">{hospital.name}</h1>
-        <div className="flex items-center mb-6">
-          <div className="flex items-center">
-            <FaStar className="text-yellow-400 mr-1" />
-            <span className="text-xl font-semibold">
-              {hospital.averageRating ? hospital.averageRating.toFixed(1) : '0.0'}
-            </span>
-          </div>
-          <span className="mx-2 text-gray-400">|</span>
-          <span className="text-gray-600">
-            리뷰 {hospital.reviewCount || 0}개
-          </span>
-        </div>
+        <h1 className="text-2xl font-semibold text-gray-900">{hospital.yadmNm || '병원 이름 없음'}</h1>
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">
