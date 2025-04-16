@@ -1,11 +1,26 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getApiUrl } from '../utils/api';
 
 const NavigationBar = () => {
   const { user, userProfileImage, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const location = useLocation();
+
+  // 현재 경로가 특정 경로와 일치하는지 확인하는 함수
+  const isActive = (path) => {
+    return location.pathname.startsWith(path);
+  };
+
+  // 메뉴 항목의 클래스를 동적으로 생성하는 함수
+  const getMenuItemClasses = (path) => {
+    return `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+      isActive(path)
+        ? 'border-indigo-500 text-indigo-600 font-semibold'
+        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+    }`;
+  };
 
   // 랜덤 색상 생성 함수
   const getRandomColor = (username) => {
@@ -36,19 +51,19 @@ const NavigationBar = () => {
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               <Link
                 to="/hospitals"
-                className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                className={getMenuItemClasses('/hospitals')}
               >
                 병원 찾기
               </Link>
               <Link
                 to="/pharmacies"
-                className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                className={getMenuItemClasses('/pharmacies')}
               >
                 약국 찾기
               </Link>
               <Link
                 to="/community"
-                className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                className={getMenuItemClasses('/community')}
               >
                 커뮤니티
               </Link>
