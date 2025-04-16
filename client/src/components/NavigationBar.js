@@ -41,6 +41,12 @@ const NavigationBar = () => {
                 병원 찾기
               </Link>
               <Link
+                to="/pharmacies"
+                className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              >
+                약국 찾기
+              </Link>
+              <Link
                 to="/community"
                 className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
               >

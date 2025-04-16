@@ -5,6 +5,7 @@ import store from './redux/store';
 import MainPage from "./pages/MainPage";
 import HospitalListPage from "./pages/HospitalListPage";
 import HospitalDetailPage from "./pages/HospitalDetailPage";
+import PharmaciesList from "./pages/PharmaciesList";
 import Footer from "./components/Footer";
 import AdSense from "./components/AdSense";
 import { initializeGA, trackPageView } from "./utils/GoogleAnalytics";
@@ -56,6 +57,7 @@ const App = () => {
             <Routes>
               <Route path="/" element={<MainPage isLoggedIn={isLoggedIn} userRole={userRole} />} />
               <Route path="/hospitals" element={<HospitalListPage />} />
+              <Route path="/pharmacies" element={<PharmaciesList />} />
               <Route path="/hospitals/:id" element={<HospitalDetailPage />} />
               <Route path="/nursing-hospitals" element={<NursingHospitalList />} />
               <Route path="/nursing-hospitals/:id" element={<NursingHospitalDetailPage />} />
