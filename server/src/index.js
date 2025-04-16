@@ -94,14 +94,14 @@ addDefaultOrigins();
 
 // Elasticsearch Reindexing
 //console.log("🔄 Starting Elasticsearch reindexing process...");
-//reindex()
-//  .then(() => {
-//    console.log("✅ Elasticsearch Reindexing Complete!");
-//  })
-//  .catch(err => {
-//    console.error("❌ Error in reindexing:", err);
-//    console.error("Stack trace:", err.stack);
-//  });
+reindex()
+  .then(() => {
+    console.log("✅ Elasticsearch Reindexing Complete!");
+  })
+  .catch(err => {
+    console.error("❌ Error in reindexing:", err);
+    console.error("Stack trace:", err.stack);
+  });
 
 //reindexPharmacies()
 //.then(() => {
