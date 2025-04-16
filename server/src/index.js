@@ -10,8 +10,10 @@ const chatRouter = require('./routes/chat'); // 채팅 라우터 추가
 const adminRoutes = require('./routes/adminRoutes'); // adminRoutes로 이름 변경
 const boardRoutes = require('./routes/boardRoutes');
 const hospitalReviewRoutes = require('./routes/hospitalReviewRoutes');  // 리뷰 라우터 추가
+const pharmacySearchRouter = require('./elastic/pharmacySearch');
 //const chatRoutes = require('./routes/chatRoutes');
 const { reindex } = require('./elastic/elastics'); // reindex 불러오기
+const { reindexPharmacies } = require('./elastic/elastics'); // reindexPharmacies 불러오기
 const User = require('./models/User');
 const cors = require('cors');
 const cookieParser = require('cookie-parser'); // cookie-parser 추가
@@ -21,7 +23,6 @@ const HospitalOrigin = require('./models/HospitalOrigin');
 const hospitalOriginRoutes = require('./routes/hospitalOriginRoutes');
 const path = require('path');
 const fs = require('fs');
-const healthCenterRoutes = require('./routes/healthCenterRoutes');
 
 const app = express();
 
@@ -92,30 +93,39 @@ addDefaultOrigins();
 
 // Elasticsearch Reindexing
 //console.log("🔄 Starting Elasticsearch reindexing process...");
-reindex()
-  .then(() => {
-    console.log("✅ Elasticsearch Reindexing Complete!");
-  })
-  .catch(err => {
-    console.error("❌ Error in reindexing:", err);
-    console.error("Stack trace:", err.stack);
-  });
+//reindex()
+//  .then(() => {
+//    console.log("✅ Elasticsearch Reindexing Complete!");
+//  })
+//  .catch(err => {
+//    console.error("❌ Error in reindexing:", err);
+//    console.error("Stack trace:", err.stack);
+//  });
+
+//reindexPharmacies()
+//.then(() => {
+//    console.log("✅ Elasticsearch Reindexing Complete!");
+//  })
+//  .catch(err => {
+//    console.error("❌ Error in reindexing:", err);
+//    console.error("Stack trace:", err.stack);
+//  });
 
 // API 라우트 설정
 app.use('/api/auth', authRouter);
 app.use('/api/email', emailRouter);
 app.use('/api/admin', adminRoutes);
 app.use('/api/autocomplete', autoCompleteRouter);
-app.use('/api/nursing-hospitals', hospitalReviewRoutes);  // 요양병원 리뷰 라우트를 위로 이동
 app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/hospitals/search', hospitalSearchRouter);
 app.use('/api/hospitals/details/search', hospitalDetailSearchRoutes);
 app.use('/api/hospitals/subjects', hospitalSubjectRoutes);
 app.use('/api/nursing-hospitals/search', hospitalSearchRouter);  // 요양병원 검색 라우트
+app.use('/api/nursing-hospitals', hospitalReviewRoutes);  // 요양병원 리뷰 라우트
+app.use('/api/pharmacies', pharmacySearchRouter);
 app.use('/aip/chat', chatRouter);
 app.use('/api/boards', boardRoutes);
 app.use('/api/origins', hospitalOriginRoutes);
-app.use('/api/health-centers', healthCenterRoutes);
 
 // 등록된 라우트 목록 출력
 app._router.stack.forEach(function(r){
