@@ -13,8 +13,8 @@ const hospitalReviewRoutes = require('./routes/hospitalReviewRoutes');  // 리�
 const pharmacySearchRouter = require('./elastic/pharmacySearch');
 const pharmacyAutoCompleteRouter = require('./routes/pharmacyAutoComplete');
 //const chatRoutes = require('./routes/chatRoutes');
-const { reindex } = require('./elastic/elastics'); // reindex 불러오기
-const { reindexPharmacies } = require('./elastic/elastics'); // reindexPharmacies 불러오기
+//const { reindex } = require('./elastic/elastics'); // reindex 불러오기
+//const { reindexPharmacies } = require('./elastic/elastics'); // reindexPharmacies 불러오기
 const User = require('./models/User');
 const cors = require('cors');
 const cookieParser = require('cookie-parser'); // cookie-parser 추가
@@ -94,14 +94,14 @@ addDefaultOrigins();
 
 // Elasticsearch Reindexing
 //console.log("🔄 Starting Elasticsearch reindexing process...");
-reindex()
-  .then(() => {
-    console.log("✅ Elasticsearch Reindexing Complete!");
-  })
-  .catch(err => {
-    console.error("❌ Error in reindexing:", err);
-    console.error("Stack trace:", err.stack);
-  });
+//reindex()
+  //.then(() => {
+  //  console.log("✅ Elasticsearch Reindexing Complete!");
+  //})
+  //.catch(err => {
+  //  console.error("❌ Error in reindexing:", err);
+  //  console.error("Stack trace:", err.stack);
+  //});
 
 //reindexPharmacies()
 //.then(() => {
@@ -117,12 +117,12 @@ app.use('/api/auth', authRouter);
 app.use('/api/email', emailRouter);
 app.use('/api/admin', adminRoutes);
 app.use('/api/autocomplete', autoCompleteRouter);
-app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/hospitals/search', hospitalSearchRouter);
 app.use('/api/hospitals/details/search', hospitalDetailSearchRoutes);
+app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/hospitals/subjects', hospitalSubjectRoutes);
-app.use('/api/nursing-hospitals/search', hospitalSearchRouter);  // 요양병원 검색 라우트
-app.use('/api/nursing-hospitals', hospitalReviewRoutes);  // 요양병원 리뷰 라우트
+app.use('/api/nursing-hospitals/search', hospitalSearchRouter);
+app.use('/api/nursing-hospitals', hospitalReviewRoutes);
 app.use('/api/pharmacies', pharmacySearchRouter);
 app.use('/api/pharmacy-autocomplete', pharmacyAutoCompleteRouter);
 app.use('/aip/chat', chatRouter);

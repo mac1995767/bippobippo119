@@ -40,6 +40,7 @@ const HospitalDetailPage = () => {
         setHospital(data);
       } catch (error) {
         console.error('병원 상세 정보 로딩 실패:', error);
+        setError('병원 정보를 불러오는데 실패했습니다.');
       } finally {
         setLoading(false);
       }
@@ -48,18 +49,9 @@ const HospitalDetailPage = () => {
     loadHospitalDetail();
   }, [id, location.search]);
 
-  if (loading)
-    return <div className="text-center mt-10">🔄 로딩 중...</div>;
-  if (error)
-    return (
-      <div className="text-center text-red-500 mt-10">❌ {error}</div>
-    );
-  if (!hospital)
-    return (
-      <div className="text-center mt-10">
-        ❌ 병원 정보를 찾을 수 없습니다.
-      </div>
-    );
+  if (loading) return <div className="text-center mt-10">로딩 중...</div>;
+  if (error) return <div className="text-center text-red-500 mt-10">{error}</div>;
+  if (!hospital) return <div className="text-center mt-10">병원 정보를 찾을 수 없습니다.</div>;
 
   // ✅ 요일 매핑 및 추가 정보 항목
   const dayMap = {
@@ -82,134 +74,105 @@ const HospitalDetailPage = () => {
   ];
 
   return (
-    <section className="container mx-auto mt-10 p-6 px-4 md:px-40">
-      <div className="bg-white shadow-md hover:shadow-lg rounded-lg overflow-hidden transition-transform duration-300">
-        {/* 병원 이미지 */}
-        {hospital.image && !imgError ? (
-          <img
-            src={hospital.image}
-            alt={hospital.yadmNm}
-            className="w-full h-64 object-cover"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
-            <span className="text-gray-500 text-sm">🖼️ 이미지 준비 중</span>
-          </div>
-        )}
-
-        <div className="p-6">
-          {/* 병원 기본 정보 */}
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">
-            {hospital.yadmNm}
-          </h1>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm text-gray-500 mb-4">
-            <span className="flex-1 truncate">{hospital.addr}</span>
-            <a
-              href={`https://map.naver.com/v5/search/${encodeURIComponent(
-                hospital.addr
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 sm:mt-0 sm:ml-2 px-2 py-1 text-blue-500 border border-blue-300 rounded-md flex items-center gap-x-1 hover:bg-blue-100"
-            >
-              지도보기 🗺️
-            </a>
-          </div>
-
-          {/* 요양병원 뱃지 */}
-          {isNursingHospital && (
-            <div className="inline-block bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium mb-4">
-              요양병원
-            </div>
-          )}
-
-          {/* 위치 정보 */}
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-2">위치 정보</h2>
-            <p className="text-gray-600">{hospital.addr}</p>
-            {userLocation && (
-              <p className="text-sm text-gray-500 mt-1">
-                현재 위치에서 약 {hospital.distance}km
-              </p>
-            )}
-          </div>
-
-          {/* 진료과 정보 */}
-          {hospital.major?.length > 0 ? (
-            <div className="mb-4">
-              <p className="font-semibold text-gray-700">진료과:</p>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {hospital.major.map((major, index) => (
-                  <span
-                    key={index}
-                    className="bg-gray-200 px-3 py-1 text-sm rounded-md"
-                  >
-                    {major}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="mb-4">
-              <p className="font-semibold text-gray-700">진료과:</p>
-              <span className="bg-gray-200 px-3 py-1 text-sm rounded-md text-gray-500">
-                정보 없음
-              </span>
-            </div>
-          )}
-
-          {/* 운영 시간 테이블 */}
-          <div className="mb-6">
-            <h3 className="text-2xl font-semibold mb-4">운영 시간</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full border border-gray-200">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="px-4 py-2 border border-gray-200 text-left">
-                      요일
-                    </th>
-                    <th className="px-4 py-2 border border-gray-200 text-left">
-                      시간
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.keys(dayMap).map((day) => (
-                    <tr key={day} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 border border-gray-200 font-medium">
-                        {dayMap[day]}
-                      </td>
-                      <td className="px-4 py-2 border border-gray-200">
-                        {hospital.schedule?.[day] || "운영 정보 없음"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* 추가 정보 영역 */}
+    <div className="container mx-auto px-4 py-8">
+      {/* 기본 정보 */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h1 className="text-3xl font-bold mb-4">{hospital.yadmNm}</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <h4 className="text-xl font-semibold mb-2">추가 정보</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {extraInfo.map(({ label, key }) => (
-                <div
-                  key={key}
-                  className="p-4 border border-gray-200 rounded-lg shadow-sm bg-gray-50"
-                >
-                  <p className="text-gray-600 text-sm">{label}</p>
-                  <p className="text-lg font-medium text-gray-800">
-                    {hospital.schedule?.[key] || "정보 없음"}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <p className="text-gray-600">주소: {hospital.addr}</p>
+            <p className="text-gray-600">전화번호: {hospital.telno}</p>
+            <p className="text-gray-600">홈페이지: {hospital.hospUrl}</p>
+          </div>
+          <div>
+            <p className="text-gray-600">지역: {hospital.region}</p>
+            <p className="text-gray-600">병원 유형: {hospital.category}</p>
           </div>
         </div>
       </div>
-    </section>
+
+      {/* 진료과 정보 */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-2xl font-bold mb-4">진료과</h2>
+        <div className="flex flex-wrap gap-2">
+          {hospital.subjects?.map((subject, index) => (
+            <span key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+              {subject.dgsbjtCdNm}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* 운영 시간 */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-2xl font-bold mb-4">운영 시간</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h3 className="font-semibold mb-2">평일</h3>
+            <p>진료 시작: {hospital.times?.trmtMonStart || '정보 없음'}</p>
+            <p>진료 종료: {hospital.times?.trmtMonEnd || '정보 없음'}</p>
+            <p>점심 시간: {hospital.times?.lunchWeek || '정보 없음'}</p>
+            <p>응급실 운영: {hospital.times?.emyNgtYn === 'Y' ? '운영' : '미운영'}</p>
+          </div>
+          <div>
+            <h3 className="font-semibold mb-2">토요일</h3>
+            <p>진료 시작: {hospital.times?.trmtSatStart || '정보 없음'}</p>
+            <p>진료 종료: {hospital.times?.trmtSatEnd || '정보 없음'}</p>
+            <p>토요일 운영: {hospital.times?.noTrmtSat === '휴무' ? '휴무' : '운영'}</p>
+            <p>일요일 운영: {hospital.times?.noTrmtSun === '휴무' ? '휴무' : '운영'}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* 근처 약국 */}
+      {hospital.nearby_pharmacies && hospital.nearby_pharmacies.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-2xl font-bold mb-4">근처 약국</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {hospital.nearby_pharmacies.map((pharmacy, index) => (
+              <div key={index} className="border rounded-lg p-4">
+                <h3 className="font-semibold">{pharmacy.yadmNm}</h3>
+                <p className="text-gray-600">주소: {pharmacy.addr}</p>
+                <p className="text-gray-600">전화번호: {pharmacy.telno}</p>
+                <p className="text-gray-600">거리: {pharmacy.distance.toFixed(2)}m</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 특수 진료 정보 */}
+      {hospital.intensive_care_info && hospital.intensive_care_info.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-2xl font-bold mb-4">특수 진료 정보</h2>
+          <div className="flex flex-wrap gap-2">
+            {hospital.intensive_care_info.map((care, index) => (
+              <span key={index} className="bg-green-100 text-green-800 px-3 py-1 rounded-full">
+                {care.typeCdNm}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 식이요법 정보 */}
+      {hospital.food_treatment_info && hospital.food_treatment_info.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-2xl font-bold mb-4">식이요법 정보</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {hospital.food_treatment_info.map((food, index) => (
+              <div key={index} className="border rounded-lg p-4">
+                <h3 className="font-semibold">{food.typeCdNm}</h3>
+                <p className="text-gray-600">인원: {food.psnlCnt}명</p>
+                {food.treatMealGrd && (
+                  <p className="text-gray-600">급식 등급: {food.treatMealGrd}급</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

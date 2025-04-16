@@ -8,6 +8,7 @@ const { HospitalSubject } = require('../models/hospitalSubject');
 const { HospitalTime } = require('../models/hospitalTime');
 
 
+
 router.get('/filter', async (req, res) => {
   try {
     const { region, subject, category, page = 1, limit = 10 } = req.query;
@@ -249,6 +250,34 @@ router.get('/autocomplete', async (req, res) => {
   } catch (error) {
     console.error('병원 검색 오류:', error);
     res.status(500).json({ error: '병원 검색에 실패했습니다.' });
+  }
+});
+
+// 병원 상세 정보 조회
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // 병원 기본 정보 조회
+    const hospital = await Hospital.findOne({ ykiho: id });
+    if (!hospital) {
+      return res.status(404).json({ error: '병원을 찾을 수 없습니다.' });
+    }
+
+    // 색인된 데이터 조회
+    const hospitalDetail = {
+      ...hospital.toObject(),
+      subjects: hospital.subjects || [],
+      times: hospital.times || {},
+      nearby_pharmacies: hospital.nearby_pharmacies || [],
+      intensive_care_info: hospital.intensive_care_info || [],
+      food_treatment_info: hospital.food_treatment_info || []
+    };
+
+    res.json(hospitalDetail);
+  } catch (error) {
+    console.error('병원 상세 정보 조회 오류:', error);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
   }
 });
 

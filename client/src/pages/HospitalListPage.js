@@ -422,7 +422,8 @@ const HospitalListPage = () => {
                   {hospitals.map((hospital) => (
                     <div
                       key={hospital._id}
-                      className="relative bg-white shadow-md hover:shadow-lg rounded-lg overflow-hidden hover:scale-105 transition-transform duration-300"
+                      className="relative bg-white shadow-md hover:shadow-lg rounded-lg overflow-hidden hover:scale-105 transition-transform duration-300 cursor-pointer"
+                      onClick={() => handleDetailClick(hospital._id)}
                     >
                       {/* 병원 유형 */}
                       {hospital.category && (
@@ -473,7 +474,7 @@ const HospitalListPage = () => {
                         {/* 🕒 영업 여부 */}
                         <div className="mt-2">
                           <p className="font-semibold text-gray-700">🕒 영업 여부:</p>
-                          <OperatingStatus schedule={hospital.schedule} />
+                          <OperatingStatus schedule={hospital.times} />
                         </div>
 
                         {/* 📞 전화번호 + 바로 전화 버튼 */}
@@ -513,15 +514,6 @@ const HospitalListPage = () => {
                             응급 주말 진료: {hospital.weekendCare ? "가능 ✅" : "불가 ❌"}
                           </span>
                         </div>
-                        {/* 🔍 상세보기 버튼 */}
-                        {/*
-                        <button
-                          className="mt-2 bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600 transition"
-                          onClick={() => handleDetailClick(hospital._id)}
-                        >
-                          🔍 자세히 보기
-                        </button>
-                        */}
                       </div>
                     </div>
                   ))}
