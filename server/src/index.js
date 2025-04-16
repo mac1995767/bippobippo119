@@ -11,6 +11,7 @@ const adminRoutes = require('./routes/adminRoutes'); // adminRoutes로 이름 �
 const boardRoutes = require('./routes/boardRoutes');
 const hospitalReviewRoutes = require('./routes/hospitalReviewRoutes');  // 리뷰 라우터 추가
 const pharmacySearchRouter = require('./elastic/pharmacySearch');
+const pharmacyAutoCompleteRouter = require('./routes/pharmacyAutoComplete');
 //const chatRoutes = require('./routes/chatRoutes');
 const { reindex } = require('./elastic/elastics'); // reindex 불러오기
 const { reindexPharmacies } = require('./elastic/elastics'); // reindexPharmacies 불러오기
@@ -123,6 +124,7 @@ app.use('/api/hospitals/subjects', hospitalSubjectRoutes);
 app.use('/api/nursing-hospitals/search', hospitalSearchRouter);  // 요양병원 검색 라우트
 app.use('/api/nursing-hospitals', hospitalReviewRoutes);  // 요양병원 리뷰 라우트
 app.use('/api/pharmacies', pharmacySearchRouter);
+app.use('/api/pharmacy-autocomplete', pharmacyAutoCompleteRouter);
 app.use('/aip/chat', chatRouter);
 app.use('/api/boards', boardRoutes);
 app.use('/api/origins', hospitalOriginRoutes);

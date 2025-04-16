@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import FilterDropdown from "../components/FilterDropdown";
 import DistanceInfo from "../components/DistanceInfo";
 import { searchPharmacies, fetchAllPharmacies } from "../service/api";
+import PharmacyAutoComplete from "../components/PharmacyAutoComplete";
 
 const filterRegions = [
   { label: "전국", icon: "🌍" },
@@ -52,23 +53,25 @@ const PharmaciesList = () => {
   // URL에서 쿼리 파라미터 읽어오기
   const location = useLocation();
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const type = params.get("type");
-    const query = params.get("query");
+    const query = params.get("query") || "";
     const x = params.get("x");
     const y = params.get("y");
 
     if (type) {
       setSelectedType(type);
     }
-    if (query) {
+    if (query && query !== searchQuery) {
       setSearchQuery(query);
+      handleSearch({ preventDefault: () => {} }, query);
     }
     if (x && y) {
       setUserLocation({ x: parseFloat(x), y: parseFloat(y) });
       setLocationBased(true);
     }
-  }, [location]);
+    if (!query) setSearchQuery(""); // 쿼리가 없으면 입력창 비우기
+  }, [location.search]);
 
   const filterCategories = [
     { name: "지역", options: filterRegions, state: selectedRegion, setState: setSelectedRegion },
@@ -107,13 +110,13 @@ const PharmaciesList = () => {
     loadInitialData();
   }, [currentPage]);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
+  const handleSearch = async (e, customQuery) => {
+    if (e && e.preventDefault) e.preventDefault();
     try {
       setLoading(true);
       setCurrentPage(1); // 검색 시 첫 페이지로 리셋
       const response = await searchPharmacies({
-        query: searchQuery,
+        query: customQuery !== undefined ? customQuery : searchQuery,
         region: selectedRegion,
         type: selectedType,
         x: userLocation.x,
@@ -135,7 +138,7 @@ const PharmaciesList = () => {
     }
 
     const params = new URLSearchParams();
-    if (searchQuery) params.append("query", searchQuery);
+    if (customQuery !== undefined ? customQuery : searchQuery) params.append("query", customQuery !== undefined ? customQuery : searchQuery);
     if (selectedType !== "전체") params.append("type", selectedType);
     if (selectedRegion !== "전국") params.append("region", selectedRegion);
     navigate(`/pharmacies?${params.toString()}`);
@@ -227,25 +230,7 @@ const PharmaciesList = () => {
           
           {/* 검색 섹션 */}
           <div className="w-full max-w-2xl mt-4">
-            <form onSubmit={handleSearch} className="relative">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onFocus={() => setIsSearchFocused(true)}
-                  onBlur={() => setIsSearchFocused(false)}
-                  placeholder="약국 이름, 지역, 약국 유형으로 검색"
-                  className="w-full px-4 py-3 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-                <button
-                  type="submit"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                >
-                  🔍
-                </button>
-              </div>
-            </form>
+            <PharmacyAutoComplete searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
             
             {/* 위치 기반 검색 버튼 */}
             <button
