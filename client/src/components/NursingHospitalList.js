@@ -188,7 +188,7 @@ const NursingHospitalList = () => {
                     <p className="text-gray-600 text-sm mb-2">{hospital.addr}</p>
 
                     {/* 진료과 정보 */}
-                    <HospitalMajorList majors={hospital.major} />
+                    <HospitalMajorList majors={hospital.subjects?.map(subject => subject.dgsbjtCdNm) || []} />
 
                     {/* 거리 정보 */}
                     <DistanceInfo hospitalLocation={hospital.location} />
@@ -196,7 +196,101 @@ const NursingHospitalList = () => {
                     {/* 운영 정보 */}
                     <div className="mt-2">
                       <p className="font-semibold text-gray-700">🕒 영업 여부:</p>
-                      <OperatingStatus schedule={hospital.schedule} />
+                      {hospital.times ? (
+                        <div className="mt-1">
+                          <div className="text-sm">
+                            <div className="flex items-center justify-between">
+                              <span>
+                                <span className="font-medium">
+                                  {(() => {
+                                    const days = ['일', '월', '화', '수', '목', '금', '토'];
+                                    return days[new Date().getDay()];
+                                  })()}:
+                                </span>
+                                {(() => {
+                                  const now = new Date();
+                                  const currentHour = now.getHours();
+                                  const currentMinute = now.getMinutes();
+                                  const currentTime = currentHour * 60 + currentMinute;
+
+                                  const today = now.getDay();
+                                  const dayMap = {
+                                    0: { start: hospital.times?.trmtSunStart, end: hospital.times?.trmtSunEnd },
+                                    1: { start: hospital.times?.trmtMonStart, end: hospital.times?.trmtMonEnd },
+                                    2: { start: hospital.times?.trmtTueStart, end: hospital.times?.trmtTueEnd },
+                                    3: { start: hospital.times?.trmtWedStart, end: hospital.times?.trmtWedEnd },
+                                    4: { start: hospital.times?.trmtThuStart, end: hospital.times?.trmtThuEnd },
+                                    5: { start: hospital.times?.trmtFriStart, end: hospital.times?.trmtFriEnd },
+                                    6: { start: hospital.times?.trmtSatStart, end: hospital.times?.trmtSatEnd }
+                                  };
+
+                                  const todayTime = dayMap[today];
+                                  if (!todayTime || !todayTime.start || !todayTime.end) return '휴무';
+
+                                  // 시간 문자열이 아닌 경우 처리
+                                  if (typeof todayTime.start !== 'string' || typeof todayTime.end !== 'string') return '휴무';
+
+                                  const startTime = todayTime.start.split(':').map(Number);
+                                  const endTime = todayTime.end.split(':').map(Number);
+                                  
+                                  if (startTime.length !== 2 || endTime.length !== 2) return '휴무';
+                                  
+                                  const startMinutes = startTime[0] * 60 + startTime[1];
+                                  const endMinutes = endTime[0] * 60 + endTime[1];
+
+                                  // 점심시간 체크
+                                  if (hospital.times?.lunchWeek && typeof hospital.times.lunchWeek === 'string') {
+                                    const lunchTimes = hospital.times.lunchWeek.split('~');
+                                    if (lunchTimes.length === 2) {
+                                      const lunchStart = lunchTimes[0].split(':').map(Number);
+                                      const lunchEnd = lunchTimes[1].split(':').map(Number);
+                                      
+                                      if (lunchStart.length === 2 && lunchEnd.length === 2) {
+                                        const lunchStartMinutes = lunchStart[0] * 60 + lunchStart[1];
+                                        const lunchEndMinutes = lunchEnd[0] * 60 + lunchEnd[1];
+
+                                        if (currentTime >= lunchStartMinutes && currentTime <= lunchEndMinutes) {
+                                          return `브레이크타임 (${todayTime.start}~${todayTime.end})`;
+                                        }
+                                      }
+                                    }
+                                  }
+
+                                  if (currentTime >= startMinutes && currentTime <= endMinutes) {
+                                    return `영업중 (${todayTime.start}~${todayTime.end})`;
+                                  } else {
+                                    return `영업종료 (${todayTime.start}~${todayTime.end})`;
+                                  }
+                                })()}
+                              </span>
+                              <button 
+                                className="text-blue-600 hover:text-blue-800"
+                                onClick={(e) => {
+                                  const details = e.currentTarget.nextElementSibling;
+                                  details.classList.toggle('hidden');
+                                  e.currentTarget.querySelector('span').textContent = 
+                                    details.classList.contains('hidden') ? '▼' : '▲';
+                                }}
+                              >
+                                <span>▼</span>
+                              </button>
+                            </div>
+                            <div className="hidden mt-2 space-y-1">
+                              <div><span className="font-medium">월요일:</span> {hospital.times?.trmtMonStart}~{hospital.times?.trmtMonEnd}</div>
+                              <div><span className="font-medium">화요일:</span> {hospital.times?.trmtTueStart}~{hospital.times?.trmtTueEnd}</div>
+                              <div><span className="font-medium">수요일:</span> {hospital.times?.trmtWedStart}~{hospital.times?.trmtWedEnd}</div>
+                              <div><span className="font-medium">목요일:</span> {hospital.times?.trmtThuStart}~{hospital.times?.trmtThuEnd}</div>
+                              <div><span className="font-medium">금요일:</span> {hospital.times?.trmtFriStart}~{hospital.times?.trmtFriEnd}</div>
+                              <div><span className="font-medium">토요일:</span> {hospital.times?.trmtSatStart}~{hospital.times?.trmtSatEnd}</div>
+                              <div><span className="font-medium">일요일:</span> {hospital.times?.trmtSunStart}~{hospital.times?.trmtSunEnd}</div>
+                              <div className="mt-2"><span className="font-medium">점심시간:</span> {hospital.times?.lunchWeek}</div>
+                              <div><span className="font-medium">접수시간:</span> {hospital.times?.rcvWeek}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-gray-500 text-sm">영업시간 정보 없음</div>
+                      )}
                     </div>
 
                     {/* 전화번호 */}

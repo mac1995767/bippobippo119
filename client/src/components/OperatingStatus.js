@@ -3,6 +3,8 @@ import React, { useState } from "react";
 const OperatingStatus = ({ schedule }) => {
   const [showDetails, setShowDetails] = useState(false);
 
+  // 디버깅을 위한 콘솔 로그
+
   // schedule 정보가 없으면 드롭다운 없이 메시지만 표시
   if (!schedule) {
     return (
@@ -60,21 +62,39 @@ const OperatingStatus = ({ schedule }) => {
   };
 
   const nowInMinutes = currentHour * 60 + currentMinute;
-  const todaySchedule = schedule[today];
-  const openTime = todaySchedule ? timeToMinutes(todaySchedule.openTime) : null;
-  const closeTime = todaySchedule ? timeToMinutes(todaySchedule.closeTime) : null;
+  
+  // 현재 요일에 맞는 시작/종료 시간 가져오기
+  const getTodaySchedule = () => {
+    const dayMap = {
+      Monday: { start: "trmtMonStart", end: "trmtMonEnd" },
+      Tuesday: { start: "trmtTueStart", end: "trmtTueEnd" },
+      Wednesday: { start: "trmtWedStart", end: "trmtWedEnd" },
+      Thursday: { start: "trmtThuStart", end: "trmtThuEnd" },
+      Friday: { start: "trmtFriStart", end: "trmtFriEnd" },
+      Saturday: { start: "trmtSatStart", end: "trmtSatEnd" },
+      Sunday: { start: null, end: null }
+    };
+
+    const daySchedule = dayMap[today];
+    if (!daySchedule) return { openTime: null, closeTime: null };
+
+    return {
+      openTime: schedule[daySchedule.start],
+      closeTime: schedule[daySchedule.end]
+    };
+  };
+
+  const todaySchedule = getTodaySchedule();
+  const openTime = timeToMinutes(todaySchedule.openTime);
+  const closeTime = timeToMinutes(todaySchedule.closeTime);
 
   // 브레이크타임 파싱
   let lunchStart = null,
     lunchEnd = null;
-  if (schedule.lunch) {
-    const lunchTimes = schedule.lunch.split("~");
-    lunchStart = timeToMinutes(
-      lunchTimes[0]?.replace("시", "").replace("분", "").trim()
-    );
-    lunchEnd = timeToMinutes(
-      lunchTimes[1]?.replace("시", "").replace("분", "").trim()
-    );
+  if (schedule.lunchWeek) {
+    const lunchTimes = schedule.lunchWeek.split("~");
+    lunchStart = timeToMinutes(lunchTimes[0]);
+    lunchEnd = timeToMinutes(lunchTimes[1]);
   }
 
   let status = "";
@@ -122,14 +142,26 @@ const OperatingStatus = ({ schedule }) => {
       {showDetails && (
         <div className="mt-2 p-2 border border-gray-200 rounded-md">
           {dayOfWeek.map((day) => {
-            const daySchedule = schedule[day];
+            const dayMap = {
+              Monday: { start: "trmtMonStart", end: "trmtMonEnd" },
+              Tuesday: { start: "trmtTueStart", end: "trmtTueEnd" },
+              Wednesday: { start: "trmtWedStart", end: "trmtWedEnd" },
+              Thursday: { start: "trmtThuStart", end: "trmtThuEnd" },
+              Friday: { start: "trmtFriStart", end: "trmtFriEnd" },
+              Saturday: { start: "trmtSatStart", end: "trmtSatEnd" },
+              Sunday: { start: null, end: null }
+            };
+
+            const daySchedule = dayMap[day];
+            const startTime = daySchedule ? schedule[daySchedule.start] : null;
+            const endTime = daySchedule ? schedule[daySchedule.end] : null;
+
             return (
               <div key={day} className="flex justify-between text-sm py-1">
                 <span>{dayKoreanMap[day]}</span>
-                {daySchedule && daySchedule.openTime && daySchedule.closeTime ? (
+                {startTime && endTime ? (
                   <span>
-                    {formatTime(daySchedule.openTime)} ~{" "}
-                    {formatTime(daySchedule.closeTime)}
+                    {formatTime(startTime)} ~ {formatTime(endTime)}
                   </span>
                 ) : (
                   <span>휴무</span>
@@ -137,6 +169,14 @@ const OperatingStatus = ({ schedule }) => {
               </div>
             );
           })}
+          {schedule.lunchWeek && (
+            <div className="mt-2 pt-2 border-t border-gray-200">
+              <div className="flex justify-between text-sm">
+                <span>점심시간</span>
+                <span>{schedule.lunchWeek}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

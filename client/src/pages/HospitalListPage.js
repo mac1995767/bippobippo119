@@ -468,7 +468,7 @@ const HospitalListPage = () => {
                         <DistanceInfo hospitalLocation={hospital.location} />
 
                         {/* 진료과 정보 (컴포넌트 사용) */}
-                        <HospitalMajorList majors={hospital.major} />
+                        <HospitalMajorList majors={hospital.subjects?.map(subject => subject.dgsbjtCdNm) || []} />
 
                         {/* 🕒 영업 여부 */}
                         <div className="mt-2">
