@@ -114,6 +114,7 @@ addDefaultOrigins();
 //  });
 
 // API 라우트 설정
+console.log('라우터 설정 시작');
 app.use('/api/auth', authRouter);
 app.use('/api/email', emailRouter);
 app.use('/api/admin', adminRoutes);
@@ -130,10 +131,18 @@ app.use('/aip/chat', chatRouter);
 app.use('/api/boards', boardRoutes);
 app.use('/api/origins', hospitalOriginRoutes);
 
+// 라우터 디버깅
+app.use((req, res, next) => {
+  console.log(`요청 경로: ${req.path}`);
+  console.log(`요청 메서드: ${req.method}`);
+  next();
+});
+
 // 등록된 라우트 목록 출력
+console.log('등록된 라우트 목록:');
 app._router.stack.forEach(function(r){
     if (r.route && r.route.path){
-        console.log(`Registered Route: ${r.route.stack[0].method.toUpperCase()} ${r.route.path}`);
+        console.log(`- ${r.route.stack[0].method.toUpperCase()} ${r.route.path}`);
     }
 });
 

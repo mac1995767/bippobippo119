@@ -40,10 +40,16 @@ export const fetchNursingHospitalDetail = async (id) => {
 // 병원 상세 정보 가져오기
 export const fetchHospitalDetail = async (id) => {
   try {
+    console.log('병원 상세 정보 요청 ID:', id);
     const response = await axios.get(`${baseUrl}/api/hospitals/detail/${id}`);
+    console.log('병원 상세 정보 응답:', response.data);
     return response.data;
   } catch (error) {
     console.error("❌ Error fetching hospital detail:", error);
+    if (error.response) {
+      console.error("응답 상태:", error.response.status);
+      console.error("응답 데이터:", error.response.data);
+    }
     throw error;
   }
 };

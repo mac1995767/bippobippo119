@@ -246,11 +246,11 @@ const HospitalDetailPage = () => {
             )}
 
             {/* 식이치료 정보 */}
-            {hospital.food_treatment_info && hospital.food_treatment_info.length > 0 && (
+            {hospital.food_treatment && hospital.food_treatment.length > 0 && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-semibold mb-4">식이치료 정보</h2>
                 <div className="space-y-3">
-                  {hospital.food_treatment_info.map((food) => (
+                  {hospital.food_treatment.map((food) => (
                     <div key={food.typeCd} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
                         <span className="font-medium">{food.typeCdNm}</span>
@@ -267,12 +267,12 @@ const HospitalDetailPage = () => {
               </div>
             )}
 
-            {/* 중환자실 정보 */}
-            {hospital.intensive_care_info && hospital.intensive_care_info.length > 0 && (
+            {/* 병원 정보 */}
+            {hospital.intensive_care && hospital.intensive_care.length > 0 && (
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold mb-4">중환자실 정보</h2>
+                <h2 className="text-xl font-semibold mb-4">병원 정보</h2>
                 <div className="flex flex-wrap gap-2">
-                  {hospital.intensive_care_info.map((care) => (
+                  {hospital.intensive_care.map((care) => (
                     <span key={care.typeCd} className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">
                       {care.typeCdNm}
                     </span>
@@ -287,13 +287,32 @@ const HospitalDetailPage = () => {
                 <h2 className="text-xl font-semibold mb-4">주변 약국</h2>
                 <div className="space-y-4">
                   {hospital.nearby_pharmacies.map((pharmacy) => (
-                    <div key={pharmacy._id} className="border-b pb-4 last:border-b-0">
-                      <h3 className="font-medium">{pharmacy.yadmNm}</h3>
-                      <p className="text-gray-600 text-sm">{pharmacy.addr}</p>
-                      <p className="text-gray-600 text-sm">전화: {pharmacy.telno}</p>
-                      {pharmacy.distance && (
-                        <p className="text-gray-600 text-sm">거리: {pharmacy.distance.toFixed(2)}m</p>
-                      )}
+                    <div key={pharmacy._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div className="flex-grow">
+                        <h3 className="font-medium text-gray-900">{pharmacy.yadmNm}</h3>
+                        <p className="text-gray-600 text-sm mt-1">{pharmacy.addr}</p>
+                        <div className="flex items-center gap-4 mt-2">
+                          <p className="text-gray-600 text-sm flex items-center">
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                            </svg>
+                            {pharmacy.telno}
+                          </p>
+                          {pharmacy.distance !== undefined && (
+                            <p className="text-gray-600 text-sm flex items-center">
+                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              {pharmacy.distance === 0 ? "건물 내부" :
+                                pharmacy.distance < 1000 
+                                  ? `${Math.round(pharmacy.distance)}m`
+                                  : `${(pharmacy.distance / 1000).toFixed(1)}km`
+                              }
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
