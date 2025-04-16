@@ -322,9 +322,8 @@ const HospitalListPage = () => {
   const handleDetailClick = async (hospitalId) => {
     try {
       const detailData = await fetchHospitalDetail(hospitalId);
-      // navigate를 사용해 페이지 이동하고 state로 데이터를 전달합니다.
       navigate(`/hospital/details/${hospitalId}`, {
-        state: { hospitalDetail: detailData },
+        state: { hospitalDetail: detailData }
       });
     } catch (error) {
       console.error("Error fetching hospital details:", error);

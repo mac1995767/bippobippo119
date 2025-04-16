@@ -57,8 +57,8 @@ const App = () => {
             <Routes>
               <Route path="/" element={<MainPage isLoggedIn={isLoggedIn} userRole={userRole} />} />
               <Route path="/hospitals" element={<HospitalListPage />} />
+              <Route path="/hospital/details/:id" element={<HospitalDetailPage />} />
               <Route path="/pharmacies" element={<PharmaciesList />} />
-              <Route path="/hospitals/:id" element={<HospitalDetailPage />} />
               <Route path="/nursing-hospitals" element={<NursingHospitalList />} />
               <Route path="/nursing-hospitals/:id" element={<NursingHospitalDetailPage />} />
               <Route path="/nursing-hospitals/:id/reviews" element={<NursingHospitalReviewPage />} />
