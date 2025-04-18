@@ -144,6 +144,13 @@ const PharmaciesList = () => {
     navigate(`/pharmacies?${params.toString()}`);
   };
 
+  // 검색어가 변경될 때마다 검색 실행
+  useEffect(() => {
+    if (searchQuery) {
+      handleSearch({ preventDefault: () => {} }, searchQuery);
+    }
+  }, [searchQuery]);
+
   const handlePageChange = async (page) => {
     setCurrentPage(page);
     try {
@@ -261,7 +268,11 @@ const PharmaciesList = () => {
           
           {/* 검색 섹션 */}
           <div className="w-full max-w-2xl mt-4">
-            <PharmacyAutoComplete searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+            <PharmacyAutoComplete 
+              searchQuery={searchQuery} 
+              setSearchQuery={setSearchQuery}
+              onSearch={(query) => handleSearch({ preventDefault: () => {} }, query)}
+            />
             
             {/* 위치 기반 검색 버튼 */}
             <button

@@ -2,17 +2,18 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../utils/api";
 
-const PharmacyAutoComplete = ({ searchQuery, setSearchQuery }) => {
+const PharmacyAutoComplete = ({ searchQuery, setSearchQuery, onSearch }) => {
   const [suggestions, setSuggestions] = useState({ pharmacy: [] });
+  const [inputValue, setInputValue] = useState(searchQuery);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!searchQuery) {
+    if (!inputValue) {
       setSuggestions({ pharmacy: [] });
       return;
     }
     const timer = setTimeout(() => {
-      api.get(`/api/pharmacy-autocomplete?query=${encodeURIComponent(searchQuery)}`)
+      api.get(`/api/pharmacy-autocomplete?query=${encodeURIComponent(inputValue)}`)
         .then((response) => {
           setSuggestions({ pharmacy: response.data.pharmacy || [] });
         })
@@ -21,13 +22,15 @@ const PharmacyAutoComplete = ({ searchQuery, setSearchQuery }) => {
         });
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [inputValue]);
 
-  const handleSearch = (queryParam = searchQuery) => {
+  const handleSearch = (queryParam = inputValue) => {
     const trimmedQuery = queryParam.trim();
     if (!trimmedQuery) return;
     setSuggestions({ pharmacy: [] });
-    navigate(`/pharmacies?query=${encodeURIComponent(trimmedQuery)}`);
+    setSearchQuery(trimmedQuery);
+    setInputValue(trimmedQuery);
+    onSearch(trimmedQuery);
   };
 
   return (
@@ -35,8 +38,8 @@ const PharmacyAutoComplete = ({ searchQuery, setSearchQuery }) => {
       <div className="flex">
         <input
           type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
           placeholder="어떤 약국을 찾으시나요?"
           className="flex-1 p-3 border border-gray-300 rounded-l-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
         />
@@ -47,21 +50,20 @@ const PharmacyAutoComplete = ({ searchQuery, setSearchQuery }) => {
           검색
         </button>
       </div>
-      {searchQuery && (
+      {inputValue && suggestions.pharmacy.length > 0 && (
         <div className="absolute z-10 bg-white border border-gray-300 mt-1 w-full rounded-lg shadow-lg overflow-hidden">
-          {(suggestions.pharmacy || []).length === 0 ? (
-            <div className="p-3 text-gray-500 text-center">❌ 검색 결과 없음</div>
-          ) : (
-            <ul>
-              {(suggestions.pharmacy || []).map((pharmacy, idx) => (
-                <li key={pharmacy.name + pharmacy.address + idx} onMouseDown={() => handleSearch(pharmacy.name)}
-                    className="p-3 hover:bg-gray-200 cursor-pointer border-b text-black text-sm">
-                  <div className="font-medium text-blue-600">{pharmacy.name}</div>
-                  <div className="text-xs text-gray-500">{pharmacy.address}</div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ul>
+            {suggestions.pharmacy.map((pharmacy, idx) => (
+              <li 
+                key={pharmacy.name + pharmacy.address + idx} 
+                onClick={() => handleSearch(pharmacy.name)}
+                className="p-3 hover:bg-gray-200 cursor-pointer border-b text-black text-sm"
+              >
+                <div className="font-medium text-blue-600">{pharmacy.name}</div>
+                <div className="text-xs text-gray-500">{pharmacy.address}</div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>
