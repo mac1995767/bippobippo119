@@ -18,6 +18,13 @@ const HospitalDetailPage = () => {
     return `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
   };
 
+  // 점심시간 포맷팅 함수 추가
+  const formatLunchTime = (lunchTime) => {
+    if (!lunchTime) return "정보 없음";
+    const [start, end] = lunchTime.split('~').map(time => time.trim());
+    return `${formatTime(start)} ~ ${formatTime(end)}`;
+  };
+
   // 운영 시간 표시 함수 추가
   const displayOperatingTime = (startTime, endTime) => {
     if (!startTime || !endTime) return "정보 없음";
@@ -238,7 +245,7 @@ const HospitalDetailPage = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <p className="font-medium">점심시간</p>
-                      <p>{hospital.times?.lunchWeek ? hospital.times.lunchWeek.replace('~', ' ~ ') : "정보 없음"}</p>
+                      <p>{formatLunchTime(hospital.times?.lunchWeek)}</p>
                     </div>
                   </div>
                 </div>
