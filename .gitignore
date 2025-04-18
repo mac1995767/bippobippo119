@@ -62,4 +62,6 @@ config/secret-config.js
 .npm
 .npm/_cacache
 .npm/_logs
-.npm/_npx
+.npm/_npxclient/.env.bak
+client/.env.bak
+client/.env.bak
