@@ -78,11 +78,14 @@ router.get('/', async (req, res) => {
             "_geo_distance": {
               "location": { "lat": parseFloat(y), "lon": parseFloat(x) },
               "order": "asc",
-              "unit": "km",
+              "unit": "m",
               "distance_type": "arc"
             }
           }
-        ] : []
+        ] : [],
+        _source: {
+          includes: ["*"]
+        }
       }
     };
 
@@ -91,10 +94,14 @@ router.get('/', async (req, res) => {
 
     let hits, totalCount;
     if (result && result.hits) {
-      hits = result.hits.hits.map(hit => ({
-        ...hit._source,
-        _id: hit._id,
-      }));
+      hits = result.hits.hits.map(hit => {
+        const distance = hit.sort ? Math.round(hit.sort[0]) : null;
+        return {
+          ...hit._source,
+          _id: hit._id,
+          distance: distance
+        };
+      });
       totalCount = typeof result.hits.total === 'number'
         ? result.hits.total
         : result.hits.total.value;

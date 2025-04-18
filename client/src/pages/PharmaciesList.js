@@ -173,23 +173,54 @@ const PharmaciesList = () => {
 
   const handleLocationSearch = () => {
     if (navigator.geolocation) {
+      setLoading(true); // 로딩 시작
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           setUserLocation({ x: longitude, y: latitude });
           setLocationBased(true);
+          
+          // 위치 정보를 가져온 후 즉시 검색 실행
+          searchPharmacies({
+            x: longitude,
+            y: latitude,
+            distance: selectedDistance,
+            page: 1,
+            limit: itemsPerPage
+          }).then(response => {
+            if (response && response.data) {
+              console.log('약국 검색 결과:', response.data); // 디버깅용 로그
+              // 거리 정보가 있는지 확인
+              const pharmaciesWithDistance = response.data.map(pharmacy => {
+                console.log('약국 거리 정보:', pharmacy.yadmNm, pharmacy.distance); // 디버깅용 로그
+                return pharmacy;
+              });
+              setPharmacies(pharmaciesWithDistance);
+              setTotalPages(response.totalPages);
+              setTotalCount(response.totalCount);
+            }
+          }).catch(error => {
+            console.error('위치 기반 약국 검색 중 오류 발생:', error);
+            alert('약국 검색 중 오류가 발생했습니다. 다시 시도해주세요.');
+          }).finally(() => {
+            setLoading(false); // 로딩 종료
+          });
+
+          // URL 업데이트
           const params = new URLSearchParams();
           params.append("x", longitude);
           params.append("y", latitude);
           navigate(`/pharmacies?${params.toString()}`);
         },
         (error) => {
-          console.error("위치 정보를 가져오는데 실패했습니다:", error);
-          alert("위치 정보를 가져오는데 실패했습니다.");
+          console.error('위치 정보를 가져올 수 없습니다:', error);
+          alert('위치 정보를 가져올 수 없습니다. 위치 서비스를 허용해주세요.');
+          setLoading(false); // 로딩 종료
         }
       );
     } else {
-      alert("이 브라우저에서는 위치 정보를 지원하지 않습니다.");
+      alert('이 브라우저는 위치 정보를 지원하지 않습니다.');
+      setLoading(false); // 로딩 종료
     }
   };
 
@@ -269,39 +300,54 @@ const PharmaciesList = () => {
       {/* 약국 리스트 */}
       <section className="container mx-auto mt-10 p-6 px-4 md:px-40">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {pharmacies.map((pharmacy) => (
-            <div key={pharmacy.ykiho} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
-              <div className="p-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-gray-800">{pharmacy.yadmNm}</h3>
-                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
-                    {pharmacy.clCdNm}
-                  </span>
-                </div>
-                
-                <div className="mt-2">
-                  <p className="text-sm text-gray-600">{pharmacy.addr}</p>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-sm text-gray-500">{pharmacy.telno}</span>
-                    <a
-                      href={`https://map.naver.com/v5/search/${encodeURIComponent(pharmacy.addr)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-500 hover:text-blue-700 text-sm px-2 py-1 border border-blue-300 rounded-md flex items-center gap-x-1 hover:bg-blue-100"
-                    >
-                      지도보기 🗺️
-                    </a>
+          {pharmacies.map((pharmacy) => {
+            // 거리 계산
+            const distance = pharmacy.distance;
+            console.log('약국 거리:', pharmacy.yadmNm, distance); // 디버깅용 로그
+            
+            return (
+              <div key={pharmacy.ykiho} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-gray-800">{pharmacy.yadmNm}</h3>
+                    <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+                      {pharmacy.clCdNm}
+                    </span>
+                  </div>
+                  
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-600">{pharmacy.addr}</p>
+                    {typeof distance === 'number' && (
+                      <p className="text-sm text-blue-600 mt-1 flex items-center">
+                        <span className="mr-1">📍</span>
+                        {distance <= 1000 
+                          ? `${distance}m 거리`
+                          : `${(distance / 1000).toFixed(1)}km 거리`
+                        }
+                      </p>
+                    )}
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-sm text-gray-500">{pharmacy.telno}</span>
+                      <a
+                        href={`https://map.naver.com/v5/search/${encodeURIComponent(pharmacy.addr)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:text-blue-700 text-sm px-2 py-1 border border-blue-300 rounded-md flex items-center gap-x-1 hover:bg-blue-100"
+                      >
+                        지도보기 🗺️
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                      {pharmacy.sidoCdNm} {pharmacy.sgguCdNm}
+                    </span>
                   </div>
                 </div>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                    {pharmacy.sidoCdNm} {pharmacy.sgguCdNm}
-                  </span>
-                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* 페이지네이션 */}
