@@ -228,21 +228,25 @@ const HospitalListPage = () => {
       setLoading(true);
       setError(null);
 
+      // '/api/hospitals/search' 에 ?page=..., &limit=..., &region=..., &subject=..., &nightCare=... 등
       const params = {
         page: currentPage,
         limit: limit,
       };
 
+      // 검색 쿼리 추가
       if (searchQuery.trim() !== "") {
         params.query = searchQuery.trim();
       }
 
+      // 위치 기반 검색 추가
       if (locationBased && userLocation.x !== null && userLocation.y !== null) {
         params.x = userLocation.x;
         params.y = userLocation.y;
         params.distance = `${selectedDistance}m`;
       }
 
+      // 필터가 '전체'가 아닐 경우에만 해당 파라미터 추가
       if (selectedRegion !== "전국") {
         params.region = selectedRegion;
       }
@@ -252,24 +256,19 @@ const HospitalListPage = () => {
       }
 
       if (selectedMajor !== "전체") {
-        params.major = selectedMajor;
+        params.major = selectedMajor; // Major 필터 추가
       }
 
       if (selectedAdditionalFilter === "응급야간진료") {
         params.category = "응급야간진료";
-      } else if (selectedAdditionalFilter === "응급주말진료") {
+      }else if (selectedAdditionalFilter === "응급주말진료") {
         params.category = "응급주말진료";
-      } else if (selectedAdditionalFilter === "영업중") {
+      }else if (selectedAdditionalFilter === "영업중") {
         params.category = "영업중";
       }
-
-      console.log("전공 필터링:", selectedMajor);
-      console.log("영업중 필터링:", selectedAdditionalFilter);
-      console.log("요청 파라미터:", params);
     
       const response = await fetchHospitals(params);
-      console.log("서버 응답:", response);
-      
+      // 구조분해: { data, totalCount, currentPage, totalPages }
       const {
         data,
         totalCount: fetchedTotalCount,
@@ -277,6 +276,7 @@ const HospitalListPage = () => {
         currentPage: fetchedCurrentPage,
       } = response;
       
+      // 상태 업데이트
       setHospitals(data);
       setTotalCount(fetchedTotalCount);
       setTotalPages(fetchedTotalPages);
