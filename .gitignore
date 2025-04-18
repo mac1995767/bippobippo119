@@ -65,3 +65,4 @@ config/secret-config.js
 .npm/_npxclient/.env.bak
 client/.env.bak
 client/.env.bak
+client/.env.bak
