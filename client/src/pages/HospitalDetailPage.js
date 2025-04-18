@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { fetchHospitalDetail } from '../service/api';
 import { getApiUrl } from '../utils/api';
@@ -9,6 +9,20 @@ const HospitalDetailPage = () => {
   const [hospital, setHospital] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const mapRef = useRef(null);
+
+  // 시간 포맷팅 함수 추가
+  const formatTime = (time) => {
+    if (!time) return "정보 없음";
+    const timeStr = time.toString().padStart(4, '0');
+    return `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
+  };
+
+  // 운영 시간 표시 함수 추가
+  const displayOperatingTime = (startTime, endTime) => {
+    if (!startTime || !endTime) return "정보 없음";
+    return `${formatTime(startTime)} ~ ${formatTime(endTime)}`;
+  };
 
   useEffect(() => {
     const loadHospitalDetail = async () => {
@@ -26,6 +40,64 @@ const HospitalDetailPage = () => {
 
     loadHospitalDetail();
   }, [id]);
+
+  useEffect(() => {
+    if (hospital?.location?.lat && hospital?.location?.lon) {
+      const script = document.createElement('script');
+      script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${process.env.REACT_APP_NAVER_MAP_CLIENT_ID}`;
+      script.async = true;
+      script.onload = () => {
+        const mapOptions = {
+          center: new window.naver.maps.LatLng(hospital.location.lat, hospital.location.lon),
+          zoom: 15
+        };
+        const map = new window.naver.maps.Map(mapRef.current, mapOptions);
+        
+        // 병원 마커 추가
+        new window.naver.maps.Marker({
+          position: new window.naver.maps.LatLng(hospital.location.lat, hospital.location.lon),
+          map: map,
+          title: hospital.yadmNm,
+          icon: {
+            content: [
+              '<div style="background-color: #4285F4; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">',
+              '<div style="color: white; font-weight: bold;">병</div>',
+              '</div>'
+            ].join(''),
+            size: new window.naver.maps.Size(30, 30),
+            anchor: new window.naver.maps.Point(15, 15)
+          }
+        });
+
+        // 주변 약국 마커 추가
+        if (hospital.nearby_pharmacies && hospital.nearby_pharmacies.length > 0) {
+          hospital.nearby_pharmacies.forEach(pharmacy => {
+            if (pharmacy.location?.lat && pharmacy.location?.lon) {
+              new window.naver.maps.Marker({
+                position: new window.naver.maps.LatLng(pharmacy.location.lat, pharmacy.location.lon),
+                map: map,
+                title: pharmacy.yadmNm,
+                icon: {
+                  content: [
+                    '<div style="background-color: #34A853; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">',
+                    '<div style="color: white; font-weight: bold;">약</div>',
+                    '</div>'
+                  ].join(''),
+                  size: new window.naver.maps.Size(30, 30),
+                  anchor: new window.naver.maps.Point(15, 15)
+                }
+              });
+            }
+          });
+        }
+      };
+      document.head.appendChild(script);
+
+      return () => {
+        document.head.removeChild(script);
+      };
+    }
+  }, [hospital]);
 
   if (loading) {
     return (
@@ -135,18 +207,38 @@ const HospitalDetailPage = () => {
               <div className="space-y-4">
                 <div>
                   <p className="text-gray-600 mb-2">운영 시간</p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="font-medium">평일</p>
-                      <p>{hospital.times?.trmtWeekStart || "정보 없음"} ~ {hospital.times?.trmtWeekEnd || "정보 없음"}</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">월요일</p>
+                      <p>{displayOperatingTime(hospital.times?.trmtMonStart, hospital.times?.trmtMonEnd)}</p>
                     </div>
-                    <div>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">화요일</p>
+                      <p>{displayOperatingTime(hospital.times?.trmtTueStart, hospital.times?.trmtTueEnd)}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">수요일</p>
+                      <p>{displayOperatingTime(hospital.times?.trmtWedStart, hospital.times?.trmtWedEnd)}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">목요일</p>
+                      <p>{displayOperatingTime(hospital.times?.trmtThuStart, hospital.times?.trmtThuEnd)}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">금요일</p>
+                      <p>{displayOperatingTime(hospital.times?.trmtFriStart, hospital.times?.trmtFriEnd)}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
                       <p className="font-medium">토요일</p>
-                      <p>{hospital.times?.trmtSatStart || "정보 없음"} ~ {hospital.times?.trmtSatEnd || "정보 없음"}</p>
+                      <p>{displayOperatingTime(hospital.times?.trmtSatStart, hospital.times?.trmtSatEnd)}</p>
                     </div>
-                    <div>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">일요일</p>
+                      <p>{displayOperatingTime(hospital.times?.trmtSunStart, hospital.times?.trmtSunEnd)}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
                       <p className="font-medium">점심시간</p>
-                      <p>{hospital.times?.lunchWeek || "정보 없음"}</p>
+                      <p>{hospital.times?.lunchWeek ? hospital.times.lunchWeek.replace('~', ' ~ ') : "정보 없음"}</p>
                     </div>
                   </div>
                 </div>
@@ -217,12 +309,8 @@ const HospitalDetailPage = () => {
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold mb-4">위치</h2>
               <div className="aspect-w-16 aspect-h-9">
-                {hospital.location && hospital.location.lat && hospital.location.lon ? (
-                  <iframe
-                    src={`https://www.google.com/maps/embed/v1/place?key=YOUR_API_KEY&q=${hospital.location.lat},${hospital.location.lon}`}
-                    className="w-full h-full rounded-lg"
-                    allowFullScreen
-                  ></iframe>
+                {hospital?.location?.lat && hospital?.location?.lon ? (
+                  <div ref={mapRef} className="w-full h-full rounded-lg" style={{ height: '400px' }}></div>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
                     <p className="text-gray-500">위치 정보가 없습니다.</p>
