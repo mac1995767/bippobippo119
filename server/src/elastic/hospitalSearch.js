@@ -71,49 +71,24 @@ router.get('/', async (req, res) => {
         });
       } else if (category === "영업중") {
         const now = moment().tz('Asia/Seoul');
-        const currentTime = now.hours() * 60 + now.minutes(); // 분 단위로 변경
-        const currentDay = now.format('dddd').toLowerCase();
-        
-        // 요일을 OperatingStatus.js 형식으로 변환
+        const currentTime = now.hours() * 60 + now.minutes(); // 분 단위
         const dayMap = {
-          'monday': 'Mon',
-          'tuesday': 'Tue',
-          'wednesday': 'Wed',
-          'thursday': 'Thu',
-          'friday': 'Fri',
-          'saturday': 'Sat',
-          'sunday': 'Sun'
+          monday: 'Mon',
+          tuesday: 'Tue',
+          wednesday: 'Wed',
+          thursday: 'Thu',
+          friday: 'Fri',
+          saturday: 'Sat',
+          sunday: 'Sun'
         };
+        const currentDay = now.format('dddd').toLowerCase();
         const dayKey = dayMap[currentDay];
 
-        console.log('=== 영업중 필터 처리 ===');
-        console.log('현재 시간 (moment):', now.format('YYYY-MM-DD HH:mm:ss'));
-        console.log('현재 요일 (moment):', currentDay);
+        console.log('=== 영업중 필터 디버깅 ===');
+        console.log('현재 시간:', now.format('YYYY-MM-DD HH:mm:ss'));
+        console.log('현재 요일:', currentDay);
         console.log('변환된 요일:', dayKey);
-        console.log('계산된 분:', currentTime);
-
-        // 색인된 데이터 확인을 위한 로그 추가
-        const searchParams = {
-          index: 'hospitals',
-          size: 1,
-          _source: ['times'],
-          query: {
-            exists: {
-              field: 'times'
-            }
-          }
-        };
-
-        try {
-          const sampleResponse = await client.search(searchParams);
-          if (sampleResponse.hits.hits.length > 0) {
-            const sampleData = sampleResponse.hits.hits[0]._source;
-            console.log('=== 색인된 times 데이터 샘플 ===');
-            console.log('times:', sampleData.times);
-          }
-        } catch (error) {
-          console.error('색인 데이터 확인 중 오류:', error);
-        }
+        console.log('현재 분:', currentTime);
 
         filter.push({
           script: {
@@ -122,43 +97,31 @@ router.get('/', async (req, res) => {
               source: `
                 int currentTime = params.currentTime;
                 String dayKey = params.dayKey;
+                String startField = "times.trmt" + dayKey + "Start";
+                String endField = "times.trmt" + dayKey + "End";
                 
-                // times 객체가 있는지 확인
-                if (!doc.containsKey('times') || doc['times'].size() == 0) {
+                if (doc[startField].size() == 0 || doc[endField].size() == 0) {
                   return false;
                 }
                 
-                // 해당 요일의 운영 시간 필드명
-                String startField = 'trmt' + dayKey + 'Start';
-                String endField = 'trmt' + dayKey + 'End';
+                long openHHmm = doc[startField].value;
+                long closeHHmm = doc[endField].value;
                 
-                // times 객체에서 해당 필드가 있는지 확인
-                if (!doc['times'].containsKey(startField) || !doc['times'].containsKey(endField) ||
-                    doc['times'][startField].size() == 0 || doc['times'][endField].size() == 0) {
+                if (openHHmm <= 0 || closeHHmm <= 0) {
                   return false;
                 }
                 
-                int openTimeHHMM = doc['times'][startField].value;
-                int closeTimeHHMM = doc['times'][endField].value;
+                int openMin = (int)((openHHmm / 100) * 60 + (openHHmm % 100));
+                int closeMin = (int)((closeHHmm / 100) * 60 + (closeHHmm % 100));
                 
-                // 운영 시간이 없는 경우
-                if (openTimeHHMM == 0 || closeTimeHHMM == 0) {
-                  return false;
-                }
-                
-                // HHMM 형식을 분 단위로 변환 (예: 900 -> 9시 00분 = 540분)
-                int openTime = (openTimeHHMM / 100) * 60 + (openTimeHHMM % 100);
-                int closeTime = (closeTimeHHMM / 100) * 60 + (closeTimeHHMM % 100);
-                
-                // 자정을 넘기는 경우 처리
-                if (closeTime < openTime) {
-                  closeTime += 24 * 60;
-                  if (currentTime < openTime) {
+                if (closeMin < openMin) {
+                  closeMin += 24 * 60;
+                  if (currentTime < openMin) {
                     currentTime += 24 * 60;
                   }
                 }
                 
-                return currentTime >= openTime && currentTime < closeTime;
+                return currentTime >= openMin && currentTime < closeMin;
               `,
               params: {
                 currentTime: currentTime,
@@ -196,9 +159,9 @@ router.get('/', async (req, res) => {
     // 만약 category가 "영업중"이면, 스크립트 필터의 파라미터 값을 설정
     if (category === "영업중") {
       filter.forEach(f => {
-        if (f.script && f.script.script) {
-          f.script.script.params.currentTime = currentTime;
-          f.script.script.params.dayKey = currentDay;
+        if (f.script_score && f.script_score.script) {
+          f.script_score.script.params.currentTime = currentTime;
+          f.script_score.script.params.dayKey = currentDay;
         }
       });
     }
