@@ -36,6 +36,10 @@ const HospitalDetailPage = () => {
       try {
         setLoading(true);
         const data = await fetchHospitalDetail(id);
+        console.log('병원 상세 정보:', data);
+        if (data.nearby_pharmacies) {
+          console.log('주변 약국 정보:', data.nearby_pharmacies);
+        }
         setHospital(data);
       } catch (error) {
         console.error('병원 상세 정보 로딩 실패:', error);
@@ -51,51 +55,92 @@ const HospitalDetailPage = () => {
   useEffect(() => {
     if (hospital?.location?.lat && hospital?.location?.lon) {
       const script = document.createElement('script');
-      script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${process.env.REACT_APP_NAVER_MAP_CLIENT_ID}`;
+      script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.REACT_APP_NAVER_MAP_CLIENT_ID}&submodules=geocoder`;
       script.async = true;
+      script.onerror = (error) => {
+        console.error('네이버 지도 API 로딩 실패:', error);
+        setError('지도 로딩에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      };
       script.onload = () => {
-        const mapOptions = {
-          center: new window.naver.maps.LatLng(hospital.location.lat, hospital.location.lon),
-          zoom: 15
-        };
-        const map = new window.naver.maps.Map(mapRef.current, mapOptions);
-        
-        // 병원 마커 추가
-        new window.naver.maps.Marker({
-          position: new window.naver.maps.LatLng(hospital.location.lat, hospital.location.lon),
-          map: map,
-          title: hospital.yadmNm,
-          icon: {
-            content: [
-              '<div style="background-color: #4285F4; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">',
-              '<div style="color: white; font-weight: bold;">병</div>',
-              '</div>'
-            ].join(''),
-            size: new window.naver.maps.Size(30, 30),
-            anchor: new window.naver.maps.Point(15, 15)
-          }
-        });
-
-        // 주변 약국 마커 추가
-        if (hospital.nearby_pharmacies && hospital.nearby_pharmacies.length > 0) {
-          hospital.nearby_pharmacies.forEach(pharmacy => {
-            if (pharmacy.location?.lat && pharmacy.location?.lon) {
-              new window.naver.maps.Marker({
-                position: new window.naver.maps.LatLng(pharmacy.location.lat, pharmacy.location.lon),
-                map: map,
-                title: pharmacy.yadmNm,
-                icon: {
-                  content: [
-                    '<div style="background-color: #34A853; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">',
-                    '<div style="color: white; font-weight: bold;">약</div>',
-                    '</div>'
-                  ].join(''),
-                  size: new window.naver.maps.Size(30, 30),
-                  anchor: new window.naver.maps.Point(15, 15)
-                }
-              });
+        try {
+          const mapOptions = {
+            center: new window.naver.maps.LatLng(hospital.location.lat, hospital.location.lon),
+            zoom: 16,
+            zoomControl: true,
+            zoomControlOptions: {
+              position: window.naver.maps.Position.TOP_RIGHT
+            },
+            scaleControl: true,
+            mapDataControl: true,
+            minZoom: 10,
+            maxZoom: 18
+          };
+          const map = new window.naver.maps.Map(mapRef.current, mapOptions);
+          
+          // 병원 마커 추가
+          const hospitalMarker = new window.naver.maps.Marker({
+            position: new window.naver.maps.LatLng(hospital.location.lat, hospital.location.lon),
+            map: map,
+            title: hospital.yadmNm,
+            icon: {
+              url: 'https://navermaps.github.io/maps.js/docs/img/marker.png',
+              size: new window.naver.maps.Size(32, 32),
+              scaledSize: new window.naver.maps.Size(32, 32),
+              origin: new window.naver.maps.Point(0, 0),
+              anchor: new window.naver.maps.Point(16, 32)
             }
           });
+
+          // 병원 정보창 추가
+          const hospitalInfoWindow = new window.naver.maps.InfoWindow({
+            content: [
+              '<div style="padding: 10px; min-width: 150px;">',
+              '<div style="font-weight: bold; margin-bottom: 5px;">병원</div>',
+              `<div>${hospital.yadmNm}</div>`,
+              '</div>'
+            ].join('')
+          });
+
+          window.naver.maps.Event.addListener(hospitalMarker, 'click', () => {
+            hospitalInfoWindow.open(map, hospitalMarker);
+          });
+
+          // 주변 약국 마커 추가
+          if (hospital.nearby_pharmacies && hospital.nearby_pharmacies.length > 0) {
+            hospital.nearby_pharmacies.forEach(pharmacy => {
+              if (pharmacy.Xpos && pharmacy.Ypos) {
+                const pharmacyMarker = new window.naver.maps.Marker({
+                  position: new window.naver.maps.LatLng(pharmacy.Ypos, pharmacy.Xpos),
+                  map: map,
+                  title: pharmacy.yadmNm,
+                  icon: {
+                    url: 'https://navermaps.github.io/maps.js/docs/img/marker.png',
+                    size: new window.naver.maps.Size(32, 32),
+                    scaledSize: new window.naver.maps.Size(32, 32),
+                    origin: new window.naver.maps.Point(0, 0),
+                    anchor: new window.naver.maps.Point(16, 32)
+                  }
+                });
+
+                // 약국 정보창 추가
+                const pharmacyInfoWindow = new window.naver.maps.InfoWindow({
+                  content: [
+                    '<div style="padding: 10px; min-width: 150px;">',
+                    '<div style="font-weight: bold; margin-bottom: 5px;">약국</div>',
+                    `<div>${pharmacy.yadmNm}</div>`,
+                    '</div>'
+                  ].join('')
+                });
+
+                window.naver.maps.Event.addListener(pharmacyMarker, 'click', () => {
+                  pharmacyInfoWindow.open(map, pharmacyMarker);
+                });
+              }
+            });
+          }
+        } catch (error) {
+          console.error('지도 초기화 실패:', error);
+          setError('지도 초기화에 실패했습니다. 잠시 후 다시 시도해주세요.');
         }
       };
       document.head.appendChild(script);
@@ -264,6 +309,20 @@ const HospitalDetailPage = () => {
               </div>
             </div>
 
+            {/* 위치 정보 */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-4">위치</h2>
+              <div className="w-full h-[600px] rounded-lg overflow-hidden">
+                {hospital?.location?.lat && hospital?.location?.lon ? (
+                  <div ref={mapRef} className="w-full h-full"></div>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                    <p className="text-gray-500">위치 정보가 없습니다.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* 장비 정보 */}
             {hospital.equipment && hospital.equipment.length > 0 && (
               <div className="bg-white rounded-lg shadow-md p-6">
@@ -312,20 +371,6 @@ const HospitalDetailPage = () => {
 
           {/* 오른쪽 컬럼 */}
           <div className="space-y-6">
-            {/* 지도 */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">위치</h2>
-              <div className="aspect-w-16 aspect-h-9">
-                {hospital?.location?.lat && hospital?.location?.lon ? (
-                  <div ref={mapRef} className="w-full h-full rounded-lg" style={{ height: '400px' }}></div>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
-                    <p className="text-gray-500">위치 정보가 없습니다.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
             {/* 전문과목 정보 */}
             {hospital.speciality && hospital.speciality.length > 0 && (
               <div className="bg-white rounded-lg shadow-md p-6">
