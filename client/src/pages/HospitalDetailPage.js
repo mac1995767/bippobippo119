@@ -65,7 +65,7 @@ const HospitalDetailPage = () => {
         try {
           const mapOptions = {
             center: new window.naver.maps.LatLng(hospital.location.lat, hospital.location.lon),
-            zoom: 16,
+            zoom: 15,
             zoomControl: true,
             zoomControlOptions: {
               position: window.naver.maps.Position.TOP_RIGHT
@@ -77,67 +77,133 @@ const HospitalDetailPage = () => {
           };
           const map = new window.naver.maps.Map(mapRef.current, mapOptions);
           
+          // 모든 마커를 포함하는 bounds 설정
+          const bounds = new window.naver.maps.LatLngBounds();
+          bounds.extend(new window.naver.maps.LatLng(hospital.location.lat, hospital.location.lon));
+          
+          // 마커와 라벨을 저장할 배열
+          const markers = [];
+          const labels = [];
+          
           // 병원 마커 추가
           const hospitalMarker = new window.naver.maps.Marker({
             position: new window.naver.maps.LatLng(hospital.location.lat, hospital.location.lon),
             map: map,
             title: hospital.yadmNm,
             icon: {
-              url: 'https://navermaps.github.io/maps.js/docs/img/marker.png',
+              url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
               size: new window.naver.maps.Size(32, 32),
               scaledSize: new window.naver.maps.Size(32, 32),
               origin: new window.naver.maps.Point(0, 0),
               anchor: new window.naver.maps.Point(16, 32)
             }
           });
+          markers.push(hospitalMarker);
 
-          // 병원 정보창 추가
-          const hospitalInfoWindow = new window.naver.maps.InfoWindow({
-            content: [
-              '<div style="padding: 10px; min-width: 150px;">',
-              '<div style="font-weight: bold; margin-bottom: 5px;">병원</div>',
-              `<div>${hospital.yadmNm}</div>`,
-              '</div>'
-            ].join('')
-          });
-
+          // 병원 마커 클릭 이벤트 추가
           window.naver.maps.Event.addListener(hospitalMarker, 'click', () => {
-            hospitalInfoWindow.open(map, hospitalMarker);
+            const naverMapUrl = `https://map.naver.com/v5/search/${encodeURIComponent(hospital.yadmNm)}/place/${hospital.location.lat},${hospital.location.lon}`;
+            const googleMapUrl = `https://www.google.com/maps/search/?api=1&query=${hospital.location.lat},${hospital.location.lon}`;
+            
+            const infoWindow = new window.naver.maps.InfoWindow({
+              content: [
+                '<div style="padding: 10px; min-width: 150px;">',
+                '<div style="font-weight: bold; margin-bottom: 5px;">지도로 이동</div>',
+                `<div style="margin-bottom: 5px;"><a href="${naverMapUrl}" target="_blank" style="color: #03C75A; text-decoration: none;">네이버 지도</a></div>`,
+                `<div><a href="${googleMapUrl}" target="_blank" style="color: #4285F4; text-decoration: none;">구글 지도</a></div>`,
+                '</div>'
+              ].join('')
+            });
+            
+            infoWindow.open(map, hospitalMarker);
           });
 
           // 주변 약국 마커 추가
           if (hospital.nearby_pharmacies && hospital.nearby_pharmacies.length > 0) {
             hospital.nearby_pharmacies.forEach(pharmacy => {
               if (pharmacy.Xpos && pharmacy.Ypos) {
+                bounds.extend(new window.naver.maps.LatLng(pharmacy.Ypos, pharmacy.Xpos));
+                
                 const pharmacyMarker = new window.naver.maps.Marker({
                   position: new window.naver.maps.LatLng(pharmacy.Ypos, pharmacy.Xpos),
                   map: map,
                   title: pharmacy.yadmNm,
                   icon: {
-                    url: 'https://navermaps.github.io/maps.js/docs/img/marker.png',
+                    url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
                     size: new window.naver.maps.Size(32, 32),
                     scaledSize: new window.naver.maps.Size(32, 32),
                     origin: new window.naver.maps.Point(0, 0),
                     anchor: new window.naver.maps.Point(16, 32)
                   }
                 });
+                markers.push(pharmacyMarker);
 
-                // 약국 정보창 추가
-                const pharmacyInfoWindow = new window.naver.maps.InfoWindow({
-                  content: [
-                    '<div style="padding: 10px; min-width: 150px;">',
-                    '<div style="font-weight: bold; margin-bottom: 5px;">약국</div>',
-                    `<div>${pharmacy.yadmNm}</div>`,
-                    '</div>'
-                  ].join('')
-                });
-
+                // 약국 마커 클릭 이벤트 추가
                 window.naver.maps.Event.addListener(pharmacyMarker, 'click', () => {
-                  pharmacyInfoWindow.open(map, pharmacyMarker);
+                  const naverMapUrl = `https://map.naver.com/v5/search/${encodeURIComponent(pharmacy.yadmNm)}/place/${pharmacy.Ypos},${pharmacy.Xpos}`;
+                  const googleMapUrl = `https://www.google.com/maps/search/?api=1&query=${pharmacy.Ypos},${pharmacy.Xpos}`;
+                  
+                  const infoWindow = new window.naver.maps.InfoWindow({
+                    content: [
+                      '<div style="padding: 10px; min-width: 150px;">',
+                      '<div style="font-weight: bold; margin-bottom: 5px;">지도로 이동</div>',
+                      `<div style="margin-bottom: 5px;"><a href="${naverMapUrl}" target="_blank" style="color: #03C75A; text-decoration: none;">네이버 지도</a></div>`,
+                      `<div><a href="${googleMapUrl}" target="_blank" style="color: #4285F4; text-decoration: none;">구글 지도</a></div>`,
+                      '</div>'
+                    ].join('')
+                  });
+                  
+                  infoWindow.open(map, pharmacyMarker);
                 });
               }
             });
           }
+
+          // 모든 마커가 보이도록 지도 범위 조정
+          map.fitBounds(bounds, {
+            padding: 50
+          });
+
+          // 약간의 지연 후 라벨 추가
+          setTimeout(() => {
+            // 병원 라벨 추가
+            const hospitalLabel = new window.naver.maps.Marker({
+              position: new window.naver.maps.LatLng(hospital.location.lat, hospital.location.lon),
+              map: map,
+              icon: {
+                content: [
+                  '<div style="background: white; padding: 2px 5px; border-radius: 3px; border: 1px solid #ccc; font-size: 12px; font-weight: bold;">',
+                  hospital.yadmNm,
+                  '</div>'
+                ].join(''),
+                size: new window.naver.maps.Size(38, 38),
+                anchor: new window.naver.maps.Point(19, 0)
+              }
+            });
+            labels.push(hospitalLabel);
+
+            // 약국 라벨 추가
+            if (hospital.nearby_pharmacies && hospital.nearby_pharmacies.length > 0) {
+              hospital.nearby_pharmacies.forEach(pharmacy => {
+                if (pharmacy.Xpos && pharmacy.Ypos) {
+                  const pharmacyLabel = new window.naver.maps.Marker({
+                    position: new window.naver.maps.LatLng(pharmacy.Ypos, pharmacy.Xpos),
+                    map: map,
+                    icon: {
+                      content: [
+                        '<div style="background: white; padding: 2px 5px; border-radius: 3px; border: 1px solid #ccc; font-size: 12px; font-weight: bold;">',
+                        pharmacy.yadmNm,
+                        '</div>'
+                      ].join(''),
+                      size: new window.naver.maps.Size(38, 38),
+                      anchor: new window.naver.maps.Point(19, 0)
+                    }
+                  });
+                  labels.push(pharmacyLabel);
+                }
+              });
+            }
+          }, 100);
         } catch (error) {
           console.error('지도 초기화 실패:', error);
           setError('지도 초기화에 실패했습니다. 잠시 후 다시 시도해주세요.');

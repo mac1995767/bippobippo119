@@ -149,7 +149,7 @@ const OperatingStatus = ({ schedule }) => {
               Thursday: { start: "trmtThuStart", end: "trmtThuEnd" },
               Friday: { start: "trmtFriStart", end: "trmtFriEnd" },
               Saturday: { start: "trmtSatStart", end: "trmtSatEnd" },
-              Sunday: { start: null, end: null }
+              Sunday: { start: "trmtSatStart", end: "trmtSatEnd" } // TODO: 일요일 영업 시간 데이터가 아직 없으므로, 현재는 토요일 영업 시간을 기준으로 처리
             };
 
             const daySchedule = dayMap[day];
