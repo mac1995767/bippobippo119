@@ -54,7 +54,7 @@ export const fetchHospitalDetail = async (id) => {
   }
 };
 
-// 자동완성 API 호출
+// 자동완성 API
 export const fetchAutoComplete = async (query) => {
   try {
     const response = await axios.get(`${baseUrl}/api/autocomplete`, {
@@ -193,6 +193,21 @@ export const searchPharmacies = async (params = {}) => {
     return response.data;
   } catch (error) {
     console.error('약국 검색 실패:', error);
+    throw error;
+  }
+};
+
+// 위치 기반 병원 검색
+export const fetchNearbyHospitals = async (latitude, longitude, distance = 1000) => {
+  try {
+    const response = await axios.post(`${baseUrl}/api/autocomplete/nearby`, {
+      latitude,
+      longitude,
+      radius: distance
+    });
+    return response.data;
+  } catch (error) {
+    console.error("❌ Error fetching nearby hospitals:", error);
     throw error;
   }
 };

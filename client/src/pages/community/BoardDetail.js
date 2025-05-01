@@ -38,6 +38,7 @@ const BoardDetail = () => {
   const [mentionPosition, setMentionPosition] = useState({ top: 0, left: 0 });
   const [searchTerm, setSearchTerm] = useState('');
   const [suggestions, setSuggestions] = useState([]);
+  const [viewIncremented, setViewIncremented] = useState(false);
 
   // 검색어 변경 시 자동 검색
   useEffect(() => {
@@ -138,6 +139,16 @@ const BoardDetail = () => {
           setTotalPages(relatedBoardsResponse.data.totalPages);
           setCurrentPage(relatedBoardsResponse.data.currentPage);
           
+          // 조회수 증가 API 호출 (처음 로드할 때만)
+          if (!viewIncremented) {
+            try {
+              await axios.post(`${getApiUrl()}/api/boards/${id}/increment-view`, {}, { withCredentials: true });
+              setViewIncremented(true);
+            } catch (error) {
+              console.error('조회수 증가 실패:', error);
+            }
+          }
+          
           // 댓글 목록 가져오기
           await fetchComments();
         }
@@ -159,7 +170,7 @@ const BoardDetail = () => {
     return () => {
       isMounted = false;
     };
-  }, [id, navigate, currentPage]);
+  }, [id, navigate, currentPage, viewIncremented]);
 
   const handleEditBoard = () => {
     navigate(`/community/boards/edit/${id}`);

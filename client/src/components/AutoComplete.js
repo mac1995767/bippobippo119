@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../utils/api";
+import { fetchAutoComplete } from '../service/api';
 
 const AutoComplete = ({ searchQuery, setSearchQuery }) => {
   const [suggestions, setSuggestions] = useState({ hospital: [] });
   const [searchHistory, setSearchHistory] = useState([]);
+  const [userLocation, setUserLocation] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,9 +20,9 @@ const AutoComplete = ({ searchQuery, setSearchQuery }) => {
     }
 
     const timer = setTimeout(() => {
-      api.get(`/api/autocomplete?query=${encodeURIComponent(searchQuery)}`)
+      fetchAutoComplete(searchQuery)
         .then((response) => {
-          setSuggestions({ hospital: response.data.hospital || [] });
+          setSuggestions({ hospital: response.hospital || [] });
         })
         .catch(() => {
           setSuggestions({ hospital: [] });
@@ -34,35 +35,35 @@ const AutoComplete = ({ searchQuery, setSearchQuery }) => {
   const handleSearch = (queryParam = searchQuery) => {
     const trimmedQuery = queryParam.trim();
   
-    // 검색어가 없으면 위치 기반 검색 시도
-    if (!trimmedQuery) {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const { latitude, longitude } = position.coords;
-            // 위치 기반 검색을 위한 URL 구성 (예: x, y 값 전달)
-            navigate(`/hospitals?x=${longitude}&y=${latitude}`);
-          },
-          (error) => {
-            console.error("위치 정보를 가져올 수 없습니다.", error);
-            alert("위치 정보를 가져올 수 없습니다. 직접 검색어를 입력해주세요.");
-          }
-        );
-      } else {
-        alert("이 브라우저는 위치 정보를 지원하지 않습니다.");
-      }
+    // 검색어가 있으면 검색어 기반 검색 실행
+    if (trimmedQuery) {
+      let updatedHistory = [
+        trimmedQuery,
+        ...searchHistory.filter((h) => h !== trimmedQuery),
+      ];
+      updatedHistory = updatedHistory.slice(0, 10);
+      localStorage.setItem("searchHistory", JSON.stringify(updatedHistory));
+      setSearchHistory(updatedHistory);
+      navigate(`/hospitals?query=${encodeURIComponent(trimmedQuery)}`);
       return;
     }
   
-    // 검색어가 있으면 기존 로직 실행
-    let updatedHistory = [
-      trimmedQuery,
-      ...searchHistory.filter((h) => h !== trimmedQuery),
-    ];
-    updatedHistory = updatedHistory.slice(0, 10);
-    localStorage.setItem("searchHistory", JSON.stringify(updatedHistory));
-    setSearchHistory(updatedHistory);
-    navigate(`/hospitals?query=${encodeURIComponent(trimmedQuery)}`);
+    // 검색어가 없으면 위치 기반 검색 시도
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ latitude, longitude });
+          navigate(`/hospitals?x=${longitude}&y=${latitude}`);
+        },
+        (error) => {
+          console.error("위치 정보를 가져올 수 없습니다.", error);
+          alert("위치 정보를 가져올 수 없습니다. 직접 검색어를 입력해주세요.");
+        }
+      );
+    } else {
+      alert("이 브라우저는 위치 정보를 지원하지 않습니다.");
+    }
   };
 
   return (
@@ -79,7 +80,7 @@ const AutoComplete = ({ searchQuery, setSearchQuery }) => {
           onClick={() => handleSearch()}
           className="bg-purple-500 text-white px-4 py-2 rounded-r-lg shadow-sm hover:bg-purple-600"
         >
-          검색
+          내 주변 병원 찾기
         </button>
       </div>
 

@@ -349,12 +349,6 @@ router.get('/:id', async (req, res) => {
       [id]
     );
 
-    // 조회수 증가
-    await pool.query(
-      'UPDATE hospital_board SET view_count = view_count + 1 WHERE id = ?',
-      [id]
-    );
-
     res.json({
       ...board,
       content: details[0]?.content || '',
@@ -365,6 +359,24 @@ router.get('/:id', async (req, res) => {
   } catch (error) {
     console.error('게시글 조회 오류:', error);
     res.status(500).json({ error: '게시글을 불러오는데 실패했습니다.' });
+  }
+});
+
+// 게시글 조회수 증가 API
+router.post('/:id/increment-view', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // 조회수 증가
+    await pool.query(
+      'UPDATE hospital_board SET view_count = view_count + 1 WHERE id = ?',
+      [id]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('조회수 증가 오류:', error);
+    res.status(500).json({ error: '조회수 증가에 실패했습니다.' });
   }
 });
 
@@ -548,20 +560,6 @@ router.delete('/categories/:id', authenticateToken, isAdmin, async (req, res) =>
     res.json({ message: '카테고리가 삭제되었습니다.' });
   } catch (error) {
     console.error('카테고리 삭제 오류:', error);
-    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
-  }
-});
-
-// 게시글 조회수 증가
-router.post('/:id/view', async (req, res) => {
-  try {
-    await pool.query(
-      'UPDATE hospital_board SET view_count = view_count + 1 WHERE id = ?',
-      [req.params.id]
-    );
-    res.json({ message: '조회수가 증가되었습니다.' });
-  } catch (error) {
-    console.error('조회수 증가 오류:', error);
     res.status(500).json({ message: '서버 오류가 발생했습니다.' });
   }
 });

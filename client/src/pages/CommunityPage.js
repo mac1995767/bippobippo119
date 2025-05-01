@@ -67,12 +67,6 @@ const CommunityPage = () => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-8 gap-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-6">
             <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">커뮤니티</h1>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-              <button className="px-3 sm:px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md">Overview</button>
-              <button className="px-3 sm:px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md">List</button>
-              <button className="px-3 sm:px-4 py-2 text-sm text-gray-900 bg-gray-100 rounded-md">Board</button>
-              <button className="px-3 sm:px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md">Calendar</button>
-            </div>
           </div>
           <button
             onClick={handleWriteClick}
