@@ -119,7 +119,7 @@ const OperatingStatus = ({ schedule }) => {
       statusClass = "bg-red-100 text-red-600";
     }
   } else {
-    status = "휴무";
+    status = "알수 없음";
     statusClass = "bg-blue-100 text-blue-600";
   }
 

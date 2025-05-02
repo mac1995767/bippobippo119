@@ -6,6 +6,26 @@ import { FaUserMd, FaUserNurse, FaPhoneAlt, FaMapMarkerAlt } from 'react-icons/f
 import { MdKeyboardArrowLeft } from 'react-icons/md';
 import { BsImage, BsCheckCircle, BsInfoCircle } from 'react-icons/bs';
 
+// 시간 포맷팅 함수 추가
+const formatTime = (time) => {
+  if (!time) return "정보 없음";
+  const timeStr = time.toString().padStart(4, '0');
+  return `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
+};
+
+// 점심시간 포맷팅 함수 추가
+const formatLunchTime = (lunchTime) => {
+  if (!lunchTime) return "정보 없음";
+  const [start, end] = lunchTime.split('~').map(time => time.trim());
+  return `${formatTime(start)} ~ ${formatTime(end)}`;
+};
+
+  // 운영 시간 표시 함수 추가
+const displayOperatingTime = (startTime, endTime) => {
+  if (!startTime || !endTime) return "정보 없음";
+  return `${formatTime(startTime)} ~ ${formatTime(endTime)}`;
+};
+
 const NursingHospitalDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -113,20 +133,15 @@ const NursingHospitalDetailPage = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* 이미지 섹션 */}
-        <div className="relative h-[400px] mb-8 rounded-2xl overflow-hidden shadow-lg bg-gray-200">
-          <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-            <span>🖼️ 이미지 준비 중</span>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
-            <h1 className="text-3xl font-bold text-white mb-2">{hospital.yadmNm}</h1>
-            <div className="flex items-center text-white">
-              <FaMapMarkerAlt className="mr-2" />
-              <span>{hospital.addr}</span>
-            </div>
-          </div>
+      {/* 상단 헤더 */}
+      <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white py-12">
+        <div className="max-w-6xl mx-auto px-4">
+          <h1 className="text-3xl font-bold mb-2">{hospital.yadmNm}</h1>
+          <p className="text-lg opacity-90">{hospital.addr}</p>
         </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-8">
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* 왼쪽 섹션: 기본 정보 */}
@@ -233,6 +248,60 @@ const NursingHospitalDetailPage = () => {
                   </a>
                 </div>
               )}
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-4">운영 정보</h2>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-gray-600 mb-2">운영 시간</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">월요일</p>
+                      <p>{displayOperatingTime(hospital.times?.trmtMonStart, hospital.times?.trmtMonEnd)}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">화요일</p>
+                      <p>{displayOperatingTime(hospital.times?.trmtTueStart, hospital.times?.trmtTueEnd)}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">수요일</p>
+                      <p>{displayOperatingTime(hospital.times?.trmtWedStart, hospital.times?.trmtWedEnd)}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">목요일</p>
+                      <p>{displayOperatingTime(hospital.times?.trmtThuStart, hospital.times?.trmtThuEnd)}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">금요일</p>
+                      <p>{displayOperatingTime(hospital.times?.trmtFriStart, hospital.times?.trmtFriEnd)}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">토요일</p>
+                      <p>{displayOperatingTime(hospital.times?.trmtSatStart, hospital.times?.trmtSatEnd)}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">일요일</p>
+                      <p>{displayOperatingTime(hospital.times?.trmtSunStart, hospital.times?.trmtSunEnd)}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">점심시간</p>
+                      <p>{formatLunchTime(hospital.times?.lunchWeek)}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <span className={`px-3 py-1 rounded-full text-sm ${
+                    hospital.nightCare ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                  }`}>
+                    야간진료: {hospital.nightCare ? "가능" : "불가능"}
+                  </span>
+                  <span className={`px-3 py-1 rounded-full text-sm ${
+                    hospital.weekendCare ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                  }`}>
+                    주말진료: {hospital.weekendCare ? "가능" : "불가능"}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
