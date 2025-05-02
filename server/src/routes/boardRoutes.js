@@ -916,7 +916,6 @@ router.get('/category/:categoryId', async (req, res) => {
         ct.type_name as category_type_name,
         u.nickname as author_nickname,
         u.profile_image as author_profile_image,
-        (SELECT COUNT(*) FROM hospital_board_likes WHERE board_id = b.id) as like_count,
         (SELECT COUNT(*) FROM hospital_board_comments WHERE board_id = b.id) as comment_count,
         (SELECT COUNT(*) FROM hospital_board_views WHERE board_id = b.id) as view_count
       FROM hospital_board b
