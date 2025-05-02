@@ -11,6 +11,7 @@ const HospitalDetailPage = () => {
   const [error, setError] = useState(null);
   const mapRef = useRef(null);
 
+  
   // 시간 포맷팅 함수 추가
   const formatTime = (time) => {
     if (!time) return "정보 없음";

@@ -424,15 +424,9 @@ const HospitalListPage = () => {
                       className="relative bg-white shadow-md hover:shadow-lg rounded-lg overflow-hidden hover:scale-105 transition-transform duration-300 cursor-pointer"
                       onClick={() => handleDetailClick(hospital._id)}
                     >
-                      {/* 병원 유형 */}
-                      {hospital.category && (
-                        <div className="absolute top-3 left-3 bg-blue-100 text-blue-700 px-3 py-1 rounded-md text-xs font-semibold">
-                          {hospital.category}
-                        </div>
-                      )}
-
+                    
                       {/* 병원 이미지 (비율 고정) */}
-                      <div className="w-full h-[180px] bg-gray-200 flex items-center justify-center">
+                      {/* <div className="w-full h-[180px] bg-gray-200 flex items-center justify-center">
                         {hospital.image ? (
                           <img
                             src={hospital.image}
@@ -443,11 +437,20 @@ const HospitalListPage = () => {
                         ) : (
                           <span className="text-gray-500 text-sm">🖼️ 이미지 준비 중</span>
                         )}
-                      </div>
+                      </div> */}
 
                       <div className="p-4">
+                        {/* 병원 유형 */}
+                        {hospital.category && (
+                        <div className="mb-1 text-xs text-blue-700 font-semibold">
+                          {hospital.category}
+                        </div>
+                        )}
+                        
                         {/* 병원 이름 */}
-                        <h3 className="text-lg font-bold text-gray-800">{hospital.yadmNm}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-bold text-gray-800">{hospital.yadmNm}</h3>
+                        </div>
 
                         {/* 주소 & 지도보기 */}
                         <div className="flex items-center justify-between text-sm text-gray-500">
