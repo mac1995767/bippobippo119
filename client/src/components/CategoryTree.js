@@ -60,7 +60,6 @@ const CategoryTree = ({ onSelectCategory = () => {}, selectedCategoryId = null }
   }, []);
 
   const handleCategorySelect = (category) => {
-    console.log('선택된 카테고리:', category);
     if (typeof onSelectCategory === 'function') {
       onSelectCategory(category.id);
     }
@@ -88,7 +87,14 @@ const CategoryTree = ({ onSelectCategory = () => {}, selectedCategoryId = null }
       ${isCollapsed ? 'w-16' : 'w-full'} font-['Pretendard']`}>
       {/* 사이드바 헤더 */}
       <div className="h-14 border-b flex items-center justify-between px-4">
-        {!isCollapsed && <h2 className="text-base font-semibold text-gray-900">카테고리</h2>}
+        {!isCollapsed && (
+          <h2 
+            className="text-base font-semibold text-gray-900 cursor-pointer hover:text-blue-600"
+            onClick={() => navigate('/community')}
+          >
+            카테고리
+          </h2>
+        )}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"

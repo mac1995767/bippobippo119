@@ -13,21 +13,21 @@ const NursingHospitalBannerSlider = () => {
       title: "요양병원 찾기",
       description: "전문적인 요양 서비스를 제공하는 요양병원을 찾아보세요",
       image: "/images/nursing-home-1.jpg",
-      link: "/hospitals"
+      link: "/nursing-hospitals"
     },
     {
       id: 2,
       title: "장기요양 시설",
       description: "장기요양 시설에 대한 상세 정보를 확인하세요",
       image: "/images/nursing-home-2.jpg",
-      link: "/guides/emergency"
+      link: "/nursing-hospitals"
     },
     {
       id: 3,
       title: "요양 서비스 안내",
       description: "요양 서비스 이용 방법과 절차를 알아보세요",
       image: "/images/nursing-home-3.jpg",
-      link: "/guides/night-care"
+      link: "/nursing-hospitals"
     }
   ]);
 

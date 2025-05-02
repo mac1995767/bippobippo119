@@ -181,14 +181,24 @@ const ProfilePage = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-6">프로필 설정</h2>
           
           {message && (
-            <div className="mb-4 p-4 bg-green-100 text-green-700 rounded-md">
-              {message}
+            <div className="fixed top-4 right-4 z-50 animate-fade-in">
+              <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="font-semibold">{message}</span>
+              </div>
             </div>
           )}
           
           {error && (
-            <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
-              {error}
+            <div className="fixed top-4 right-4 z-50 animate-fade-in">
+              <div className="bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span className="font-semibold">{error}</span>
+              </div>
             </div>
           )}
 
@@ -383,6 +393,19 @@ const ProfilePage = () => {
             }
             .animate-float {
               animation: float 3s ease-in-out infinite;
+            }
+            @keyframes fade-in {
+              from {
+                opacity: 0;
+                transform: translateY(-20px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+            .animate-fade-in {
+              animation: fade-in 0.3s ease-out forwards;
             }
           `}</style>
         </div>

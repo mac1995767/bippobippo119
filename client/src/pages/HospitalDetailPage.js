@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { fetchHospitalDetail } from '../service/api';
 import { getApiUrl } from '../utils/api';
+import { MdKeyboardArrowLeft } from 'react-icons/md';
 
 const HospitalDetailPage = () => {
   const { id } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const [hospital, setHospital] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const mapRef = useRef(null);
 
-  
+
   // 시간 포맷팅 함수 추가
   const formatTime = (time) => {
     if (!time) return "정보 없음";
@@ -264,6 +266,19 @@ const HospitalDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
+
+      {/* 상단 네비게이션 */}
+      <div className="bg-white shadow-sm sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-4 flex items-center">
+          <button
+            onClick={() => navigate('/hospitals')}
+            className="flex items-center text-gray-600 hover:text-blue-500 transition-colors"
+          >
+            <MdKeyboardArrowLeft size={24} />
+            <span>돌아가기</span>
+          </button>
+        </div>
+      </div>
       {/* 헤더 섹션 */}
       <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white py-12">
         <div className="max-w-6xl mx-auto px-4">
