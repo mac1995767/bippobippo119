@@ -157,20 +157,11 @@ const NursingHospitalList = () => {
                   className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition cursor-pointer"
                   onClick={() => handleHospitalClick(hospital._id)}
                 >
-                  {/* 병원 이미지 */}
-                  <div className="w-full h-[180px] bg-gray-200 flex items-center justify-center relative">
-                    {/* 병원 유형 및 위탁병원 정보 */}
-                    <div className="absolute top-3 left-3 flex gap-2">
-                      <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-md text-xs font-semibold">
-                        {hospital.category || '요양병원'}
-                      </div>
-                      {hospital.veteran_hospital && (
-                        <div className="bg-red-100 text-red-700 px-3 py-1 rounded-md text-xs font-semibold">
-                          위탁병원
-                        </div>
-                      )}
-                    </div>
-                    {hospital.image ? (
+                
+                {/* 병원 이미지 */}
+                  {/*
+                    <div className="w-full h-[180px] bg-gray-200 flex items-center justify-center relative">
+                      {hospital.image ? (
                       <img
                         src={hospital.image}
                         onError={(e) => (e.currentTarget.src = "/image-placeholder.jpg")}
@@ -180,10 +171,25 @@ const NursingHospitalList = () => {
                     ) : (
                       <span className="text-gray-500 text-sm">🖼️ 이미지 준비 중</span>
                     )}
-                  </div>
-
+                    </div>
+                    */}
                   {/* 병원 정보 */}
                   <div className="p-4">
+
+                    {/* 병원 유형 및 위탁병원 정보 */}
+                    <div className="flex items-center gap-2 mb-1">
+                          {hospital.category && (
+                            <div className="text-xs text-blue-700 font-semibold">
+                              {hospital.category}
+                            </div>
+                          )}
+                          {hospital.veteran_hospital && (
+                            <div className="text-xs text-red-700 font-semibold">
+                              위탁병원
+                            </div>
+                          )}
+                        </div>
+                    
                     <h3 className="text-lg font-bold mb-1">{hospital.yadmNm}</h3>
                     <p className="text-gray-600 text-sm mb-2">{hospital.addr}</p>
 
