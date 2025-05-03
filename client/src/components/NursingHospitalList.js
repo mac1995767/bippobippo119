@@ -6,6 +6,7 @@ import DistanceInfo from "./DistanceInfo";
 import HealthCenterBanner from './HealthCenterBanner';
 import OperatingStatus from "../components/OperatingStatus";
 import { encryptId } from '../utils/encryption';
+import NursingHospitalFilter from './NursingHospitalFilter';
 
 const filterRegions = [
   { label: "전국", icon: "🌍" },
@@ -103,38 +104,23 @@ const NursingHospitalList = () => {
     navigate(`/nursing-hospitals/${hospitalId}`);
   };
 
+  const handleSearch = (query) => {
+    const params = new URLSearchParams();
+    if (query) params.append("query", query);
+    if (selectedRegion !== "전국") params.append("region", selectedRegion);
+    navigate(`/nursing-hospitals?${params.toString()}`);
+  };
+
   return (
     <div className="sticky top-16 z-50 bg-gray-50">
       {/* 건강증진센터 배너 */}
       <HealthCenterBanner />
       
-      {/* 필터 섹션 */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="container mx-auto p-4 px-4 md:px-40">
-          <h2 className="text-xl font-bold mb-4">요양병원 찾기</h2>
-          
-          {/* 지역 필터 */}
-          <div className="mb-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">지역</h3>
-            <div className="flex flex-wrap gap-2">
-              {filterRegions.map((region) => (
-                <button
-                  key={region.label}
-                  onClick={() => setSelectedRegion(region.label)}
-                  className={`px-3 py-1.5 rounded-full text-sm flex items-center gap-1 transition
-                    ${selectedRegion === region.label
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                >
-                  <span>{region.icon}</span>
-                  <span>{region.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+      <NursingHospitalFilter 
+        selectedRegion={selectedRegion}
+        setSelectedRegion={setSelectedRegion}
+        onSearch={handleSearch}
+      />
 
       {/* 병원 리스트 */}
       <section className="container mx-auto mt-10 p-6 px-4 md:px-40">
