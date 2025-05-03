@@ -64,6 +64,13 @@ const DashboardPage = () => {
       color: 'bg-yellow-500'
     },
     {
+      title: '공지사항 관리',
+      description: '팝업 공지사항과 배너를 관리합니다.',
+      icon: '📢',
+      path: '/admin/announcements',
+      color: 'bg-pink-500'
+    },
+    {
       title: 'CORS 관리',
       description: 'CORS 설정을 관리합니다.',
       icon: '🔒',

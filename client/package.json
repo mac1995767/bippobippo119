@@ -40,6 +40,7 @@
     "remark-gfm": "^4.0.1",
     "remove-markdown": "^0.6.0",
     "slick-carousel": "^1.8.1",
+    "styled-components": "^6.1.17",
     "swiper": "^11.2.5",
     "web-vitals": "^2.1.4"
   },
