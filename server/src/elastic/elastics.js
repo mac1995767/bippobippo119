@@ -7,6 +7,9 @@ const { bulkDetailIndex } = require('./bulkDetailIndex');
 const { deletePharmaciesIndex } = require('./deletePharmaciesIndex');
 const { createPharmaciesIndex } = require('./createPharmaciesIndex');
 const { bulkPharmaciesIndex } = require('./bulkPharmaciesIndex');
+const { deleteMapIndex } = require('./deleteMapIndex');
+const { createMapIndex } = require('./createMapIndex');
+const { bulkMapIndex } = require('./bulkMapIndex');
 
 async function reindex() {
   try {
@@ -57,7 +60,30 @@ async function reindexPharmacies(pharmacies) {
   }
 }
 
+async function reindexMap() {
+  try {
+    console.log("🔄 Starting map reindexing process...");
+    
+    console.log("Step 1: Deleting existing map index...");
+    await deleteMapIndex();
+    
+    console.log("Step 2: Creating new map index...");
+    await createMapIndex();
+    
+    console.log("Step 3: Bulk indexing map...");
+    await bulkMapIndex();
+
+    console.log("✅ Map reindexing process completed successfully!");
+  } catch (error) {
+    console.error("❌ Error during map reindexing process:");
+    console.error("Error message:", error.message);
+    console.error("Stack trace:", error.stack);
+    throw error;
+  }
+}
+
 module.exports = { 
   reindex,
-  reindexPharmacies
+  reindexPharmacies,
+  reindexMap
 };

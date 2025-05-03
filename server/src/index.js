@@ -18,7 +18,8 @@ const announcementRoutes = require('./routes/announcementRoutes');
 const nursingHospitalSearchRouter = require('./elastic/nursingHospitalSearch');
 const nursingHospitalAutoCompleteRouter = require('./elastic/nursingHospitalAutoComplete');
 //const chatRoutes = require('./routes/chatRoutes');
-//const { reindex } = require('./elastic/elastics'); // reindex 불러오기
+const { reindex } = require('./elastic/elastics'); // reindex 불러오기
+const { reindexMap } = require('./elastic/elastics'); // reindexMap 불러오기
 //const { reindexPharmacies } = require('./elastic/elastics'); // reindexPharmacies 불러오기
 const User = require('./models/User');
 const cors = require('cors');
@@ -100,13 +101,24 @@ addDefaultOrigins();
 // Elasticsearch Reindexing
 //console.log("🔄 Starting Elasticsearch reindexing process...");
 //reindex()
-  //.then(() => {
-  //  console.log("✅ Elasticsearch Reindexing Complete!");
-  //})
-  //.catch(err => {
-  //  console.error("❌ Error in reindexing:", err);
-  //  console.error("Stack trace:", err.stack);
-  //});
+//  .then(() => {
+//    console.log("✅ Elasticsearch Reindexing Complete!");
+//  })
+//  .catch(err => {
+//    console.error("❌ Error in reindexing:", err);
+//    console.error("Stack trace:", err.stack);
+//  });
+
+// Elasticsearch Map Reindexing
+reindexMap()
+  .then(() => {
+    console.log("✅ Elasticsearch Map Reindexing Complete!");
+  })
+  .catch(err => {
+    console.error("❌ Error in reindexing:", err);
+    console.error("Stack trace:", err.stack);
+  });
+
 
 //reindexPharmacies()
 //.then(() => {
