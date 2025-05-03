@@ -211,13 +211,17 @@ const NursingHospitalFilter = ({ selectedRegion, setSelectedRegion, onSearch, on
                 </button>
 
                 {isDropdownOpen && searchQuery && (
-                  <div className="absolute z-10 bg-white border border-gray-300 mt-1 w-full rounded-lg shadow-lg overflow-hidden max-h-60" style={{ top: '100%' }}>
+                  <div className="absolute z-10 bg-white border border-gray-300 mt-1 w-full rounded-lg shadow-lg overflow-hidden" style={{ top: '100%', left: 0, maxHeight: '240px' }}>
                     {isSearching ? (
                       <div className="p-3 text-gray-500 text-center">검색 중...</div>
                     ) : (suggestions.hospital || []).length === 0 ? (
                       <div className="p-3 text-gray-500 text-center">❌ 검색 결과 없음</div>
                     ) : (
-                      <ul ref={suggestionsRef}>
+                      <ul 
+                        ref={suggestionsRef}
+                        className="overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+                        style={{ maxHeight: '240px' }}
+                      >
                         {(suggestions.hospital || []).map((hospital, idx) => (
                           <li 
                             key={idx} 
