@@ -144,32 +144,33 @@ const AutoComplete = ({ searchQuery, setSearchQuery }) => {
             </div>
           )}
         </div>
-        <button
-          onClick={() => {
-            if (navigator.geolocation) {
-              navigator.geolocation.getCurrentPosition(
-                (position) => {
-                  const { latitude, longitude } = position.coords;
-                  setUserLocation({ latitude, longitude });
-                  navigate(`/hospitals?x=${longitude}&y=${latitude}`);
-                },
-                (error) => {
-                  console.error("위치 정보를 가져올 수 없습니다.", error);
-                  alert("위치 정보를 가져올 수 없습니다. 직접 검색어를 입력해주세요.");
+        <div className="container mx-auto">
+          <div className="w-full max-w-2xl">
+            <button
+              onClick={() => {
+                if (navigator.geolocation) {
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                      const { latitude, longitude } = position.coords;
+                      setUserLocation({ latitude, longitude });
+                      navigate(`/hospitals?x=${longitude}&y=${latitude}`);
+                    },
+                    (error) => {
+                      console.error("위치 정보를 가져올 수 없습니다.", error);
+                      alert("위치 정보를 가져올 수 없습니다. 직접 검색어를 입력해주세요.");
+                    }
+                  );
+                } else {
+                  alert("이 브라우저는 위치 정보를 지원하지 않습니다.");
                 }
-              );
-            } else {
-              alert("이 브라우저는 위치 정보를 지원하지 않습니다.");
-            }
-          }}
-          className="mt-2 text-sm text-gray-800 hover:text-gray-900 font-bold flex items-center"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          내 주변 병원 찾기
-        </button>
+              }}
+              className="mt-2 px-4 py-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center gap-2"
+            >
+              <span>📍</span>
+              <span>내 주변 병원 찾기</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
