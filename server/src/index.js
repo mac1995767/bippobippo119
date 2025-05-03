@@ -16,6 +16,7 @@ const hospitalDetailRouter = require('./elastic/hospitalDetail');
 const healthCenterRoutes = require('./routes/healthCenterRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
 const nursingHospitalSearchRouter = require('./elastic/nursingHospitalSearch');
+const nursingHospitalAutoCompleteRouter = require('./elastic/nursingHospitalAutoComplete');
 //const chatRoutes = require('./routes/chatRoutes');
 //const { reindex } = require('./elastic/elastics'); // reindex 불러오기
 //const { reindexPharmacies } = require('./elastic/elastics'); // reindexPharmacies 불러오기
@@ -121,13 +122,13 @@ console.log('라우터 설정 시작');
 app.use('/api/auth', authRouter);
 app.use('/api/email', emailRouter);
 app.use('/api/admin', adminRoutes);
-app.use('/api/autocomplete', autoCompleteRouter);
 app.use('/api/hospitals/search', hospitalSearchRouter);
 app.use('/api/hospitals/detail', hospitalDetailRouter);
 app.use('/api/hospitals/subjects', hospitalSubjectRoutes);
 app.use('/api/hospitals', hospitalRoutes);
-app.use('/api/nursing-hospitals', nursingHospitalSearchRouter);
-app.use('/api/nursing-hospitals', hospitalReviewRoutes);
+app.use('/api/nursing-hospitals/search', nursingHospitalSearchRouter);
+app.use('/api/nursing-hospitals/reviews', hospitalReviewRoutes);
+app.use('/api/nursing-hospitals/autoComplete', nursingHospitalAutoCompleteRouter);
 app.use('/api/pharmacies', pharmacySearchRouter);
 app.use('/api/pharmacy-autocomplete', pharmacyAutoCompleteRouter);
 app.use('/api/health-centers', healthCenterRoutes);
@@ -135,6 +136,7 @@ app.use('/aip/chat', chatRouter);
 app.use('/api/boards', boardRoutes);
 app.use('/api/origins', hospitalOriginRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/autocomplete', autoCompleteRouter);
 
 // 라우터 디버깅
 app.use((req, res, next) => {

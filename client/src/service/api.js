@@ -212,4 +212,17 @@ export const fetchNearbyHospitals = async (latitude, longitude, distance = 1000)
   }
 };
 
+// 요양병원 자동완성 API
+export const fetchNursingHospitalAutoComplete = async (query) => {
+  try {
+    const response = await axios.get(`${baseUrl}/api/nursing-hospitals/autoComplete`, {
+      params: { query }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("❌ Error fetching nursing hospital autocomplete:", error);
+    throw error;
+  }
+};
+
 //console.log(`🔗 API Base URL: ${baseURL}`);
