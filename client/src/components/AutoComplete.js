@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchAutoComplete } from '../service/api';
 
@@ -6,6 +6,8 @@ const AutoComplete = ({ searchQuery, setSearchQuery }) => {
   const [suggestions, setSuggestions] = useState({ hospital: [] });
   const [searchHistory, setSearchHistory] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const suggestionsRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -66,6 +68,37 @@ const AutoComplete = ({ searchQuery, setSearchQuery }) => {
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(prev => {
+        const nextIndex = prev + 1;
+        return nextIndex >= suggestions.hospital.length ? 0 : nextIndex;
+      });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => {
+        const nextIndex = prev - 1;
+        return nextIndex < 0 ? suggestions.hospital.length - 1 : nextIndex;
+      });
+    } else if (e.key === 'Enter') {
+      if (selectedIndex >= 0 && selectedIndex < suggestions.hospital.length) {
+        handleSearch(suggestions.hospital[selectedIndex].name);
+      } else {
+        handleSearch();
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (selectedIndex >= 0 && suggestionsRef.current) {
+      const selectedElement = suggestionsRef.current.children[selectedIndex];
+      if (selectedElement) {
+        selectedElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }, [selectedIndex]);
+
   return (
     <div className="relative w-full">
       <div className="flex flex-col relative">
@@ -73,12 +106,11 @@ const AutoComplete = ({ searchQuery, setSearchQuery }) => {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                handleSearch();
-              }
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setSelectedIndex(-1);
             }}
+            onKeyDown={handleKeyDown}
             placeholder="어떤 병원을 찾으시나요?"
             className="flex-1 p-3 border border-gray-300 rounded-l-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
           />
@@ -90,14 +122,19 @@ const AutoComplete = ({ searchQuery, setSearchQuery }) => {
           </button>
 
           {searchQuery && (
-            <div className="absolute z-10 bg-white border border-gray-300 mt-1 w-full rounded-lg shadow-lg overflow-hidden" style={{ top: '100%' }}>
+            <div className="absolute z-10 bg-white border border-gray-300 mt-1 w-full rounded-lg shadow-lg overflow-hidden max-h-60" style={{ top: '100%' }}>
               {(suggestions.hospital || []).length === 0 ? (
                 <div className="p-3 text-gray-500 text-center">❌ 검색 결과 없음</div>
               ) : (
-                <ul>
+                <ul ref={suggestionsRef}>
                   {(suggestions.hospital || []).map((hospital, idx) => (
-                    <li key={idx} onMouseDown={() => handleSearch(hospital.name)}
-                        className="p-3 hover:bg-gray-200 cursor-pointer border-b text-black text-sm">
+                    <li 
+                      key={idx} 
+                      onMouseDown={() => handleSearch(hospital.name)}
+                      className={`p-3 hover:bg-gray-200 cursor-pointer border-b text-black text-sm ${
+                        idx === selectedIndex ? 'bg-gray-200' : ''
+                      }`}
+                    >
                       <div className="font-medium text-blue-600">{hospital.name}</div>
                       <div className="text-xs text-gray-500">{hospital.address}</div>
                     </li>
