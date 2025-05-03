@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import FilterDropdown from './FilterDropdown';
-import { fetchNursingHospitalAutoComplete } from '../service/api';
+import { fetchNursingHospitalAutoComplete, fetchNursingHospitals } from '../service/api';
 
 const filterRegions = [
   { label: "전국", icon: "🌍" },
@@ -24,30 +24,50 @@ const filterRegions = [
   { label: "세종시", icon: "🏢" },
 ];
 
-const NursingHospitalFilter = ({ selectedRegion, setSelectedRegion, onSearch }) => {
+const NursingHospitalFilter = ({ selectedRegion, setSelectedRegion, onSearch, onLocationSearch }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState({ hospital: [] });
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const suggestionsRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const debounceTimer = React.useRef(null);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (onSearch) {
-      onSearch(searchQuery);
-    }
-    if (searchQuery) {
-      navigate(`/nursing-hospitals?query=${encodeURIComponent(searchQuery)}`);
+  const handleSearch = (queryParam = searchQuery) => {
+    const trimmedQuery = queryParam.trim();
+    if (trimmedQuery) {
+      navigate(`/nursing-hospitals?query=${encodeURIComponent(trimmedQuery)}`);
+      setIsDropdownOpen(false);
     }
   };
 
-  const handleLocationSearch = () => {
+  const handleLocationSearch = async () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           const { latitude, longitude } = position.coords;
-          navigate(`/nursing-hospitals?x=${longitude}&y=${latitude}`);
+          try {
+            setIsSearching(true);
+            const response = await fetchNursingHospitals({
+              x: longitude,
+              y: latitude,
+              distance: '10km'
+            });
+            
+            // 부모 컴포넌트에 검색 결과 전달
+            if (onLocationSearch) {
+              onLocationSearch(response.data);
+            }
+            
+            navigate(`/nursing-hospitals?x=${longitude}&y=${latitude}&distance=10km`);
+          } catch (error) {
+            console.error("위치 기반 검색 오류:", error);
+            alert("위치 기반 검색 중 오류가 발생했습니다. 다시 시도해주세요.");
+          } finally {
+            setIsSearching(false);
+          }
         },
         (error) => {
           console.error("위치 정보를 가져올 수 없습니다.", error);
@@ -66,10 +86,54 @@ const NursingHospitalFilter = ({ selectedRegion, setSelectedRegion, onSearch }) 
   const handleFilterChange = (categoryName, option) => {
     if (categoryName === "지역") {
       setSelectedRegion(option);
+      
+      // URL 파라미터에서 위치 정보 확인
+      const params = new URLSearchParams(location.search);
+      const x = params.get("x");
+      const y = params.get("y");
+      const distance = params.get("distance");
+      
+      // 위치 기반 검색인 경우
+      if (x && y) {
+        navigate(`/nursing-hospitals?x=${x}&y=${y}&distance=${distance}&region=${option}`);
+      } else {
+        navigate(`/nursing-hospitals?region=${option}`);
+      }
     }
   };
 
+  useEffect(() => {
+    if (!searchQuery) {
+      setSuggestions({ hospital: [] });
+      setSelectedIndex(-1);
+      setIsDropdownOpen(false);
+      return;
+    }
+
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setIsSearching(true);
+      fetchNursingHospitalAutoComplete(searchQuery)
+        .then(data => {
+          setSuggestions({ hospital: data.hospital || [] });
+          setIsSearching(false);
+          setIsDropdownOpen(true);
+          setSelectedIndex(-1);
+        })
+        .catch(error => {
+          console.error('자동완성 에러:', error);
+          setSuggestions({ hospital: [] });
+          setIsSearching(false);
+          setIsDropdownOpen(false);
+        });
+    }, 300);
+
+    return () => clearTimeout(debounceTimer.current);
+  }, [searchQuery]);
+
   const handleKeyDown = (e) => {
+    if (!isDropdownOpen) return;
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setSelectedIndex(prev => {
@@ -83,37 +147,21 @@ const NursingHospitalFilter = ({ selectedRegion, setSelectedRegion, onSearch }) 
         return nextIndex < 0 ? suggestions.hospital.length - 1 : nextIndex;
       });
     } else if (e.key === 'Enter') {
+      e.preventDefault();
       if (selectedIndex >= 0 && selectedIndex < suggestions.hospital.length) {
         const selectedHospital = suggestions.hospital[selectedIndex];
         setSearchQuery(selectedHospital.name);
         setSuggestions({ hospital: [] });
-        navigate(`/nursing-hospitals?query=${encodeURIComponent(selectedHospital.name)}`);
+        setIsDropdownOpen(false);
+        handleSearch(selectedHospital.name);
       } else {
-        handleSearch(e);
+        handleSearch();
       }
+    } else if (e.key === 'Escape') {
+      setIsDropdownOpen(false);
+      setSelectedIndex(-1);
     }
   };
-
-  useEffect(() => {
-    if (!searchQuery) {
-      setSuggestions({ hospital: [] });
-      return;
-    }
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => {
-      console.log('자동완성 요청 시작:', searchQuery);
-      fetchNursingHospitalAutoComplete(searchQuery)
-        .then(data => {
-          console.log('자동완성 응답:', data);
-          setSuggestions({ hospital: data.hospital || [] });
-        })
-        .catch(error => {
-          console.error('자동완성 에러:', error);
-          setSuggestions({ hospital: [] });
-        });
-    }, 300);
-    return () => clearTimeout(debounceTimer.current);
-  }, [searchQuery]);
 
   useEffect(() => {
     if (selectedIndex >= 0 && suggestionsRef.current) {
@@ -123,6 +171,13 @@ const NursingHospitalFilter = ({ selectedRegion, setSelectedRegion, onSearch }) 
       }
     }
   }, [selectedIndex]);
+
+  const handleSuggestionClick = (hospital) => {
+    setSearchQuery(hospital.name);
+    setSuggestions({ hospital: [] });
+    setIsDropdownOpen(false);
+    handleSearch(hospital.name);
+  };
 
   return (
     <div className="bg-[#f6f8fc]">
@@ -144,30 +199,29 @@ const NursingHospitalFilter = ({ selectedRegion, setSelectedRegion, onSearch }) 
                     setSelectedIndex(-1);
                   }}
                   onKeyDown={handleKeyDown}
+                  onFocus={() => setIsDropdownOpen(true)}
                   placeholder="어떤 요양병원을 찾으시나요?"
                   className="flex-1 p-3 border border-[#3a8dde] rounded-l-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#3a8dde] bg-white placeholder-gray-400 text-gray-800"
                 />
                 <button
-                  onClick={handleSearch}
+                  onClick={() => handleSearch()}
                   className="bg-[#3a8dde] text-white px-4 py-2 rounded-r-lg shadow-sm hover:bg-[#2563eb] transition"
                 >
                   검색
                 </button>
 
-                {searchQuery && (
+                {isDropdownOpen && searchQuery && (
                   <div className="absolute z-10 bg-white border border-gray-300 mt-1 w-full rounded-lg shadow-lg overflow-hidden max-h-60" style={{ top: '100%' }}>
-                    {(suggestions.hospital || []).length === 0 ? (
+                    {isSearching ? (
+                      <div className="p-3 text-gray-500 text-center">검색 중...</div>
+                    ) : (suggestions.hospital || []).length === 0 ? (
                       <div className="p-3 text-gray-500 text-center">❌ 검색 결과 없음</div>
                     ) : (
                       <ul ref={suggestionsRef}>
                         {(suggestions.hospital || []).map((hospital, idx) => (
                           <li 
                             key={idx} 
-                            onMouseDown={() => {
-                              setSearchQuery(hospital.name);
-                              setSuggestions({ hospital: [] });
-                              navigate(`/nursing-hospitals?query=${encodeURIComponent(hospital.name)}`);
-                            }}
+                            onClick={() => handleSuggestionClick(hospital)}
                             className={`p-3 hover:bg-gray-200 cursor-pointer border-b text-black text-sm ${
                               idx === selectedIndex ? 'bg-gray-200' : ''
                             }`}
@@ -186,10 +240,13 @@ const NursingHospitalFilter = ({ selectedRegion, setSelectedRegion, onSearch }) 
             {/* 위치 기반 검색 버튼 */}
             <button
               onClick={handleLocationSearch}
-              className="mt-2 px-4 py-2 bg-[#36d1c4] text-white rounded-lg hover:bg-[#3a8dde] transition-all duration-200 flex items-center justify-center gap-2 shadow"
+              disabled={isSearching}
+              className={`mt-2 px-4 py-2 ${
+                isSearching ? 'bg-gray-400' : 'bg-[#36d1c4] hover:bg-[#3a8dde]'
+              } text-white rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow`}
             >
               <span>📍</span>
-              <span>내 주변 요양병원 찾기</span>
+              <span>{isSearching ? '검색 중...' : '내 주변 요양병원 찾기'}</span>
             </button>
           </div>
         </div>

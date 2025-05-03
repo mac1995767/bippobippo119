@@ -50,12 +50,28 @@ const NursingHospitalList = () => {
     const params = new URLSearchParams(location.search);
     const query = params.get("query") || "";
     const region = params.get("region") || "전국";
+    const x = params.get("x");
+    const y = params.get("y");
+    const distance = params.get("distance");
+    
     setSearchQuery(query);
     setSelectedRegion(region);
+    
+    // 위치 기반 검색인 경우
+    if (x && y) {
+      fetchHospitalsData({ 
+        x, 
+        y, 
+        distance: distance || '10km',
+        region: region !== "전국" ? region : undefined
+      });
+    } else {
+      fetchHospitalsData();
+    }
   }, [location.search]);
 
   // 데이터 가져오기
-  const fetchHospitalsData = async () => {
+  const fetchHospitalsData = async (locationParams = null) => {
     try {
       setLoading(true);
       setError(null);
@@ -73,6 +89,16 @@ const NursingHospitalList = () => {
       // 검색어 필터 적용
       if (searchQuery) {
         params.query = searchQuery;
+      }
+      // 위치 기반 검색 파라미터 적용
+      if (locationParams) {
+        params.x = locationParams.x;
+        params.y = locationParams.y;
+        params.distance = locationParams.distance;
+        // 위치 기반 검색 시 지역 필터가 있는 경우 적용
+        if (locationParams.region) {
+          params.region = locationParams.region;
+        }
       }
 
       const response = await fetchNursingHospitals(params);
@@ -96,10 +122,27 @@ const NursingHospitalList = () => {
     }
   };
 
+  // 위치 기반 검색 결과 처리
+  const handleLocationSearch = (searchResults) => {
+    setHospitals(searchResults);
+    setTotalCount(searchResults.length);
+    setTotalPages(1);
+    setCurrentPage(1);
+  };
+
   // 페이지나 필터, 검색어 변경시 데이터 다시 가져오기
   useEffect(() => {
-    fetchHospitalsData();
-  }, [currentPage, limit, selectedRegion, searchQuery]);
+    const params = new URLSearchParams(location.search);
+    const x = params.get("x");
+    const y = params.get("y");
+    const distance = params.get("distance");
+
+    if (x && y) {
+      fetchHospitalsData({ x, y, distance });
+    } else {
+      fetchHospitalsData();
+    }
+  }, [currentPage, limit, selectedRegion, searchQuery, location.search]);
 
   // 페이지네이션 핸들러
   const handlePrevPage = () => {
@@ -135,6 +178,7 @@ const NursingHospitalList = () => {
         selectedRegion={selectedRegion}
         setSelectedRegion={setSelectedRegion}
         onSearch={handleSearch}
+        onLocationSearch={handleLocationSearch}
       />
 
       {/* 병원 리스트 */}
