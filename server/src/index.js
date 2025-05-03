@@ -15,6 +15,7 @@ const pharmacyAutoCompleteRouter = require('./routes/pharmacyAutoComplete');
 const hospitalDetailRouter = require('./elastic/hospitalDetail');
 const healthCenterRoutes = require('./routes/healthCenterRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
+const nursingHospitalSearchRouter = require('./elastic/nursingHospitalSearch');
 //const chatRoutes = require('./routes/chatRoutes');
 //const { reindex } = require('./elastic/elastics'); // reindex 불러오기
 //const { reindexPharmacies } = require('./elastic/elastics'); // reindexPharmacies 불러오기
@@ -125,7 +126,7 @@ app.use('/api/hospitals/search', hospitalSearchRouter);
 app.use('/api/hospitals/detail', hospitalDetailRouter);
 app.use('/api/hospitals/subjects', hospitalSubjectRoutes);
 app.use('/api/hospitals', hospitalRoutes);
-app.use('/api/nursing-hospitals/search', hospitalSearchRouter);
+app.use('/api/nursing-hospitals', nursingHospitalSearchRouter);
 app.use('/api/nursing-hospitals', hospitalReviewRoutes);
 app.use('/api/pharmacies', pharmacySearchRouter);
 app.use('/api/pharmacy-autocomplete', pharmacyAutoCompleteRouter);

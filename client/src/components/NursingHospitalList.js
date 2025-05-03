@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { fetchHospitals } from "../service/api";
+import { useNavigate, useLocation } from 'react-router-dom';
+import { fetchNursingHospitals } from "../service/api";
 import HospitalMajorList from "./HospitalMajorList";
 import DistanceInfo from "./DistanceInfo";
 import HealthCenterBanner from './HealthCenterBanner';
@@ -31,6 +31,7 @@ const filterRegions = [
 
 const NursingHospitalList = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   // 상태 관리
   const [hospitals, setHospitals] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -42,6 +43,16 @@ const NursingHospitalList = () => {
 
   // 필터 상태
   const [selectedRegion, setSelectedRegion] = useState("전국");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // URL 파라미터에서 검색어와 지역 읽기
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const query = params.get("query") || "";
+    const region = params.get("region") || "전국";
+    setSearchQuery(query);
+    setSelectedRegion(region);
+  }, [location.search]);
 
   // 데이터 가져오기
   const fetchHospitalsData = async () => {
@@ -59,8 +70,12 @@ const NursingHospitalList = () => {
       if (selectedRegion !== "전국") {
         params.region = selectedRegion;
       }
+      // 검색어 필터 적용
+      if (searchQuery) {
+        params.query = searchQuery;
+      }
 
-      const response = await fetchHospitals(params);
+      const response = await fetchNursingHospitals(params);
       
       const {
         data,
@@ -81,10 +96,10 @@ const NursingHospitalList = () => {
     }
   };
 
-  // 페이지나 필터 변경시 데이터 다시 가져오기
+  // 페이지나 필터, 검색어 변경시 데이터 다시 가져오기
   useEffect(() => {
     fetchHospitalsData();
-  }, [currentPage, limit, selectedRegion]);
+  }, [currentPage, limit, selectedRegion, searchQuery]);
 
   // 페이지네이션 핸들러
   const handlePrevPage = () => {
