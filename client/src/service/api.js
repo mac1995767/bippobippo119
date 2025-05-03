@@ -225,4 +225,9 @@ export const fetchNursingHospitalAutoComplete = async (query) => {
   }
 };
 
+export const fetchMapData = async () => {
+  const res = await axios.get('/api/map-data');
+  return res.data;
+};
+
 //console.log(`🔗 API Base URL: ${baseURL}`);

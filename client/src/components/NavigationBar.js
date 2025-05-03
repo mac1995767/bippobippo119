@@ -67,6 +67,12 @@ const NavigationBar = () => {
               >
                 커뮤니티
               </Link>
+              <Link
+                to="/map"
+                className={getMenuItemClasses('/map')}
+              >
+                지도
+              </Link>
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center space-x-4">
