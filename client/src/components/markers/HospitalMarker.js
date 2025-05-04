@@ -9,37 +9,26 @@ const HospitalMarker = ({ map, hospital, zoomLevel }) => {
     // 값 확인용 로그
     console.log('마커 생성:', hospital.yadmNm, hospital.location);
 
-    // zoom 레벨에 따른 마커 스타일 결정
     let markerOptions = {
       position: new window.naver.maps.LatLng(hospital.location.lat, hospital.location.lon),
       map: map,
       title: hospital.yadmNm || hospital.name,
     };
 
-    // zoom 레벨에 따른 마커 스타일 설정
     if (zoomLevel >= 12) {
       markerOptions = {
         ...markerOptions,
         icon: {
-          content: `
-            <div style="background: white; padding: 5px; border-radius: 5px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
-              <div style="color: #FF0000; font-weight: bold;">${hospital.yadmNm || hospital.name}</div>
-              <div style="font-size: 12px; color: #666;">병원</div>
-            </div>
-          `,
-          size: new window.naver.maps.Size(38, 58),
-          anchor: new window.naver.maps.Point(19, 58),
+          content: `<div style="display: flex; align-items: center; justify-content: center;"><img src='/images/markers/hospital.png' alt='병원' style='width:36px; height:36px;'/></div>`,
+          size: new window.naver.maps.Size(36, 36),
+          anchor: new window.naver.maps.Point(18, 36),
         }
       };
     } else if (zoomLevel >= 10) {
       markerOptions = {
         ...markerOptions,
         icon: {
-          content: `
-            <div style="background: white; padding: 3px; border-radius: 3px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
-              <div style="color: #FF0000; font-weight: bold;">${hospital.yadmNm || hospital.name}</div>
-            </div>
-          `,
+          content: `<div style="background: white; padding: 3px; border-radius: 3px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"><div style="color: #FF0000; font-weight: bold;">${hospital.yadmNm || hospital.name}</div></div>`,
           size: new window.naver.maps.Size(38, 38),
           anchor: new window.naver.maps.Point(19, 38),
         }
