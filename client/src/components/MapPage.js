@@ -113,32 +113,38 @@ const MapPage = () => {
       const { lat, lng } = result;
       const point = new window.naver.maps.LatLng(lat, lng);
       
-      // 지도 이동
+      // 먼저 지도 이동
       map.setCenter(point);
       map.setZoom(18);
+
+      // 지도 이동이 완료될 때까지 기다림
+      await new Promise(resolve => {
+        window.naver.maps.Event.addListenerOnce(map, 'idle', resolve);
+      });
 
       // 현재 지도 범위 내 데이터 로드
       const bounds = map.getBounds();
       const sw = bounds.getSW();
       const ne = bounds.getNE();
 
-      const [hospRes, pharmRes] = await Promise.all([
-        fetchMapTypeData('hospital', {
-          swLat: sw.lat(),
-          swLng: sw.lng(),
-          neLat: ne.lat(),
-          neLng: ne.lng()
-        }),
-        fetchMapTypeData('pharmacy', {
-          swLat: sw.lat(),
-          swLng: sw.lng(),
-          neLat: ne.lat(),
-          neLng: ne.lng()
-        })
-      ]);
+      // 검색 범위를 현재 위치 주변 1km로 제한
+      const center = map.getCenter();
+      const distance = 0.01; // 약 1km
+      const searchBounds = {
+        swLat: center.lat() - distance,
+        swLng: center.lng() - distance,
+        neLat: center.lat() + distance,
+        neLng: center.lng() + distance
+      };
 
-      // 상태 업데이트
+      setLoadingMessage('데이터를 불러오는 중...');
+
+      // 병원 데이터만 먼저 로드
+      const hospRes = await fetchMapTypeData('hospital', searchBounds);
       setHospitals(hospRes);
+
+      // 약국 데이터 로드
+      const pharmRes = await fetchMapTypeData('pharmacy', searchBounds);
       setPharmacies(
         pharmRes.map(pharm => ({
           ...pharm,

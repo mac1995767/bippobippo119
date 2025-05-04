@@ -20,7 +20,7 @@ function MapToolbar({ onZoomIn, onZoomOut }) {
     <div className="absolute right-2 top-40 z-30 flex flex-col gap-2">
       {/* 툴바 영역 */}
       <div className="bg-white rounded-md shadow-md border border-gray-300 overflow-hidden">
-        <div className="bg-purple-500 text-white text-sm font-semibold text-center py-1">단지</div>
+        <div className="bg-purple-500 text-white text-sm font-semibold text-center py-1">메뉴</div>
         <div className="flex flex-col">
           {buttons.map((btn, index) => (
             <button

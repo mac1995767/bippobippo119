@@ -102,7 +102,9 @@ router.get('/search', async (req, res) => {
 
 // type별 map_data 조회 API
 router.get('/map-data', async (req, res) => {
-  const { type, swLat, swLng, neLat, neLng } = req.query;
+  const { type, swLat, swLng, neLat, neLng, limit } = req.query;
+  console.log('map-data 요청:', { type, swLat, swLng, neLat, neLng, limit });
+  
   try {
     let must = [];
     if (type) {
@@ -118,9 +120,10 @@ router.get('/map-data', async (req, res) => {
         }
       });
     }
+
     const esQuery = {
       index: 'map_data',
-      size: 10000,
+      size: limit ? parseInt(limit) : 100, // limit 파라미터로 데이터 수 제한
       _source: [
         'type', 'name', 'address', 'yadmNm', 'addr', 'telno', 'location',
         'clCdNm', 'sidoCdNm', 'sgguCdNm', 'postNo', 'estbDd', 'hospUrl'
@@ -130,16 +133,34 @@ router.get('/map-data', async (req, res) => {
           bool: {
             must: must.length > 0 ? must : [{ match_all: {} }]
           }
-        }
+        },
+        sort: [
+          { '_score': { 'order': 'desc' } } // 관련성 순으로 정렬
+        ]
       }
     };
+
+    console.log('Elasticsearch 쿼리:', JSON.stringify(esQuery, null, 2));
+    
     const esResp = await client.search(esQuery);
     const body = esResp.body || esResp;
     const hits = body.hits?.hits || [];
-    res.json(hits.map(hit => hit._source));
+    
+    console.log('검색 결과 수:', hits.length);
+    
+    const results = hits.map(hit => ({
+      ...hit._source,
+      lat: hit._source.location?.lat,
+      lng: hit._source.location?.lon
+    }));
+
+    res.json(results);
   } catch (err) {
-    console.error('Elasticsearch 응답:', err.meta?.body || err);
-    res.status(500).json({ error: 'Elasticsearch 조회 오류' });
+    console.error('Elasticsearch 응답 오류:', err.meta?.body || err);
+    res.status(500).json({ 
+      error: 'Elasticsearch 조회 오류',
+      details: err.message || '알 수 없는 오류'
+    });
   }
 });
 
