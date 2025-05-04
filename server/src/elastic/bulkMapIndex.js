@@ -53,8 +53,6 @@ async function bulkMapIndex() {
         sidoCd: h.sidoCd,
         sidoCdNm: h.sidoCdNm,
         ykiho: h.ykiho,
-        updatedAt: h.updatedAt,
-        createdAt: h.createdAt,
         // ... 기타 필요한 필드
       };
       if (h.YPos != null && h.XPos != null) {
@@ -78,8 +76,7 @@ async function bulkMapIndex() {
         addr: p.addr,
         telno: p.telno,
         estbDd: p.estbDd,
-        createdAt: p.createdAt,
-        updatedAt: p.updatedAt,
+
         // ... 기타 필요한 필드
       };
       if (p.Ypos != null && p.Xpos != null) {

@@ -11,7 +11,7 @@ const ClusterMarker = ({ map, cluster }) => {
       icon: {
         content: `
           <div style="background: #FFA54B; color: #fff; font-weight: bold; border-radius: 20px; padding: 10px 20px; font-size: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); text-align: center;">
-            ${cluster.name}<br/>${cluster.value}
+            ${cluster.name}<br/>${cluster.count}
           </div>
         `,
         size: new window.naver.maps.Size(120, 48),

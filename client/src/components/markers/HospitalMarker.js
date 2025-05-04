@@ -4,24 +4,26 @@ const HospitalMarker = ({ map, hospital, zoomLevel }) => {
   const markerRef = useRef(null);
 
   useEffect(() => {
-    if (!map) return;
+    if (!map || !hospital || !hospital.location) return;
+
+    // 값 확인용 로그
+    console.log('마커 생성:', hospital.yadmNm, hospital.location);
 
     // zoom 레벨에 따른 마커 스타일 결정
     let markerOptions = {
-      position: new window.naver.maps.LatLng(hospital.lat, hospital.lng),
+      position: new window.naver.maps.LatLng(hospital.location.lat, hospital.location.lon),
       map: map,
-      title: hospital.name,
+      title: hospital.yadmNm || hospital.name,
     };
 
     // zoom 레벨에 따른 마커 스타일 설정
     if (zoomLevel >= 12) {
-      // 상세 정보 표시
       markerOptions = {
         ...markerOptions,
         icon: {
           content: `
             <div style="background: white; padding: 5px; border-radius: 5px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
-              <div style="color: #FF0000; font-weight: bold;">${hospital.name}</div>
+              <div style="color: #FF0000; font-weight: bold;">${hospital.yadmNm || hospital.name}</div>
               <div style="font-size: 12px; color: #666;">병원</div>
             </div>
           `,
@@ -30,13 +32,12 @@ const HospitalMarker = ({ map, hospital, zoomLevel }) => {
         }
       };
     } else if (zoomLevel >= 10) {
-      // 중간 정보 표시
       markerOptions = {
         ...markerOptions,
         icon: {
           content: `
             <div style="background: white; padding: 3px; border-radius: 3px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
-              <div style="color: #FF0000; font-weight: bold;">${hospital.name}</div>
+              <div style="color: #FF0000; font-weight: bold;">${hospital.yadmNm || hospital.name}</div>
             </div>
           `,
           size: new window.naver.maps.Size(38, 38),
@@ -44,7 +45,6 @@ const HospitalMarker = ({ map, hospital, zoomLevel }) => {
         }
       };
     } else {
-      // 기본 마커
       markerOptions = {
         ...markerOptions,
         icon: {
@@ -60,7 +60,6 @@ const HospitalMarker = ({ map, hospital, zoomLevel }) => {
 
     // 마커 클릭 이벤트
     window.naver.maps.Event.addListener(markerRef.current, 'click', () => {
-      // 병원 상세 정보 표시 로직
       console.log('병원 클릭:', hospital);
     });
 

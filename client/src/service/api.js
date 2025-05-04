@@ -230,4 +230,15 @@ export const fetchMapData = async () => {
   return res.data;
 };
 
+// type별 map 데이터 조회
+export const fetchMapTypeData = async (type, bounds = {}) => {
+  try {
+    const response = await axios.get(`${baseUrl}/api/map/map-data`, { params: { type, ...bounds } });
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching map type data:', error);
+    throw error;
+  }
+};
+
 //console.log(`🔗 API Base URL: ${baseURL}`);

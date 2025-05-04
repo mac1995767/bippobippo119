@@ -30,6 +30,7 @@ const HospitalOrigin = require('./models/HospitalOrigin');
 const hospitalOriginRoutes = require('./routes/hospitalOriginRoutes');
 const path = require('path');
 const fs = require('fs');
+const mapRouter = require('./routes/map');
 
 const app = express();
 
@@ -110,14 +111,14 @@ addDefaultOrigins();
 //  });
 
 // Elasticsearch Map Reindexing
-reindexMap()
-  .then(() => {
-    console.log("✅ Elasticsearch Map Reindexing Complete!");
-  })
-  .catch(err => {
-    console.error("❌ Error in reindexing:", err);
-    console.error("Stack trace:", err.stack);
-  });
+//reindexMap()
+//  .then(() => {
+//    console.log("✅ Elasticsearch Map Reindexing Complete!");
+//  })
+//  .catch(err => {
+//    console.error("❌ Error in reindexing:", err);
+//    console.error("Stack trace:", err.stack);
+//  });
 
 
 //reindexPharmacies()
@@ -149,6 +150,7 @@ app.use('/api/boards', boardRoutes);
 app.use('/api/origins', hospitalOriginRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/autocomplete', autoCompleteRouter);
+app.use('/api/map', mapRouter);
 
 // 라우터 디버깅
 app.use((req, res, next) => {
