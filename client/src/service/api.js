@@ -241,4 +241,26 @@ export const fetchMapTypeData = async (type, bounds = {}) => {
   }
 };
 
+// 지도 검색 API
+export const searchLocation = async (query) => {
+  try {
+    console.log('API 호출 시작:', `${baseUrl}/api/map/search?query=${query}`);
+    const response = await axios.get(`${baseUrl}/api/map/search`, {
+      params: { query },
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    console.log('검색 결과:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error searching location:', error);
+    if (error.response) {
+      console.error('응답 상태:', error.response.status);
+      console.error('응답 데이터:', error.response.data);
+    }
+    throw error;
+  }
+};
+
 //console.log(`🔗 API Base URL: ${baseURL}`);

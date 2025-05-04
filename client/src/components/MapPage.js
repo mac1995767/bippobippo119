@@ -11,6 +11,7 @@ import pharmacyClusters from './cluster/PharmacyClusterStats';
 import debounce from 'lodash.debounce';
 import MapZoomControl from './MapZoomControl';
 import InfoSidebar from './InfoSidebar';
+import MapSearchBar from './MapSearchBar';
 // import { fetchMapData } from '../service/api';
 
 const MapPage = () => {
@@ -20,6 +21,10 @@ const MapPage = () => {
   const [hospitals, setHospitals] = useState([]);
   const [pharmacies, setPharmacies] = useState([]);
   const [selectedInfo, setSelectedInfo] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const loadingTimeoutRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   // 지도 영역 내 데이터 불러오기 함수
   const fetchDataByBounds = async (mapInstance) => {
@@ -97,6 +102,72 @@ const MapPage = () => {
   const handlePharmacyClick = (pharmacy) => setSelectedInfo(pharmacy);
   const handleSidebarClose = () => setSelectedInfo(null);
 
+  // 검색 결과 처리 핸들러
+  const handleSearchResult = async (result) => {
+    if (!map || !result) return;
+
+    try {
+      setIsLoading(true);
+      setLoadingMessage('위치로 이동 중...');
+
+      const { lat, lng } = result;
+      const point = new window.naver.maps.LatLng(lat, lng);
+      
+      // 지도 이동
+      map.setCenter(point);
+      map.setZoom(18);
+
+      // 현재 지도 범위 내 데이터 로드
+      const bounds = map.getBounds();
+      const sw = bounds.getSW();
+      const ne = bounds.getNE();
+
+      const [hospRes, pharmRes] = await Promise.all([
+        fetchMapTypeData('hospital', {
+          swLat: sw.lat(),
+          swLng: sw.lng(),
+          neLat: ne.lat(),
+          neLng: ne.lng()
+        }),
+        fetchMapTypeData('pharmacy', {
+          swLat: sw.lat(),
+          swLng: sw.lng(),
+          neLat: ne.lat(),
+          neLng: ne.lng()
+        })
+      ]);
+
+      // 상태 업데이트
+      setHospitals(hospRes);
+      setPharmacies(
+        pharmRes.map(pharm => ({
+          ...pharm,
+          lat: pharm.lat || (pharm.location && pharm.location.lat),
+          lng: pharm.lng || (pharm.location && pharm.location.lon),
+        }))
+      );
+
+    } catch (err) {
+      console.error('지도 데이터 불러오기 오류:', err);
+      setLoadingMessage('데이터 로딩 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage('');
+    }
+  };
+
+  // 컴포넌트 언마운트 시 정리
+  useEffect(() => {
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
@@ -105,7 +176,16 @@ const MapPage = () => {
       {/* 지도+사이드바 flex row로 묶기 */}
       <div className="flex flex-row flex-1 h-0">
         <InfoSidebar info={selectedInfo} onClose={handleSidebarClose} />
-        <div ref={mapRef} className="flex-1 p-0 m-0">
+        <div ref={mapRef} className="flex-1 p-0 m-0 relative">
+          <MapSearchBar onSearch={handleSearchResult} />
+          {isLoading && (
+            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center min-w-[200px]">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+                <span className="text-gray-700 font-medium">{loadingMessage}</span>
+              </div>
+            </div>
+          )}
           {map && (
             zoomLevel < 18 ? (
               <>

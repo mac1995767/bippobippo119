@@ -150,12 +150,16 @@ app.use('/api/boards', boardRoutes);
 app.use('/api/origins', hospitalOriginRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/autocomplete', autoCompleteRouter);
+
+// map 라우터 설정
+console.log('map 라우터 설정');
 app.use('/api/map', mapRouter);
 
-// 라우터 디버깅
+// 라우터 디버깅 미들웨어
 app.use((req, res, next) => {
   console.log(`요청 경로: ${req.path}`);
   console.log(`요청 메서드: ${req.method}`);
+  console.log(`요청 쿼리:`, req.query);
   next();
 });
 
