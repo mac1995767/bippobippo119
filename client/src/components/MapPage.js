@@ -10,6 +10,7 @@ import hospitalClusters from './cluster/HospitalClusterStats';
 import pharmacyClusters from './cluster/PharmacyClusterStats';
 import debounce from 'lodash.debounce';
 import MapZoomControl from './MapZoomControl';
+import InfoSidebar from './InfoSidebar';
 // import { fetchMapData } from '../service/api';
 
 const MapPage = () => {
@@ -18,6 +19,7 @@ const MapPage = () => {
   const [zoomLevel, setZoomLevel] = useState(8);
   const [hospitals, setHospitals] = useState([]);
   const [pharmacies, setPharmacies] = useState([]);
+  const [selectedInfo, setSelectedInfo] = useState(null);
 
   // 지도 영역 내 데이터 불러오기 함수
   const fetchDataByBounds = async (mapInstance) => {
@@ -35,7 +37,13 @@ const MapPage = () => {
         })
       ]);
       setHospitals(hospRes);
-      setPharmacies(pharmRes);
+      setPharmacies(
+        pharmRes.map(pharm => ({
+          ...pharm,
+          lat: pharm.lat || (pharm.location && pharm.location.lat),
+          lng: pharm.lng || (pharm.location && pharm.location.lon),
+        }))
+      );
     } catch (err) {
       console.error('지도 데이터 불러오기 오류:', err);
     }
@@ -84,52 +92,62 @@ const MapPage = () => {
     if (map) map.setZoom(map.getZoom() - 1);
   };
 
+  // 마커 클릭 핸들러
+  const handleHospitalClick = (hospital) => setSelectedInfo(hospital);
+  const handlePharmacyClick = (pharmacy) => setSelectedInfo(pharmacy);
+  const handleSidebarClose = () => setSelectedInfo(null);
+
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
       <MapFilterBar />
-      {/* 확대/축소 버튼 컴포넌트로 분리 */}
       <MapZoomControl onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
-      <div ref={mapRef} className="w-full flex-1 p-0 m-0">
-        {map && (
-          zoomLevel < 14 ? (
-            <>
-              {hospitalClusters.map((cluster, idx) => (
-                <ClusterMarker
-                  key={`hospital-${idx}`}
-                  map={map}
-                  cluster={{ ...cluster, type: 'hospital' }}
-                />
-              ))}
-              {pharmacyClusters.map((cluster, idx) => (
-                <ClusterMarker
-                  key={`pharmacy-${idx}`}
-                  map={map}
-                  cluster={{ ...cluster, type: 'pharmacy' }}
-                />
-              ))}
-            </>
-          ) : (
-            <>
-              {hospitals.map((hospital, index) => (
-                <HospitalMarker
-                  key={index}
-                  map={map}
-                  hospital={hospital}
-                  zoomLevel={zoomLevel}
-                />
-              ))}
-              {pharmacies.map((pharmacy, index) => (
-                <PharmacyMarker
-                  key={index}
-                  map={map}
-                  pharmacy={pharmacy}
-                  zoomLevel={zoomLevel}
-                />
-              ))}
-            </>
-          )
-        )}
+      {/* 지도+사이드바 flex row로 묶기 */}
+      <div className="flex flex-row flex-1 h-0">
+        <InfoSidebar info={selectedInfo} onClose={handleSidebarClose} />
+        <div ref={mapRef} className="flex-1 p-0 m-0">
+          {map && (
+            zoomLevel < 18 ? (
+              <>
+                {hospitalClusters.map((cluster, idx) => (
+                  <ClusterMarker
+                    key={`hospital-${idx}`}
+                    map={map}
+                    cluster={{ ...cluster, type: 'hospital' }}
+                  />
+                ))}
+                {pharmacyClusters.map((cluster, idx) => (
+                  <ClusterMarker
+                    key={`pharmacy-${idx}`}
+                    map={map}
+                    cluster={{ ...cluster, type: 'pharmacy' }}
+                  />
+                ))}
+              </>
+            ) : (
+              <>
+                {hospitals.map((hospital, index) => (
+                  <HospitalMarker
+                    key={index}
+                    map={map}
+                    hospital={hospital}
+                    zoomLevel={zoomLevel}
+                    onClick={() => handleHospitalClick(hospital)}
+                  />
+                ))}
+                {pharmacies.map((pharmacy, index) => (
+                  <PharmacyMarker
+                    key={index}
+                    map={map}
+                    pharmacy={pharmacy}
+                    zoomLevel={zoomLevel}
+                    onClick={() => handlePharmacyClick(pharmacy)}
+                  />
+                ))}
+              </>
+            )
+          )}
+        </div>
       </div>
     </div>
   );

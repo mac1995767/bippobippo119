@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-const PharmacyMarker = ({ map, pharmacy, zoomLevel }) => {
+const PharmacyMarker = ({ map, pharmacy, zoomLevel, onClick }) => {
   const markerRef = useRef(null);
 
   useEffect(() => {
@@ -43,9 +43,9 @@ const PharmacyMarker = ({ map, pharmacy, zoomLevel }) => {
 
     markerRef.current = new window.naver.maps.Marker(markerOptions);
 
+    // 마커 클릭 이벤트
     window.naver.maps.Event.addListener(markerRef.current, 'click', () => {
-      // 약국 상세 정보 표시 로직
-      console.log('약국 클릭:', pharmacy);
+      if (onClick) onClick(pharmacy);
     });
 
     return () => {
@@ -53,7 +53,7 @@ const PharmacyMarker = ({ map, pharmacy, zoomLevel }) => {
         markerRef.current.setMap(null);
       }
     };
-  }, [map, pharmacy, zoomLevel]);
+  }, [map, pharmacy, zoomLevel, onClick]);
 
   return null;
 };

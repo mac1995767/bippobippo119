@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-const HospitalMarker = ({ map, hospital, zoomLevel }) => {
+const HospitalMarker = ({ map, hospital, zoomLevel, onClick }) => {
   const markerRef = useRef(null);
 
   useEffect(() => {
@@ -49,7 +49,7 @@ const HospitalMarker = ({ map, hospital, zoomLevel }) => {
 
     // 마커 클릭 이벤트
     window.naver.maps.Event.addListener(markerRef.current, 'click', () => {
-      console.log('병원 클릭:', hospital);
+      if (onClick) onClick(hospital);
     });
 
     return () => {
@@ -57,7 +57,7 @@ const HospitalMarker = ({ map, hospital, zoomLevel }) => {
         markerRef.current.setMap(null);
       }
     };
-  }, [map, hospital, zoomLevel]);
+  }, [map, hospital, zoomLevel, onClick]);
 
   return null;
 };
