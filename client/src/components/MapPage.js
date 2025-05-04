@@ -9,6 +9,7 @@ import ClusterMarker from './markers/ClusterMarker';
 import hospitalClusters from './cluster/HospitalClusterStats';
 import pharmacyClusters from './cluster/PharmacyClusterStats';
 import debounce from 'lodash.debounce';
+import MapZoomControl from './MapZoomControl';
 // import { fetchMapData } from '../service/api';
 
 const MapPage = () => {
@@ -75,10 +76,20 @@ const MapPage = () => {
     };
   }, []);
 
+  // 지도 확대/축소 버튼 핸들러
+  const handleZoomIn = () => {
+    if (map) map.setZoom(map.getZoom() + 1);
+  };
+  const handleZoomOut = () => {
+    if (map) map.setZoom(map.getZoom() - 1);
+  };
+
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
       <MapFilterBar />
+      {/* 확대/축소 버튼 컴포넌트로 분리 */}
+      <MapZoomControl onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
       <div ref={mapRef} className="w-full flex-1 p-0 m-0">
         {map && (
           zoomLevel < 14 ? (
