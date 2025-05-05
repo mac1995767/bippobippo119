@@ -1,7 +1,8 @@
 import React from 'react';
 
 const categories = [
-  '종합병원', '내과', '외과', '소아과', '산부인과', '치과', '한의원', '약국', '기타'
+  '지도',     
+  '빅데이터'
 ];
 
 const MapCategoryTabs = () => (

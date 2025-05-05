@@ -25,7 +25,7 @@ const OrientalHospitalMarker = ({ map, hospital, onClick, selected }) => {
       map,
       title: hospital.yadmNm || hospital.name,
       icon: {
-        content: `<img src="/images/${selected ? 's-herbalClinic.png' : 'herbalClinic.png'}" width="${size}" height="${size}" />`,
+        content: `<img src="/images/markers/${selected ? 's-herbalClinic.png' : 'herbalClinic.png'}" width="${size}" height="${size}" />`,
         size: new window.naver.maps.Size(size, size),
         anchor: new window.naver.maps.Point(size / 2, size / 2),
         origin: new window.naver.maps.Point(0, 0)
