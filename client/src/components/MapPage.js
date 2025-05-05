@@ -4,6 +4,8 @@ import MapCategoryTabs from './MapCategoryTabs';
 import MapFilterBar from './MapFilterBar';
 import HospitalMarker from './markers/HospitalMarker';
 import PharmacyMarker from './markers/PharmacyMarker';
+import DetailedHospitalMarker from './markers/DetailedHospitalMarker';
+import DetailedPharmacyMarker from './markers/DetailedPharmacyMarker';
 import FacilityMarker from './markers/FacilityMarker';
 import ClusterMarker from './markers/ClusterMarker';
 import hospitalClusters from './cluster/HospitalClusterStats';
@@ -224,7 +226,7 @@ const MapPage = () => {
                   />
                 ))}
               </>
-            ) : (
+            ) : zoomLevel < 19 ? (
               <>
                 {hospitals.map((hospital) => (
                   <HospitalMarker
@@ -242,6 +244,27 @@ const MapPage = () => {
                     map={map}
                     pharmacy={pharmacy}
                     zoomLevel={zoomLevel}
+                    onClick={() => handlePharmacyClick(pharmacy)}
+                    selected={selectedPharmacyId === getPharmacyUniqueId(pharmacy)}
+                  />
+                ))}
+              </>
+            ) : (
+              <>
+                {hospitals.map((hospital) => (
+                  <DetailedHospitalMarker
+                    key={getHospitalUniqueId(hospital)}
+                    map={map}
+                    hospital={hospital}
+                    onClick={() => handleHospitalClick(hospital)}
+                    selected={selectedHospitalId === getHospitalUniqueId(hospital)}
+                  />
+                ))}
+                {pharmacies.map((pharmacy) => (
+                  <DetailedPharmacyMarker
+                    key={getPharmacyUniqueId(pharmacy)}
+                    map={map}
+                    pharmacy={pharmacy}
                     onClick={() => handlePharmacyClick(pharmacy)}
                     selected={selectedPharmacyId === getPharmacyUniqueId(pharmacy)}
                   />
