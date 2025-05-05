@@ -1,10 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 
-const HospitalMarker = ({ map, hospital, zoomLevel, onClick }) => {
+const HospitalMarker = ({ map, hospital, zoomLevel, onClick, selected }) => {
   const markerRef = useRef(null);
 
   useEffect(() => {
     if (!map || !hospital || !hospital.location) return;
+
+    console.log('HospitalMarker selected:', selected);
+    console.log('Hospital:', hospital);
 
     // 값 확인용 로그
     console.log('마커 생성:', hospital.yadmNm, hospital.location);
@@ -19,7 +22,7 @@ const HospitalMarker = ({ map, hospital, zoomLevel, onClick }) => {
       markerOptions = {
         ...markerOptions,
         icon: {
-          content: `<div style="display: flex; align-items: center; justify-content: center;"><img src='/images/markers/hospital.png' alt='병원' style='width:36px; height:36px;'/></div>`,
+          content: `<div style="display: flex; align-items: center; justify-content: center;"><img src='${selected ? '/images/markers/s-hospital.png' : '/images/markers/hospital.png'}' alt='병원' style='width:36px; height:36px;'/></div>`,
           size: new window.naver.maps.Size(36, 36),
           anchor: new window.naver.maps.Point(18, 36),
         }
@@ -57,7 +60,7 @@ const HospitalMarker = ({ map, hospital, zoomLevel, onClick }) => {
         markerRef.current.setMap(null);
       }
     };
-  }, [map, hospital, zoomLevel, onClick]);
+  }, [map, hospital, zoomLevel, onClick, selected]);
 
   return null;
 };

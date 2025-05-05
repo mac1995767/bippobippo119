@@ -25,6 +25,14 @@ const MapPage = () => {
   const [loadingMessage, setLoadingMessage] = useState('');
   const loadingTimeoutRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const [selectedHospitalId, setSelectedHospitalId] = useState(null);
+  const [selectedPharmacyId, setSelectedPharmacyId] = useState(null);
+
+  const getPharmacyUniqueId = (pharmacy) =>
+    pharmacy.ykiho || `${pharmacy.name}_${pharmacy.lat}_${pharmacy.lng}`;
+
+  const getHospitalUniqueId = (hospital) =>
+    hospital.ykiho || `${hospital.yadmNm || hospital.name}_${hospital.location.lat}_${hospital.location.lon}`;
 
   // 지도 영역 내 데이터 불러오기 함수
   const fetchDataByBounds = async (mapInstance) => {
@@ -98,8 +106,14 @@ const MapPage = () => {
   };
 
   // 마커 클릭 핸들러
-  const handleHospitalClick = (hospital) => setSelectedInfo(hospital);
-  const handlePharmacyClick = (pharmacy) => setSelectedInfo(pharmacy);
+  const handleHospitalClick = (hospital) => {
+    setSelectedHospitalId(getHospitalUniqueId(hospital));
+    setSelectedInfo(hospital);
+  };
+  const handlePharmacyClick = (pharmacy) => {
+    setSelectedPharmacyId(getPharmacyUniqueId(pharmacy));
+    setSelectedInfo(pharmacy);
+  };
   const handleSidebarClose = () => setSelectedInfo(null);
 
   // 검색 결과 처리 핸들러
@@ -212,22 +226,24 @@ const MapPage = () => {
               </>
             ) : (
               <>
-                {hospitals.map((hospital, index) => (
+                {hospitals.map((hospital) => (
                   <HospitalMarker
-                    key={index}
+                    key={getHospitalUniqueId(hospital)}
                     map={map}
                     hospital={hospital}
                     zoomLevel={zoomLevel}
                     onClick={() => handleHospitalClick(hospital)}
+                    selected={selectedHospitalId === getHospitalUniqueId(hospital)}
                   />
                 ))}
-                {pharmacies.map((pharmacy, index) => (
+                {pharmacies.map((pharmacy) => (
                   <PharmacyMarker
-                    key={index}
+                    key={getPharmacyUniqueId(pharmacy)}
                     map={map}
                     pharmacy={pharmacy}
                     zoomLevel={zoomLevel}
                     onClick={() => handlePharmacyClick(pharmacy)}
+                    selected={selectedPharmacyId === getPharmacyUniqueId(pharmacy)}
                   />
                 ))}
               </>

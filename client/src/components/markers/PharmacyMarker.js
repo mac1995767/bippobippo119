@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-const PharmacyMarker = ({ map, pharmacy, zoomLevel, onClick }) => {
+const PharmacyMarker = ({ map, pharmacy, zoomLevel, onClick, selected }) => {
   const markerRef = useRef(null);
 
   useEffect(() => {
@@ -16,7 +16,7 @@ const PharmacyMarker = ({ map, pharmacy, zoomLevel, onClick }) => {
       markerOptions = {
         ...markerOptions,
         icon: {
-          content: `<div style=\"display: flex; align-items: center; justify-content: center;\"><img src='/images/markers/pharmacy.png' alt='약국' style='width:36px; height:36px;'/></div>`,
+          content: `<div style=\"display: flex; align-items: center; justify-content: center;\"><img src='${selected ? '/images/markers/s-pharmacy.png' : '/images/markers/pharmacy.png'}' alt='약국' style='width:36px; height:36px;'/></div>`,
           size: new window.naver.maps.Size(36, 36),
           anchor: new window.naver.maps.Point(18, 36),
         }
@@ -53,7 +53,7 @@ const PharmacyMarker = ({ map, pharmacy, zoomLevel, onClick }) => {
         markerRef.current.setMap(null);
       }
     };
-  }, [map, pharmacy, zoomLevel, onClick]);
+  }, [map, pharmacy, zoomLevel, onClick, selected]);
 
   return null;
 };
