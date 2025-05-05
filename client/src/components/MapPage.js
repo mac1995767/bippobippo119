@@ -23,6 +23,10 @@ import MapZoomControl from './MapZoomControl';
 import InfoSidebar from './InfoSidebar';
 import MapSearchBar from './MapSearchBar';
 import SgguClusterMarker from './markers/SgguClusterMarker';
+import ClinicMarker from './markers/ClinicMarker';
+import OrientalHospitalMarker from './markers/OrientalHospitalMarker';
+import DentalClinicMarker from './markers/DentalClinicMarker';
+import NursingHospitalMarker from './markers/NursingHospitalMarker';
 
 const MapPage = () => {
   const mapRef = useRef(null);
@@ -199,6 +203,32 @@ const MapPage = () => {
     pharmacies.length && console.log('약국 샘플:', pharmacies[0]);
   }, [hospitals, pharmacies]);
 
+  // 병원 유형별 마커 컴포넌트 매핑
+  const getMarkerComponent = (hospital, selected) => {
+    const commonProps = {
+      map: map,
+      hospital: hospital,
+      onClick: () => handleHospitalClick(hospital),
+      zoomLevel: zoomLevel,
+      selected: selected
+    };
+
+    switch (hospital.clCdNm) {
+      case '한의원':
+        return <OrientalHospitalMarker {...commonProps} />;
+      case '치과의원':
+        return <DentalClinicMarker {...commonProps} />;
+      case '요양병원':
+        return <NursingHospitalMarker {...commonProps} />;
+      case '의원':
+        return <ClinicMarker {...commonProps} />;
+      default:
+        return selected ? 
+          <DetailedHospitalMarker {...commonProps} /> : 
+          <HospitalMarker {...commonProps} />;
+    }
+  };
+
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
@@ -257,21 +287,12 @@ const MapPage = () => {
               {(zoomLevel >= 16 && zoomLevel < 19) && (
                 <>
                   {hospitals.map(hospital => (
-                    selectedHospitalId === getHospitalUniqueId(hospital)
-                      ? <DetailedHospitalMarker
-                          key={getHospitalUniqueId(hospital)}
-                          map={map}
-                          hospital={hospital}
-                          onClick={() => handleHospitalClick(hospital)}
-                          selected
-                        />
-                      : <HospitalMarker
-                          key={getHospitalUniqueId(hospital)}
-                          map={map}
-                          hospital={hospital}
-                          zoomLevel={zoomLevel}
-                          onClick={() => handleHospitalClick(hospital)}
-                        />
+                    <React.Fragment key={getHospitalUniqueId(hospital)}>
+                      {getMarkerComponent(
+                        hospital, 
+                        selectedHospitalId === getHospitalUniqueId(hospital)
+                      )}
+                    </React.Fragment>
                   ))}
                   {pharmacies.map(pharmacy => (
                     selectedPharmacyId === getPharmacyUniqueId(pharmacy)
