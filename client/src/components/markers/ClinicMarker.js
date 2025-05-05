@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
+// 의원
 const ClinicMarker = ({ map, hospital, onClick, selected }) => {
   const markerRef = useRef(null);
 
@@ -20,18 +21,13 @@ const ClinicMarker = ({ map, hospital, onClick, selected }) => {
     }
 
     const position = new window.naver.maps.LatLng(lat, lng);
-    const size = selected ? 24 : 16;
-    const color = selected ? '#FF0000' : '#FF6B6B';
+    const size = selected ? 36 : 28;
+    const imgSrc = selected ? '/images/markers/s-clinic.png' : '/images/markers/clinic.png';
 
     const markerHtml = `
-      <div style="
-        width: ${size}px;
-        height: ${size}px;
-        background-color: ${color};
-        border: 2px solid white;
-        border-radius: 50%;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      "></div>
+      <div style="display: flex; align-items: center; justify-content: center;">
+        <img src='${imgSrc}' alt='의원' style='width:${size}px; height:${size}px;' />
+      </div>
     `;
 
     markerRef.current = new window.naver.maps.Marker({
@@ -41,7 +37,7 @@ const ClinicMarker = ({ map, hospital, onClick, selected }) => {
       icon: {
         content: markerHtml,
         size: new window.naver.maps.Size(size, size),
-        anchor: new window.naver.maps.Point(size/2, size/2),
+        anchor: new window.naver.maps.Point(size / 2, size),
         origin: new window.naver.maps.Point(0, 0)
       }
     });
@@ -54,7 +50,7 @@ const ClinicMarker = ({ map, hospital, onClick, selected }) => {
         markerRef.current = null;
       }
     };
-  }, [map, hospital, selected]);
+  }, [map, hospital, selected, onClick]);
 
   return null;
 };
