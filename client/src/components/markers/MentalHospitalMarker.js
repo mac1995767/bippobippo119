@@ -1,9 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 
-const OrientalHospitalMarker = ({ map, hospital, onClick, selected }) => {
+const MentalHospitalMarker = ({ map, hospital, onClick, selected }) => {
   const markerRef = useRef(null);
 
-  // 좌표를 유연하게 가져오는 헬퍼
   const getLat = h => parseFloat(h.YPos ?? h.lat ?? h.location?.lat);
   const getLng = h => parseFloat(h.XPos ?? h.lng ?? h.location?.lon);
 
@@ -13,13 +12,13 @@ const OrientalHospitalMarker = ({ map, hospital, onClick, selected }) => {
     const lat = getLat(hospital);
     const lng = getLng(hospital);
     if (isNaN(lat) || isNaN(lng)) {
-      console.warn('Invalid coords for OrientalHospital:', hospital);
+      console.warn('Invalid coords for MentalHospital:', hospital);
       return;
     }
 
     const position = new window.naver.maps.LatLng(lat, lng);
     const size = selected ? 24 : 16;
-    const color = selected ? '#388E3C' : '#66BB6A';
+    const color = selected ? '#7B1FA2' : '#AB47BC';
 
     const markerHtml = `
       <div style="
@@ -57,4 +56,4 @@ const OrientalHospitalMarker = ({ map, hospital, onClick, selected }) => {
   return null;
 };
 
-export default OrientalHospitalMarker;
+export default MentalHospitalMarker; 

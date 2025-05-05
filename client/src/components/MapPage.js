@@ -27,6 +27,10 @@ import ClinicMarker from './markers/ClinicMarker';
 import OrientalHospitalMarker from './markers/OrientalHospitalMarker';
 import DentalClinicMarker from './markers/DentalClinicMarker';
 import NursingHospitalMarker from './markers/NursingHospitalMarker';
+import SuperGeneralHospitalMarker from './markers/SuperGeneralHospitalMarker';
+import GeneralHospitalMarker from './markers/GeneralHospitalMarker';
+import MentalHospitalMarker from './markers/MentalHospitalMarker';
+import DentalHospitalMarker from './markers/DentalHospitalMarker';
 
 const MapPage = () => {
   const mapRef = useRef(null);
@@ -222,6 +226,16 @@ const MapPage = () => {
         return <NursingHospitalMarker {...commonProps} />;
       case '의원':
         return <ClinicMarker {...commonProps} />;
+      case '병원':
+        return <HospitalMarker {...commonProps} />;
+      case '종합병원':
+        return <GeneralHospitalMarker {...commonProps} />;
+      case '상급종합':
+        return <SuperGeneralHospitalMarker {...commonProps} />;
+      case '정신병원':
+        return <MentalHospitalMarker {...commonProps} />;
+      case '치과병원':
+        return <DentalHospitalMarker {...commonProps} />;
       default:
         return selected ? 
           <DetailedHospitalMarker {...commonProps} /> : 
