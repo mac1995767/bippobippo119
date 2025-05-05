@@ -32,21 +32,21 @@ const filterRegions = [
 ];
 
 const filterSubjects = [
-  { label: "전체", icon: "🌐" },
-  { label: "상급종합", icon: "🏥" },
-  { label: "보건의료원", icon: "🏥" },
-  { label: "보건진료소", icon: "🏥" },
-  { label: "보건지소", icon: "🏥" },
-  { label: "보건소", icon: "🏥" },
-  { label: "병원", icon: "🏥" },
-  { label: "종합병원", icon: "🏥" },
-  { label: "의원", icon: "🏥" },
-  { label: "요양병원", icon: "🏥" },
-  { label: "치과의원", icon: "🦷" },
-  { label: "치과병원", icon: "🦷" },
-  { label: "한방병원", icon: "🌿" },
-  { label: "정신병원", icon: "🧠" },
-  { label: "조산원", icon: "👶" }
+  { label: "전체", icon: "🗂️" },       
+  { label: "상급종합", icon: "🏥" },      
+  { label: "보건의료원", icon: "🏨" },    
+  { label: "보건진료소", icon: "🩺" },    
+  { label: "보건지소", icon: "🧪" },     
+  { label: "보건소", icon: "🏬" },       
+  { label: "병원", icon: "🧑‍⚕️" },       
+  { label: "종합병원", icon: "🏣" },    
+  { label: "의원", icon: "💊" },          
+  { label: "요양병원", icon: "🛌" },       
+  { label: "치과의원", icon: "🦷" },       
+  { label: "치과병원", icon: "🪥" },       
+  { label: "한방병원", icon: "🌿" },     
+  { label: "정신병원", icon: "🧠" },       
+  { label: "조산원", icon: "🤱" }         
 ];
 
 const filterMajor = [

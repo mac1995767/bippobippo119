@@ -263,4 +263,44 @@ export const searchLocation = async (query) => {
   }
 };
 
+// 시도별 병원/약국 요약 데이터 가져오기
+export const fetchMapSummary = async () => {
+  try {
+    const response = await axios.get(`${baseUrl}/api/map/summary`);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching map summary:', error);
+    throw error;
+  }
+};
+
+// 시군구별 병원/약국 요약 데이터 가져오기
+export const fetchMapSummarySggu = async () => {
+  try {
+    const response = await axios.get(`${baseUrl}/api/map/summary-sggu`);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching map summary sggu:', error);
+    throw error;
+  }
+};
+
+// 시도별 좌표+집계
+export const fetchSidoSummary = async () => {
+  const res = await axios.get(`${baseUrl}/api/map/sido-summary`);
+  return res.data;
+};
+
+// 시군구별 좌표+집계 (바운드 파라미터 지원)
+export const fetchSgguSummary = async (params = {}) => {
+  const res = await axios.get(`${baseUrl}/api/map/sggu-summary`, { params });
+  return res.data;
+};
+
+// 읍면동별 좌표+집계 (바운드 파라미터 지원)
+export const fetchEmdongSummary = async (params = {}) => {
+  const res = await axios.get(`${baseUrl}/api/map/emdong-summary`, { params });
+  return res.data;
+};
+
 //console.log(`🔗 API Base URL: ${baseURL}`);

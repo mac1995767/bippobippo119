@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const client = require('../config/elasticsearch');
+const SgguCoord = require('../models/SgguCoord');
 
 // 기본 경로 테스트
 router.get('/', (req, res) => {
@@ -161,6 +162,151 @@ router.get('/map-data', async (req, res) => {
       error: 'Elasticsearch 조회 오류',
       details: err.message || '알 수 없는 오류'
     });
+  }
+});
+
+// 시도별 병원/약국 개수 요약 API
+router.get('/summary', async (req, res) => {
+  try {
+    // 병원 집계
+    const hospitalAgg = await client.search({
+      index: 'map_data',
+      size: 0,
+      body: {
+        query: { term: { type: 'hospital' } },
+        aggs: {
+          by_sido: {
+            terms: { field: 'sidoCdNm.keyword', size: 30 }
+          }
+        }
+      }
+    });
+
+    // 약국 집계
+    const pharmacyAgg = await client.search({
+      index: 'map_data',
+      size: 0,
+      body: {
+        query: { term: { type: 'pharmacy' } },
+        aggs: {
+          by_sido: {
+            terms: { field: 'sidoCdNm.keyword', size: 30 }
+          }
+        }
+      }
+    });
+
+    // 결과 정리
+    const hospitalCounts = {};
+    hospitalAgg.body.aggregations.by_sido.buckets.forEach(b => {
+      hospitalCounts[b.key] = b.doc_count;
+    });
+
+    const pharmacyCounts = {};
+    pharmacyAgg.body.aggregations.by_sido.buckets.forEach(b => {
+      pharmacyCounts[b.key] = b.doc_count;
+    });
+
+    // 합쳐서 반환
+    const result = Object.keys({ ...hospitalCounts, ...pharmacyCounts }).map(sido => ({
+      sido,
+      hospitalCount: hospitalCounts[sido] || 0,
+      pharmacyCount: pharmacyCounts[sido] || 0
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error('Summary API 오류:', err);
+    res.status(500).json({ error: 'Summary API 오류', details: err.message });
+  }
+});
+
+// 시도별 요약 API
+router.get('/sido-summary', async (req, res) => {
+  try {
+    const result = await SgguCoord.aggregate([
+      { $group: {
+          _id: '$sidoNm',
+          YPos: { $first: '$YPos' },
+          XPos: { $first: '$XPos' }
+      }},
+      { $project: { sidoNm: '$_id', YPos: 1, XPos: 1, _id: 0 } }
+    ]);
+    res.json(result);
+  } catch (err) {
+    console.error('sido-summary error:', err);
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
+// 시군구별 요약 API
+router.get('/sggu-summary', async (req, res) => {
+  try {
+    console.log('시군구 요약 API 호출됨');
+    
+    // 초기 데이터 확인
+    const initialData = await SgguCoord.find({ emdongNm: "-", riNm: "-" });
+    console.log('초기 데이터 샘플:', initialData.slice(0, 3));
+    
+    const result = await SgguCoord.aggregate([
+      { $match: { emdongNm: "-", riNm: "-" } },
+      { $group: {
+          _id: '$sgguNm',
+          YPos: { $first: '$YPos' },
+          XPos: { $first: '$XPos' }
+      }},
+      { $project: { sgguNm: '$_id', YPos: 1, XPos: 1, _id: 0 } }
+    ]);
+    
+    console.log('집계 결과:', result);
+    console.log('결과 개수:', result.length);
+    
+    res.json(result);
+  } catch (err) {
+    console.error('sggu-summary error:', err);
+    console.error('에러 상세:', {
+      message: err.message,
+      stack: err.stack,
+      name: err.name
+    });
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
+// 읍면동별 요약 API
+router.get('/emdong-summary', async (req, res) => {
+  try {
+    const result = await SgguCoord.aggregate([
+      { $match: { riNm: "-" } },
+      { $group: {
+          _id: '$emdongNm',
+          YPos: { $first: '$YPos' },
+          XPos: { $first: '$XPos' }
+      }},
+      { $project: { emdongNm: '$_id', YPos: 1, XPos: 1, _id: 0 } }
+    ]);
+    res.json(result);
+  } catch (err) {
+    console.error('emdong-summary error:', err);
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
+});
+
+// 리(리)별 요약 API
+router.get('/ri-summary', async (req, res) => {
+  try {
+    const result = await SgguCoord.aggregate([
+      { $group: {
+          _id: '$riNm'
+      }},
+      { $project: { _id: 0, riNm: '$_id' } }
+    ]);
+    // 단순 배열로 변환
+    const riList = result.map(item => item.riNm);
+    res.json(riList);
+  } catch (err) {
+    console.error('ri-summary error:', err);
+    res.status(500).json({ error: err.message, stack: err.stack });
   }
 });
 

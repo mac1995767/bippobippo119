@@ -1,12 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { fetchMapTypeData } from '../service/api';
+import {
+  fetchMapTypeData,
+  fetchMapSummary,
+  fetchMapSummarySggu,
+  fetchSidoSummary,
+  fetchSgguSummary,
+  fetchEmdongSummary
+} from '../service/api';
 import MapCategoryTabs from './MapCategoryTabs';
 import MapFilterBar from './MapFilterBar';
 import HospitalMarker from './markers/HospitalMarker';
 import PharmacyMarker from './markers/PharmacyMarker';
 import DetailedHospitalMarker from './markers/DetailedHospitalMarker';
 import DetailedPharmacyMarker from './markers/DetailedPharmacyMarker';
-import FacilityMarker from './markers/FacilityMarker';
+import SimpleHospitalMarker from './markers/SimpleHospitalMarker';
+import SimplePharmacyMarker from './markers/SimplePharmacyMarker';
 import ClusterMarker from './markers/ClusterMarker';
 import hospitalClusters from './cluster/HospitalClusterStats';
 import pharmacyClusters from './cluster/PharmacyClusterStats';
@@ -14,7 +22,7 @@ import debounce from 'lodash.debounce';
 import MapZoomControl from './MapZoomControl';
 import InfoSidebar from './InfoSidebar';
 import MapSearchBar from './MapSearchBar';
-// import { fetchMapData } from '../service/api';
+import SgguClusterMarker from './markers/SgguClusterMarker';
 
 const MapPage = () => {
   const mapRef = useRef(null);
@@ -30,13 +38,19 @@ const MapPage = () => {
   const [selectedHospitalId, setSelectedHospitalId] = useState(null);
   const [selectedPharmacyId, setSelectedPharmacyId] = useState(null);
 
+  // 요약 데이터
+  const [sidoSummary, setSidoSummary] = useState([]);
+  const [sgguSummary, setSgguSummary] = useState([]);
+  const [emdongSummary, setEmdongSummary] = useState([]);
+
+  // 고유 ID 생성 함수
   const getPharmacyUniqueId = (pharmacy) =>
     pharmacy.ykiho || `${pharmacy.name}_${pharmacy.lat}_${pharmacy.lng}`;
 
   const getHospitalUniqueId = (hospital) =>
     hospital.ykiho || `${hospital.yadmNm || hospital.name}_${hospital.location.lat}_${hospital.location.lon}`;
 
-  // 지도 영역 내 데이터 불러오기 함수
+  // 지도 영역 내 병원/약국 데이터 fetch
   const fetchDataByBounds = async (mapInstance) => {
     if (!mapInstance) return;
     const bounds = mapInstance.getBounds();
@@ -63,11 +77,9 @@ const MapPage = () => {
       console.error('지도 데이터 불러오기 오류:', err);
     }
   };
-
-  // 디바운스 적용 (300ms)
   const fetchDataByBoundsDebounced = debounce(fetchDataByBounds, 300);
 
-  // 네이버 지도 API 스크립트 로드
+  // 네이버 지도 스크립트 로드
   useEffect(() => {
     const script = document.createElement('script');
     script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.REACT_APP_NAVER_MAP_CLIENT_ID}&submodules=geocoder`;
@@ -81,15 +93,11 @@ const MapPage = () => {
           zoom: 8,
           minZoom: 8
         });
-
-        // zoom/idle(이동) 이벤트 리스너 추가 (debounce 적용)
         window.naver.maps.Event.addListener(mapInstance, 'idle', () => {
           setZoomLevel(mapInstance.getZoom());
           fetchDataByBoundsDebounced(mapInstance);
         });
-
         setMap(mapInstance);
-        // 최초 로딩 시 데이터 fetch
         fetchDataByBounds(mapInstance);
       }
     };
@@ -99,15 +107,38 @@ const MapPage = () => {
     };
   }, []);
 
-  // 지도 확대/축소 버튼 핸들러
-  const handleZoomIn = () => {
-    if (map) map.setZoom(map.getZoom() + 1);
-  };
-  const handleZoomOut = () => {
-    if (map) map.setZoom(map.getZoom() - 1);
-  };
+  // 요약 데이터(fetchSido, fetchSggu, fetchEmdong) 호출 로직
+  useEffect(() => {
+    if (!map) return;
+    const bounds = map.getBounds();
+    const sw = bounds.getSW();
+    const ne = bounds.getNE();
+    const params = {
+      swLat: sw.lat(),
+      swLng: sw.lng(),
+      neLat: ne.lat(),
+      neLng: ne.lng()
+    };
 
-  // 마커 클릭 핸들러
+    if (zoomLevel >= 8 && zoomLevel <= 10) {
+      // 8~10: 시도 요약
+      fetchSidoSummary(params).then(setSidoSummary).catch(console.error);
+    }
+    else if (zoomLevel >= 11 && zoomLevel <= 14) {
+      // 11~12: 시군구 요약
+      fetchSgguSummary(params).then(setSgguSummary).catch(console.error);
+    }
+    else if (zoomLevel >= 15 && zoomLevel < 16) {
+      // 13~15: 읍면동 요약
+      fetchEmdongSummary(params).then(setEmdongSummary).catch(console.error);
+    }
+  }, [zoomLevel, map]);
+
+  // 확대/축소 버튼
+  const handleZoomIn = () => map && map.setZoom(map.getZoom() + 1);
+  const handleZoomOut = () => map && map.setZoom(map.getZoom() - 1);
+
+  // 마커 클릭
   const handleHospitalClick = (hospital) => {
     setSelectedHospitalId(getHospitalUniqueId(hospital));
     setSelectedInfo(hospital);
@@ -118,57 +149,35 @@ const MapPage = () => {
   };
   const handleSidebarClose = () => setSelectedInfo(null);
 
-  // 검색 결과 처리 핸들러
+  // 검색 처리
   const handleSearchResult = async (result) => {
     if (!map || !result) return;
-
     try {
       setIsLoading(true);
       setLoadingMessage('위치로 이동 중...');
-
-      const { lat, lng } = result;
-      const point = new window.naver.maps.LatLng(lat, lng);
-      
-      // 먼저 지도 이동
+      const point = new window.naver.maps.LatLng(result.lat, result.lng);
       map.setCenter(point);
       map.setZoom(18);
-
-      // 지도 이동이 완료될 때까지 기다림
-      await new Promise(resolve => {
-        window.naver.maps.Event.addListenerOnce(map, 'idle', resolve);
-      });
-
-      // 현재 지도 범위 내 데이터 로드
-      const bounds = map.getBounds();
-      const sw = bounds.getSW();
-      const ne = bounds.getNE();
-
-      // 검색 범위를 현재 위치 주변 1km로 제한
-      const center = map.getCenter();
-      const distance = 0.01; // 약 1km
-      const searchBounds = {
-        swLat: center.lat() - distance,
-        swLng: center.lng() - distance,
-        neLat: center.lat() + distance,
-        neLng: center.lng() + distance
-      };
+      await new Promise(resolve => window.naver.maps.Event.addListenerOnce(map, 'idle', resolve));
 
       setLoadingMessage('데이터를 불러오는 중...');
+      const center = map.getCenter();
+      const d = 0.01; // 대략 1km
+      const searchBounds = {
+        swLat: center.lat() - d,
+        swLng: center.lng() - d,
+        neLat: center.lat() + d,
+        neLng: center.lng() + d
+      };
 
-      // 병원 데이터만 먼저 로드
       const hospRes = await fetchMapTypeData('hospital', searchBounds);
       setHospitals(hospRes);
-
-      // 약국 데이터 로드
       const pharmRes = await fetchMapTypeData('pharmacy', searchBounds);
-      setPharmacies(
-        pharmRes.map(pharm => ({
-          ...pharm,
-          lat: pharm.lat || (pharm.location && pharm.location.lat),
-          lng: pharm.lng || (pharm.location && pharm.location.lon),
-        }))
-      );
-
+      setPharmacies(pharmRes.map(pharm => ({
+        ...pharm,
+        lat: pharm.lat || (pharm.location && pharm.location.lat),
+        lng: pharm.lng || (pharm.location && pharm.location.lon),
+      })));
     } catch (err) {
       console.error('지도 데이터 불러오기 오류:', err);
       setLoadingMessage('데이터 로딩 중 오류가 발생했습니다.');
@@ -178,99 +187,136 @@ const MapPage = () => {
     }
   };
 
-  // 컴포넌트 언마운트 시 정리
-  useEffect(() => {
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
+  // 언마운트 시 cleanup
+  useEffect(() => () => {
+    if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
+    if (abortControllerRef.current) abortControllerRef.current.abort();
   }, []);
+
+  // 디버그 로그
+  useEffect(() => {
+    hospitals.length && console.log('병원 샘플:', hospitals[0]);
+    pharmacies.length && console.log('약국 샘플:', pharmacies[0]);
+  }, [hospitals, pharmacies]);
 
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
       <MapFilterBar />
       <MapZoomControl onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
-      {/* 지도+사이드바 flex row로 묶기 */}
+
       <div className="flex flex-row flex-1 h-0">
         <InfoSidebar info={selectedInfo} onClose={handleSidebarClose} />
         <div ref={mapRef} className="flex-1 p-0 m-0 relative">
           <MapSearchBar onSearch={handleSearchResult} />
           {isLoading && (
             <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center min-w-[200px]">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+              <div className="bg-white p-6 rounded-lg shadow-lg">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4" />
                 <span className="text-gray-700 font-medium">{loadingMessage}</span>
               </div>
             </div>
           )}
+
           {map && (
-            zoomLevel < 18 ? (
-              <>
-                {hospitalClusters.map((cluster, idx) => (
-                  <ClusterMarker
-                    key={`hospital-${idx}`}
-                    map={map}
-                    cluster={{ ...cluster, type: 'hospital' }}
-                  />
-                ))}
-                {pharmacyClusters.map((cluster, idx) => (
-                  <ClusterMarker
-                    key={`pharmacy-${idx}`}
-                    map={map}
-                    cluster={{ ...cluster, type: 'pharmacy' }}
-                  />
-                ))}
-              </>
-            ) : zoomLevel < 19 ? (
-              <>
-                {hospitals.map((hospital) => (
-                  <HospitalMarker
-                    key={getHospitalUniqueId(hospital)}
-                    map={map}
-                    hospital={hospital}
-                    zoomLevel={zoomLevel}
-                    onClick={() => handleHospitalClick(hospital)}
-                    selected={selectedHospitalId === getHospitalUniqueId(hospital)}
-                  />
-                ))}
-                {pharmacies.map((pharmacy) => (
-                  <PharmacyMarker
-                    key={getPharmacyUniqueId(pharmacy)}
-                    map={map}
-                    pharmacy={pharmacy}
-                    zoomLevel={zoomLevel}
-                    onClick={() => handlePharmacyClick(pharmacy)}
-                    selected={selectedPharmacyId === getPharmacyUniqueId(pharmacy)}
-                  />
-                ))}
-              </>
-            ) : (
-              <>
-                {hospitals.map((hospital) => (
-                  <DetailedHospitalMarker
-                    key={getHospitalUniqueId(hospital)}
-                    map={map}
-                    hospital={hospital}
-                    onClick={() => handleHospitalClick(hospital)}
-                    selected={selectedHospitalId === getHospitalUniqueId(hospital)}
-                  />
-                ))}
-                {pharmacies.map((pharmacy) => (
-                  <DetailedPharmacyMarker
-                    key={getPharmacyUniqueId(pharmacy)}
-                    map={map}
-                    pharmacy={pharmacy}
-                    onClick={() => handlePharmacyClick(pharmacy)}
-                    selected={selectedPharmacyId === getPharmacyUniqueId(pharmacy)}
-                  />
-                ))}
-              </>
-            )
+            <>
+              {/* 줌 8~10: 시도 요약 */}
+              {(zoomLevel >= 8 && zoomLevel <= 10) && sidoSummary.map(item => (
+                <ClusterMarker
+                  key={item.sidoNm}
+                  map={map}
+                  cluster={{ lat: item.YPos, lng: item.XPos, name: item.sidoNm }}
+                />
+              ))}
+
+              {/* 줌 11~12: 시군구 요약 */}
+              {(zoomLevel >= 11 && zoomLevel <= 14) && sgguSummary.map(item => (
+                <SgguClusterMarker
+                  key={`${item.sidoNm}-${item.sgguNm}`}
+                  map={map}
+                  sggu={item}
+                />
+              ))}
+
+              {/* 줌 13~15: 읍면동 요약 */}
+              {(zoomLevel >= 13 && zoomLevel < 16) && emdongSummary.map(item => (
+                <ClusterMarker
+                  key={item.emdongNm}
+                  map={map}
+                  cluster={{
+                    lat: item.YPos,
+                    lng: item.XPos,
+                    name: item.emdongNm,
+                    hospitalCount: item.hospitalCount,
+                    pharmacyCount: item.pharmacyCount
+                  }}
+                />
+              ))}
+
+              {/* 줌 16~18: 간단 마커(병원/약국) */}
+              {(zoomLevel >= 16 && zoomLevel < 19) && (
+                <>
+                  {hospitals.map(hospital => (
+                    selectedHospitalId === getHospitalUniqueId(hospital)
+                      ? <DetailedHospitalMarker
+                          key={getHospitalUniqueId(hospital)}
+                          map={map}
+                          hospital={hospital}
+                          onClick={() => handleHospitalClick(hospital)}
+                          selected
+                        />
+                      : <HospitalMarker
+                          key={getHospitalUniqueId(hospital)}
+                          map={map}
+                          hospital={hospital}
+                          zoomLevel={zoomLevel}
+                          onClick={() => handleHospitalClick(hospital)}
+                        />
+                  ))}
+                  {pharmacies.map(pharmacy => (
+                    selectedPharmacyId === getPharmacyUniqueId(pharmacy)
+                      ? <DetailedPharmacyMarker
+                          key={getPharmacyUniqueId(pharmacy)}
+                          map={map}
+                          pharmacy={pharmacy}
+                          onClick={() => handlePharmacyClick(pharmacy)}
+                          selected
+                        />
+                      : <PharmacyMarker
+                          key={getPharmacyUniqueId(pharmacy)}
+                          map={map}
+                          pharmacy={pharmacy}
+                          zoomLevel={zoomLevel}
+                          onClick={() => handlePharmacyClick(pharmacy)}
+                        />
+                  ))}
+                </>
+              )}
+
+              {/* 줌 19+: 상세 마커 */}
+              {zoomLevel >= 19 && (
+                <>
+                  {hospitals.map(hospital => (
+                    <DetailedHospitalMarker
+                      key={getHospitalUniqueId(hospital)}
+                      map={map}
+                      hospital={hospital}
+                      onClick={() => handleHospitalClick(hospital)}
+                      selected={selectedHospitalId === getHospitalUniqueId(hospital)}
+                    />
+                  ))}
+                  {pharmacies.map(pharmacy => (
+                    <DetailedPharmacyMarker
+                      key={getPharmacyUniqueId(pharmacy)}
+                      map={map}
+                      pharmacy={pharmacy}
+                      onClick={() => handlePharmacyClick(pharmacy)}
+                      selected={selectedPharmacyId === getPharmacyUniqueId(pharmacy)}
+                    />
+                  ))}
+                </>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -278,4 +324,4 @@ const MapPage = () => {
   );
 };
 
-export default MapPage; 
+export default MapPage;
