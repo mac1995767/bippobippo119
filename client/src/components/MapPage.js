@@ -71,10 +71,16 @@ const MapPage = () => {
     try {
       const [hospRes, pharmRes] = await Promise.all([
         fetchMapTypeData('hospital', {
-          swLat: sw.lat(), swLng: sw.lng(), neLat: ne.lat(), neLng: ne.lng()
+          swLat: sw.lat(), 
+          swLng: sw.lng(), 
+          neLat: ne.lat(), 
+          neLng: ne.lng()
         }),
         fetchMapTypeData('pharmacy', {
-          swLat: sw.lat(), swLng: sw.lng(), neLat: ne.lat(), neLng: ne.lng()
+          swLat: sw.lat(), 
+          swLng: sw.lng(), 
+          neLat: ne.lat(), 
+          neLng: ne.lng()
         })
       ]);
       setHospitals(hospRes);
@@ -151,7 +157,8 @@ const MapPage = () => {
       neLat: ne.lat(),
       neLng: ne.lng(),
       lat: center.lat(),
-      lng: center.lng()
+      lng: center.lng(),
+      zoom: zoomLevel.toString() // 줌 레벨을 문자열로 변환
     };
 
     if (zoomLevel >= 8 && zoomLevel <= 10) {
@@ -377,7 +384,9 @@ const MapPage = () => {
   const fetchSgguSummaryData = async (params) => {
     try {
       const data = await fetchSgguSummary(params);
+      console.log("시군구 요약 데이터 가져오기:", data);
       setSgguSummary(data);
+      
     } catch (error) {
       console.error('시군구 요약 데이터 조회 실패:', error);
     }
