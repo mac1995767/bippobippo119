@@ -11,21 +11,46 @@ const SgguClusterMarker = ({ map, sggu }) => {
       icon: {
         content: `
           <div style="
-            background: #fff;
-            border: 2px solid #3b82f6;
-            border-radius: 20px;
-            padding: 8px 16px;
-            font-size: 14px;
-            font-weight: 600;
-            color: #1e293b;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            background: #2563eb;
+            border-radius: 24px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            overflow: hidden;
+            font-family: 'Pretendard', 'sans-serif';
           ">
-            ${sggu.sgguNm}
+            <div style="
+              background: #fff;
+              color: #2563eb;
+              width: 40px;
+              height: 40px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 18px;
+              font-weight: 700;
+              border-radius: 50%;
+              margin-right: 4px;
+              border: 2px solid #2563eb;
+              box-sizing: border-box;
+            ">
+              ${sggu.hospitalCount}
+            </div>
+            <div style="
+              color: #fff;
+              font-size: 18px;
+              font-weight: 600;
+              padding: 0 18px 0 8px;
+              height: 40px;
+              display: flex;
+              align-items: center;
+            ">
+              ${sggu.sgguNm}
+            </div>
           </div>
         `,
-        size: new window.naver.maps.Size(100, 44),
-        anchor: new window.naver.maps.Point(50, 22),
+        size: new window.naver.maps.Size(120, 44),
+        anchor: new window.naver.maps.Point(60, 22),
       }
     });
     return () => {

@@ -262,26 +262,23 @@ router.get('/sido-summary', async (req, res) => {
 
 // 시군구 요약 API
 router.get('/sggu-summary', async (req, res) => {
-  try {
-    const { swLat, swLng, neLat, neLng, lat, lng, zoom = '11' } = req.query;
-    
-    console.log('시군구 요약 API 호출 - 파라미터:', { swLat, swLng, neLat, neLng, lat, lng, zoom });
-
-    // 좌표를 숫자로 변환
-    const swLatNum = parseFloat(swLat);
-    const swLngNum = parseFloat(swLng);
-    const neLatNum = parseFloat(neLat);
-    const neLngNum = parseFloat(neLng);
-
-    // 좌표가 유효한지 확인
-    if (swLatNum === neLatNum || swLngNum === neLngNum) {
-      console.log('유효하지 않은 좌표:', { swLatNum, swLngNum, neLatNum, neLngNum });
-      return res.json([]);
-    }
-
-    const result = await client.search({
-      index: 'sggu-coordinates',
-      body: {
+    try {
+      const { swLat, swLng, neLat, neLng } = req.query;
+      const swLatNum = parseFloat(swLat);
+      const swLngNum = parseFloat(swLng);
+      const neLatNum = parseFloat(neLat);
+      const neLngNum = parseFloat(neLng);
+  
+      if (swLatNum === neLatNum || swLngNum === neLngNum) {
+        console.log('[경고] 유효하지 않은 좌표:', { swLatNum, swLngNum, neLatNum, neLngNum });
+        return res.json([]);
+      }
+  
+      console.log('[1] 시군구 요약 API 호출 - 파라미터:', { swLat, swLng, neLat, neLng });
+  
+      // 좌표 기준 시군구 정보 가져오기
+      const coordResult = await client.search({
+        index: 'sggu-coordinates',
         size: 0,
         query: {
           geo_bounding_box: {
@@ -313,29 +310,80 @@ router.get('/sggu-summary', async (req, res) => {
             }
           }
         }
-      }
-    });
-
-    console.log('시군구 요약 API 응답 - 버킷 수:', result.aggregations.sggu.buckets.length);
-    console.log('시군구 요약 API 응답 - 전체 결과:', JSON.stringify(result.aggregations.sggu.buckets, null, 2));
-
-    const summary = result.aggregations.sggu.buckets.map(bucket => ({
-      sidoNm: bucket.location.hits.hits[0]._source.sidoNm,
-      sgguNm: bucket.key,
-      YPos: bucket.location.hits.hits[0]._source.YPos,
-      XPos: bucket.location.hits.hits[0]._source.XPos,
-      location: bucket.location.hits.hits[0]._source.location
-    }));
-
-    console.log('시군구 요약 API 응답 - 결과 수:', summary.length);
-    console.log('시군구 요약 API 응답 - 첫 번째 결과:', summary[0]);
-    res.json(summary);
-  } catch (error) {
-    console.error('시군구 요약 데이터 조회 오류:', error);
-    console.error('에러 상세:', error.meta?.body || error);
-    res.status(500).json({ error: '시군구 요약 데이터 조회 중 오류가 발생했습니다.' });
-  }
-});
+      });
+  
+      console.log('[2] coordResult 응답:', JSON.stringify(coordResult.aggregations.sggu.buckets, null, 2));
+  
+      // 병원 수 집계
+      const hospitalResult = await client.search({
+        index: 'map_data',
+        size: 0,
+        query: {
+          bool: {
+            filter: [
+              { term: { type: 'hospital' } },
+              {
+                geo_bounding_box: {
+                  location: {
+                    top_left: {
+                      lat: Math.max(swLatNum, neLatNum),
+                      lon: Math.min(swLngNum, neLngNum)
+                    },
+                    bottom_right: {
+                      lat: Math.min(swLatNum, neLatNum),
+                      lon: Math.max(swLngNum, neLngNum)
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        aggs: {
+          sggu: {
+            terms: {
+              field: 'sgguCdNm.keyword', // ★ 중요: 실제 map_data의 필드명과 매핑되는지 확인
+              size: 100
+            }
+          }
+        }
+      });
+  
+      console.log('[3] 병원 수 집계 결과:', JSON.stringify(hospitalResult.aggregations.sggu.buckets, null, 2));
+  
+      const hospitalMap = {};
+      hospitalResult.aggregations.sggu.buckets.forEach(bucket => {
+        hospitalMap[bucket.key] = bucket.doc_count;
+      });
+  
+      console.log('[4] 병원 수 Map:', hospitalMap);
+  
+      // 시군구 정보 + 병원 수 결합
+      const summary = coordResult.aggregations.sggu.buckets.map(bucket => {
+        const doc = bucket.location.hits.hits[0]._source;
+        const sgguNm = bucket.key;
+        const hospitalCount = hospitalMap[sgguNm] || 0;
+        console.log(`[5] ${sgguNm} → 병원 수: ${hospitalCount}`);
+  
+        return {
+          sidoNm: doc.sidoNm,
+          sgguNm: sgguNm,
+          YPos: doc.YPos,
+          XPos: doc.XPos,
+          location: doc.location,
+          hospitalCount: hospitalCount
+        };
+      });
+  
+      console.log('[6] 최종 요약 응답 수:', summary.length);
+      res.json(summary);
+    } catch (error) {
+      console.error('시군구 요약 데이터 조회 오류:', error);
+      console.error('에러 상세:', error.meta?.body || error);
+      res.status(500).json({ error: '시군구 요약 데이터 조회 중 오류가 발생했습니다.' });
+    }
+  });
+  
 
 // 읍면동별 요약 API
 router.get('/emdong-summary', async (req, res) => {
