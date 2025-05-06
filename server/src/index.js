@@ -20,6 +20,7 @@ const nursingHospitalAutoCompleteRouter = require('./elastic/nursingHospitalAuto
 //const chatRoutes = require('./routes/chatRoutes');
 const { reindex } = require('./elastic/elastics'); // reindex 불러오기
 const { reindexMap } = require('./elastic/elastics'); // reindexMap 불러오기
+const { reindexSgguCoord } = require('./elastic/elastics'); // reindexSgguCoord 불러오기
 //const { reindexPharmacies } = require('./elastic/elastics'); // reindexPharmacies 불러오기
 const User = require('./models/User');
 const cors = require('cors');
@@ -124,6 +125,16 @@ addDefaultOrigins();
 //reindexPharmacies()
 //.then(() => {
 //    console.log("✅ Elasticsearch Reindexing Complete!");
+//  })
+//  .catch(err => {
+//    console.error("❌ Error in reindexing:", err);
+//    console.error("Stack trace:", err.stack);
+//  });
+
+// Elasticsearch SgguCoord Reindexing
+//reindexSgguCoord()
+//  .then(() => {
+//    console.log("✅ Elasticsearch SgguCoord Reindexing Complete!");
 //  })
 //  .catch(err => {
 //    console.error("❌ Error in reindexing:", err);

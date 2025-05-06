@@ -10,6 +10,9 @@ const { bulkPharmaciesIndex } = require('./bulkPharmaciesIndex');
 const { deleteMapIndex } = require('./deleteMapIndex');
 const { createMapIndex } = require('./createMapIndex');
 const { bulkMapIndex } = require('./bulkMapIndex');
+const { deleteSgguCoorIndex } = require('./deleteSgguCoordIndex');
+const { createSgguCoorIndex } = require('./createSgguCoorIndex');
+const { bulkIndexSgguCoordinates } = require('./bulkSgguCoordIndex');
 
 async function reindex() {
   try {
@@ -82,8 +85,30 @@ async function reindexMap() {
   }
 }
 
+async function reindexSgguCoord() {
+  try {
+    console.log("🔄 Starting sggu coordinates reindexing process...");
+    
+    console.log("Step 1: Deleting existing sggu coordinates index...");
+    await deleteSgguCoorIndex();
+    
+    console.log("Step 2: Creating new sggu coordinates index...");
+    await createSgguCoorIndex();
+    
+    console.log("Step 3: Bulk indexing sggu coordinates...");
+    await bulkIndexSgguCoordinates();
+
+    console.log("✅ Sggu coordinates reindexing process completed successfully!");
+  } catch (error) {
+    console.error("❌ Error during sggu coordinates reindexing process:");
+    console.error("Error message:", error.message);
+    throw error;
+  }
+}
+
 module.exports = { 
   reindex,
   reindexPharmacies,
-  reindexMap
+  reindexMap,
+  reindexSgguCoord
 };

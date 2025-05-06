@@ -293,14 +293,44 @@ export const fetchSidoSummary = async () => {
 
 // 시군구별 좌표+집계 (바운드 파라미터 지원)
 export const fetchSgguSummary = async (params = {}) => {
-  const res = await axios.get(`${baseUrl}/api/map/sggu-summary`, { params });
-  return res.data;
+  try {
+    const response = await axios.get(`${baseUrl}/api/map/sggu-summary`, { 
+      params: {
+        swLat: params.swLat,
+        swLng: params.swLng,
+        neLat: params.neLat,
+        neLng: params.neLng,
+        lat: params.lat,
+        lng: params.lng,
+        zoom: params.zoom
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('시군구 요약 데이터 조회 실패:', error);
+    throw error;
+  }
 };
 
 // 읍면동별 좌표+집계 (바운드 파라미터 지원)
 export const fetchEmdongSummary = async (params = {}) => {
-  const res = await axios.get(`${baseUrl}/api/map/emdong-summary`, { params });
-  return res.data;
+  try {
+    const response = await axios.get(`${baseUrl}/api/map/emdong-summary`, { 
+      params: {
+        swLat: params.swLat,
+        swLng: params.swLng,
+        neLat: params.neLat,
+        neLng: params.neLng,
+        lat: params.lat,
+        lng: params.lng,
+        zoom: params.zoom
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('읍면동 요약 데이터 조회 실패:', error);
+    throw error;
+  }
 };
 
 //console.log(`🔗 API Base URL: ${baseURL}`);

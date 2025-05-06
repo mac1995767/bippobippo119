@@ -224,71 +224,217 @@ router.get('/summary', async (req, res) => {
 // 시도별 요약 API
 router.get('/sido-summary', async (req, res) => {
   try {
-    const result = await SgguCoord.aggregate([
-      { $group: {
-          _id: '$sidoNm',
-          YPos: { $first: '$YPos' },
-          XPos: { $first: '$XPos' }
-      }},
-      { $project: { sidoNm: '$_id', YPos: 1, XPos: 1, _id: 0 } }
-    ]);
+    const response = await client.search({
+      index: 'sggu-coordinates',
+      body: {
+        size: 0,
+        aggs: {
+          sido_groups: {
+            terms: {
+              field: 'sidoNm',
+              size: 100
+            },
+            aggs: {
+              first_location: {
+                top_hits: {
+                  size: 1,
+                  _source: ['YPos', 'XPos']
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const result = response.aggregations.sido_groups.buckets.map(bucket => ({
+      sidoNm: bucket.key,
+      YPos: bucket.first_location.hits.hits[0]._source.YPos,
+      XPos: bucket.first_location.hits.hits[0]._source.XPos
+    }));
+
     res.json(result);
   } catch (err) {
     console.error('sido-summary error:', err);
-    res.status(500).json({ error: err.message, stack: err.stack });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// 시군구별 요약 API
+// 시군구 요약 API
 router.get('/sggu-summary', async (req, res) => {
   try {
-    console.log('시군구 요약 API 호출됨');
+    const { swLat, swLng, neLat, neLng, lat, lng, zoom } = req.query;
     
-    // 초기 데이터 확인
-    const initialData = await SgguCoord.find({ emdongNm: "-", riNm: "-" });
-    console.log('초기 데이터 샘플:', initialData.slice(0, 3));
-    
-    const result = await SgguCoord.aggregate([
-      { $match: { emdongNm: "-", riNm: "-" } },
-      { $group: {
-          _id: '$sgguNm',
-          YPos: { $first: '$YPos' },
-          XPos: { $first: '$XPos' }
-      }},
-      { $project: { sgguNm: '$_id', YPos: 1, XPos: 1, _id: 0 } }
-    ]);
-    
-    console.log('집계 결과:', result);
-    console.log('결과 개수:', result.length);
-    
-    res.json(result);
-  } catch (err) {
-    console.error('sggu-summary error:', err);
-    console.error('에러 상세:', {
-      message: err.message,
-      stack: err.stack,
-      name: err.name
+    // 줌 레벨에 따른 검색 반경 설정 (km)
+    let searchRadius;
+    if (zoom === '11') {
+      searchRadius = 10; // 10km
+    } else if (zoom === '12') {
+      searchRadius = 3;  // 3km
+    } else if (zoom === '13') {
+      searchRadius = 1;  // 1km
+    } else {
+      searchRadius = 0.5; // 0.5km
+    }
+
+    const query = {
+      bool: {
+        must: [
+          {
+            geo_bounding_box: {
+              location: {
+                top_left: { lat: parseFloat(neLat), lon: parseFloat(swLng) },
+                bottom_right: { lat: parseFloat(swLat), lon: parseFloat(neLng) }
+              }
+            }
+          }
+        ]
+      }
+    };
+
+    const aggs = {
+      sggu: {
+        terms: {
+          field: 'sgguNm.keyword',
+          size: 100
+        },
+        aggs: {
+          location: {
+            top_hits: {
+              size: 1,
+              _source: ['sidoNm', 'sgguNm', 'YPos', 'XPos']
+            }
+          },
+          distance: {
+            geo_distance: {
+              field: 'location',
+              origin: {
+                lat: parseFloat(lat),
+                lon: parseFloat(lng)
+              },
+              unit: 'km',
+              ranges: [
+                { to: searchRadius }
+              ]
+            }
+          }
+        }
+      }
+    };
+
+    const result = await client.search({
+      index: 'sggu-coordinates',
+      body: {
+        size: 0,
+        query,
+        aggs
+      }
     });
-    res.status(500).json({ error: err.message, stack: err.stack });
+
+    const summary = result.aggregations.sggu.buckets
+      .filter(bucket => bucket.distance.buckets.length > 0)
+      .map(bucket => ({
+        sidoNm: bucket.location.hits.hits[0]._source.sidoNm,
+        sgguNm: bucket.key,
+        YPos: bucket.location.hits.hits[0]._source.YPos,
+        XPos: bucket.location.hits.hits[0]._source.XPos,
+        distance: bucket.distance.buckets[0]?.from || 0
+      }))
+      .sort((a, b) => a.distance - b.distance);
+
+    res.json(summary);
+  } catch (error) {
+    console.error('시군구 요약 데이터 조회 오류:', error);
+    res.status(500).json({ error: '시군구 요약 데이터 조회 중 오류가 발생했습니다.' });
   }
 });
 
 // 읍면동별 요약 API
 router.get('/emdong-summary', async (req, res) => {
   try {
-    const result = await SgguCoord.aggregate([
-      { $match: { riNm: "-" } },
-      { $group: {
-          _id: '$emdongNm',
-          YPos: { $first: '$YPos' },
-          XPos: { $first: '$XPos' }
-      }},
-      { $project: { emdongNm: '$_id', YPos: 1, XPos: 1, _id: 0 } }
-    ]);
-    res.json(result);
-  } catch (err) {
-    console.error('emdong-summary error:', err);
-    res.status(500).json({ error: err.message, stack: err.stack });
+    const { swLat, swLng, neLat, neLng, lat, lng, zoom } = req.query;
+    
+    // 줌 레벨에 따른 검색 반경 설정 (km)
+    let searchRadius;
+    if (zoom === '13') {
+      searchRadius = 1;  // 1km
+    } else if (zoom === '14') {
+      searchRadius = 0.5; // 0.5km
+    } else {
+      searchRadius = 0.3; // 0.3km
+    }
+
+    const query = {
+      bool: {
+        must: [
+          {
+            geo_bounding_box: {
+              location: {
+                top_left: { lat: parseFloat(neLat), lon: parseFloat(swLng) },
+                bottom_right: { lat: parseFloat(swLat), lon: parseFloat(neLng) }
+              }
+            }
+          },
+          { term: { riNm: "-" } }
+        ]
+      }
+    };
+
+    const aggs = {
+      emdong: {
+        terms: {
+          field: 'emdongNm.keyword',
+          size: 100
+        },
+        aggs: {
+          location: {
+            top_hits: {
+              size: 1,
+              _source: ['sidoNm', 'sgguNm', 'emdongNm', 'YPos', 'XPos']
+            }
+          },
+          distance: {
+            geo_distance: {
+              field: 'location',
+              origin: {
+                lat: parseFloat(lat),
+                lon: parseFloat(lng)
+              },
+              unit: 'km',
+              ranges: [
+                { to: searchRadius }
+              ]
+            }
+          }
+        }
+      }
+    };
+
+    const result = await client.search({
+      index: 'sggu-coordinates',
+      body: {
+        size: 0,
+        query,
+        aggs
+      }
+    });
+
+    const summary = result.aggregations.emdong.buckets
+      .filter(bucket => bucket.distance.buckets.length > 0)
+      .map(bucket => ({
+        sidoNm: bucket.location.hits.hits[0]._source.sidoNm,
+        sgguNm: bucket.location.hits.hits[0]._source.sgguNm,
+        emdongNm: bucket.key,
+        YPos: bucket.location.hits.hits[0]._source.YPos,
+        XPos: bucket.location.hits.hits[0]._source.XPos,
+        distance: bucket.distance.buckets[0]?.from || 0
+      }))
+      .sort((a, b) => a.distance - b.distance);
+
+    res.json(summary);
+  } catch (error) {
+    console.error('읍면동 요약 데이터 조회 오류:', error);
+    res.status(500).json({ error: '읍면동 요약 데이터 조회 중 오류가 발생했습니다.' });
   }
 });
 

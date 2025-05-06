@@ -31,6 +31,7 @@ import SuperGeneralHospitalMarker from './markers/SuperGeneralHospitalMarker';
 import GeneralHospitalMarker from './markers/GeneralHospitalMarker';
 import MentalHospitalMarker from './markers/MentalHospitalMarker';
 import DentalHospitalMarker from './markers/DentalHospitalMarker';
+import axios from 'axios';
 
 const MapPage = () => {
   const mapRef = useRef(null);
@@ -51,7 +52,10 @@ const MapPage = () => {
   const [sgguSummary, setSgguSummary] = useState([]);
   const [emdongSummary, setEmdongSummary] = useState([]);
 
-  // 고유 ID 생성 함수
+  const [markerClusterer, setMarkerClusterer] = useState(null);
+  const markersRef = useRef([]);
+
+  // 요약 데이터
   const getPharmacyUniqueId = (pharmacy) =>
     pharmacy.ykiho || `${pharmacy.name}_${pharmacy.lat}_${pharmacy.lng}`;
 
@@ -90,7 +94,7 @@ const MapPage = () => {
   // 네이버 지도 스크립트 로드
   useEffect(() => {
     const script = document.createElement('script');
-    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.REACT_APP_NAVER_MAP_CLIENT_ID}&submodules=geocoder`;
+    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.REACT_APP_NAVER_MAP_CLIENT_ID}&submodules=geocoder,clustering`;
     script.async = true;
     document.head.appendChild(script);
 
@@ -101,10 +105,21 @@ const MapPage = () => {
           zoom: 8,
           minZoom: 8
         });
+
+        // 줌 레벨 변경 이벤트 리스너 추가
+        window.naver.maps.Event.addListener(mapInstance, 'zoom_changed', () => {
+          const newZoom = mapInstance.getZoom();
+          console.log('줌 레벨 변경:', newZoom);
+          setZoomLevel(newZoom);
+        });
+
         window.naver.maps.Event.addListener(mapInstance, 'idle', () => {
-          setZoomLevel(mapInstance.getZoom());
+          const currentZoom = mapInstance.getZoom();
+          console.log('지도 idle 이벤트 - 현재 줌 레벨:', currentZoom);
+          setZoomLevel(currentZoom);
           fetchDataByBoundsDebounced(mapInstance);
         });
+
         setMap(mapInstance);
         fetchDataByBounds(mapInstance);
       }
@@ -115,30 +130,41 @@ const MapPage = () => {
     };
   }, []);
 
+  // zoomLevel 값 변경 추적
+  useEffect(() => {
+    console.log('zoomLevel 상태 변경:', zoomLevel);
+  }, [zoomLevel]);
+
   // 요약 데이터(fetchSido, fetchSggu, fetchEmdong) 호출 로직
   useEffect(() => {
     if (!map) return;
+    console.log('요약 데이터 요청 - 현재 줌 레벨:', zoomLevel);
+    
     const bounds = map.getBounds();
     const sw = bounds.getSW();
     const ne = bounds.getNE();
+    const center = map.getCenter();
+    
     const params = {
       swLat: sw.lat(),
       swLng: sw.lng(),
       neLat: ne.lat(),
-      neLng: ne.lng()
+      neLng: ne.lng(),
+      lat: center.lat(),
+      lng: center.lng()
     };
 
     if (zoomLevel >= 8 && zoomLevel <= 10) {
-      // 8~10: 시도 요약
+      console.log('시도 요약 데이터 요청');
       fetchSidoSummary(params).then(setSidoSummary).catch(console.error);
     }
     else if (zoomLevel >= 11 && zoomLevel <= 14) {
-      // 11~12: 시군구 요약
-      fetchSgguSummary(params).then(setSgguSummary).catch(console.error);
+      console.log('시군구 요약 데이터 요청');
+      fetchSgguSummaryData(params);
     }
     else if (zoomLevel >= 15 && zoomLevel < 16) {
-      // 13~15: 읍면동 요약
-      fetchEmdongSummary(params).then(setEmdongSummary).catch(console.error);
+      console.log('읍면동 요약 데이터 요청');
+      fetchEmdongSummaryData(params);
     }
   }, [zoomLevel, map]);
 
@@ -243,6 +269,130 @@ const MapPage = () => {
     }
   };
 
+  // 클러스터 초기화
+  useEffect(() => {
+    if (!map || !window.naver.maps.MarkerClustering) return;
+
+    const clusterer = new window.naver.maps.MarkerClustering({
+      minClusterSize: 2,
+      maxZoom: 15,
+      map: map,
+      disableClickZoom: false,
+      gridSize: 120,
+      icons: [
+        {
+          content: `<div style="cursor:pointer;width:40px;height:40px;line-height:42px;font-size:10px;color:white;text-align:center;font-weight:bold;background-color:#4CAF50;border-radius:100%;">1</div>`,
+          size: new window.naver.maps.Size(40, 40),
+          anchor: new window.naver.maps.Point(20, 20)
+        },
+        {
+          content: `<div style="cursor:pointer;width:40px;height:40px;line-height:42px;font-size:10px;color:white;text-align:center;font-weight:bold;background-color:#2196F3;border-radius:100%;">2</div>`,
+          size: new window.naver.maps.Size(40, 40),
+          anchor: new window.naver.maps.Point(20, 20)
+        },
+        {
+          content: `<div style="cursor:pointer;width:40px;height:40px;line-height:42px;font-size:10px;color:white;text-align:center;font-weight:bold;background-color:#FFC107;border-radius:100%;">3</div>`,
+          size: new window.naver.maps.Size(40, 40),
+          anchor: new window.naver.maps.Point(20, 20)
+        }
+      ],
+      indexGenerator: [10, 100, 200, 500, 1000],
+      stylingFunction: function(clusterMarker, count) {
+        const element = clusterMarker.getElement();
+        const div = element.querySelector('div');
+        if (div) {
+          div.textContent = count;
+        }
+      }
+    });
+
+    setMarkerClusterer(clusterer);
+
+    return () => {
+      if (clusterer) {
+        clusterer.destroy();
+      }
+    };
+  }, [map]);
+
+  // 마커 업데이트
+  useEffect(() => {
+    if (!markerClusterer || !map) return;
+
+    // 기존 마커 제거
+    markersRef.current.forEach(marker => marker.setMap(null));
+    markersRef.current = [];
+    markerClusterer.clear();
+
+    // 새로운 마커 생성
+    const newMarkers = [];
+
+    // 병원 마커 생성
+    hospitals.forEach(hospital => {
+      const marker = new window.naver.maps.Marker({
+        position: new window.naver.maps.LatLng(
+          hospital.location?.lat || hospital.lat,
+          hospital.location?.lon || hospital.lng
+        ),
+        map: map,
+        title: hospital.yadmNm || hospital.name,
+        icon: {
+          content: `<div style="width:16px;height:16px;background-color:#66BB6A;border:2px solid white;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
+          size: new window.naver.maps.Size(16, 16),
+          anchor: new window.naver.maps.Point(8, 8)
+        }
+      });
+
+      window.naver.maps.Event.addListener(marker, 'click', () => handleHospitalClick(hospital));
+      newMarkers.push(marker);
+    });
+
+    // 약국 마커 생성
+    pharmacies.forEach(pharmacy => {
+      const marker = new window.naver.maps.Marker({
+        position: new window.naver.maps.LatLng(
+          pharmacy.lat || pharmacy.location?.lat,
+          pharmacy.lng || pharmacy.location?.lon
+        ),
+        map: map,
+        title: pharmacy.name,
+        icon: {
+          content: `<div style="width:16px;height:16px;background-color:#42A5F5;border:2px solid white;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
+          size: new window.naver.maps.Size(16, 16),
+          anchor: new window.naver.maps.Point(8, 8)
+        }
+      });
+
+      window.naver.maps.Event.addListener(marker, 'click', () => handlePharmacyClick(pharmacy));
+      newMarkers.push(marker);
+    });
+
+    // 마커를 클러스터에 추가
+    markerClusterer.addMarkers(newMarkers);
+    markersRef.current = newMarkers;
+
+  }, [hospitals, pharmacies, markerClusterer, map]);
+
+  // 시군구 요약 데이터 가져오기
+  const fetchSgguSummaryData = async (params) => {
+    try {
+      const data = await fetchSgguSummary(params);
+      setSgguSummary(data);
+    } catch (error) {
+      console.error('시군구 요약 데이터 조회 실패:', error);
+    }
+  };
+
+  // 읍면동 요약 데이터 가져오기
+  const fetchEmdongSummaryData = async (params) => {
+    try {
+      const data = await fetchEmdongSummary(params);
+      setEmdongSummary(data);
+    } catch (error) {
+      console.error('읍면동 요약 데이터 조회 실패:', error);
+    }
+  };
+
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
@@ -269,16 +419,25 @@ const MapPage = () => {
                 <ClusterMarker
                   key={item.sidoNm}
                   map={map}
-                  cluster={{ lat: item.YPos, lng: item.XPos, name: item.sidoNm }}
+                  cluster={{
+                    lat: item.YPos,
+                    lng: item.XPos,
+                    name: item.sidoNm
+                  }}
                 />
               ))}
 
               {/* 줌 11~12: 시군구 요약 */}
               {(zoomLevel >= 11 && zoomLevel <= 14) && sgguSummary.map(item => (
                 <SgguClusterMarker
-                  key={`${item.sidoNm}-${item.sgguNm}`}
+                  key={item.sgguNm}
                   map={map}
-                  sggu={item}
+                  sggu={{
+                    ...item,
+                    lat: item.YPos,
+                    lng: item.XPos,
+                    name: item.sgguNm
+                  }}
                 />
               ))}
 
@@ -291,8 +450,8 @@ const MapPage = () => {
                     lat: item.YPos,
                     lng: item.XPos,
                     name: item.emdongNm,
-                    hospitalCount: item.hospitalCount,
-                    pharmacyCount: item.pharmacyCount
+                    sidoNm: item.sidoNm,
+                    sgguNm: item.sgguNm
                   }}
                 />
               ))}
