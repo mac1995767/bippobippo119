@@ -1,8 +1,7 @@
 import React from 'react';
 
 const categories = [
-  '지도',     
-  '빅데이터'
+  '지도'     
 ];
 
 const MapCategoryTabs = () => (

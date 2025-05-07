@@ -15,6 +15,7 @@ import {
 import CorsManager from '../../components/admin/CorsManager';
 import SocialConfigManager from '../../components/admin/SocialConfigManager';
 import ServerConfigManager from '../../components/admin/ServerConfigManager';
+import IndexingManager from '../../components/admin/IndexingManager';
 
 ChartJS.register(
   CategoryScale,
@@ -93,6 +94,14 @@ const DashboardPage = () => {
       path: '#',
       color: 'bg-red-500',
       onClick: () => setActiveTab('server')
+    },
+    {
+      title: '색인 관리',
+      description: 'Elasticsearch 색인 관리를 합니다.',
+      icon: '🔍',
+      path: '#',
+      color: 'bg-blue-500',
+      onClick: () => setActiveTab('indexing')
     }
   ];
 
@@ -296,6 +305,13 @@ const DashboardPage = () => {
           <h1 className="text-2xl font-bold mb-6">서버 설정 관리</h1>
           <div className="bg-white rounded-lg shadow-lg">
             <ServerConfigManager />
+          </div>
+        </div>
+      ) : activeTab === 'indexing' ? (
+        <div className="p-6">
+          <h1 className="text-2xl font-bold mb-6">색인 관리</h1>
+          <div className="bg-white rounded-lg shadow-lg">
+            <IndexingManager />
           </div>
         </div>
       ) : null}

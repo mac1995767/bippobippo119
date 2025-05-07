@@ -347,7 +347,7 @@ const MapPage = () => {
             hospital.location?.lat || hospital.lat,
             hospital.location?.lon || hospital.lng
           ),
-          map: map,
+          map: visibleLayers.hospitals ? map : null, // 레이어 상태에 따라 map 설정
           title: hospital.yadmNm || hospital.name,
           icon: {
             content: `<div style="width:16px;height:16px;background-color:#66BB6A;border:2px solid white;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
@@ -369,7 +369,7 @@ const MapPage = () => {
             pharmacy.lat || pharmacy.location?.lat,
             pharmacy.lng || pharmacy.location?.lon
           ),
-          map: map,
+          map: visibleLayers.pharmacies ? map : null, // 레이어 상태에 따라 map 설정
           title: pharmacy.name,
           icon: {
             content: `<div style="width:16px;height:16px;background-color:#42A5F5;border:2px solid white;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
