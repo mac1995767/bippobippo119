@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FaSearch,
   FaLocationArrow,
@@ -15,7 +15,7 @@ import {
   FaSatellite
 } from 'react-icons/fa';
 import { MdOutlineKeyboardArrowUp } from 'react-icons/md';
-import { medicalTypes } from './constants';
+import { initialMedicalTypes, pharmacyTypes, getMedicalStats } from './constants';
 import FilterDropdown from './FilterDropdown';
 import ZoomControls from './ZoomControls';
 
@@ -37,7 +37,34 @@ function MapToolbar({
   onFilterChange
 }) {
   const [showFilter, setShowFilter] = useState(false);
-  const [selectedTypes, setSelectedTypes] = useState(medicalTypes.map(t => t.key));
+  const [medicalStats, setMedicalStats] = useState({
+    hospitals: initialMedicalTypes,
+    pharmacies: pharmacyTypes
+  });
+  const [selectedTypes, setSelectedTypes] = useState(initialMedicalTypes.map(t => t.key));
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // 통계 데이터 가져오기
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        console.log('통계 데이터 로딩 시작');
+        const stats = await getMedicalStats();
+        console.log('로딩된 통계 데이터:', stats);
+        setMedicalStats(stats);
+        setSelectedTypes(stats.hospitals.map(t => t.key));
+      } catch (err) {
+        console.error('통계 데이터 로딩 실패:', err);
+        setError('데이터를 불러오는데 실패했습니다.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadStats();
+  }, []);
 
   const handleTypeToggle = (type) => {
     const next = selectedTypes.includes(type)
@@ -95,6 +122,7 @@ function MapToolbar({
         <FilterDropdown
           selectedTypes={selectedTypes}
           onTypeToggle={handleTypeToggle}
+          medicalStats={medicalStats}
         />
       )}
 

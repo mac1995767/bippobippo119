@@ -346,4 +346,15 @@ export const fetchGeoBoundary = async (regionName) => {
   }
 };
 
+export const fetchMedicalStats = async () => {
+  try {
+    const response = await axios.get(`${baseUrl}/api/map_data/stats`);
+    console.log('의료기관 통계 데이터:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('의료기관 통계 데이터 조회 실패:', error);
+    throw error;
+  }
+};
+
 //console.log(`🔗 API Base URL: ${baseURL}`);
