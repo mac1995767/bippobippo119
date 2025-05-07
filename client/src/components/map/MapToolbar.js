@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   FaSearch,
-  FaLocationArrow,
   FaListUl,
   FaLayerGroup,
   FaMap,
@@ -13,7 +12,8 @@ import {
   FaSatellite,
   FaExpand,
   FaCompress,
-  FaUndo
+  FaUndo,
+  FaLocationArrow
 } from 'react-icons/fa';
 import { MdOutlineKeyboardArrowUp } from 'react-icons/md';
 import { initialMedicalTypes, pharmacyTypes, getMedicalStats } from './constants';
@@ -118,70 +118,6 @@ function MapToolbar({
     };
   }, []);
 
-  const handleLocationClick = useCallback(() => {
-    console.log('내 위치 버튼 클릭됨');
-    console.log('map 객체:', map);
-    
-    if (!map) {
-      console.log('map 객체가 없습니다');
-      return;
-    }
-    
-    if (!navigator.geolocation) {
-      console.log('geolocation을 지원하지 않습니다');
-      alert('이 브라우저에서는 위치 정보를 사용할 수 없습니다.');
-      return;
-    }
-
-    if (!window.naver || !window.naver.maps) {
-      console.log('네이버 지도 API가 로드되지 않았습니다');
-      alert('네이버 지도 API가 로드되지 않았습니다.');
-      return;
-    }
-
-    console.log('위치 정보 요청 시작');
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        console.log('위치 정보 수신 성공:', position);
-        try {
-          const { latitude, longitude } = position.coords;
-          console.log('위치 좌표:', { latitude, longitude });
-          
-          // 네이버 지도 좌표로 변환
-          const naverCoord = new window.naver.maps.LatLng(latitude, longitude);
-          console.log('네이버 좌표:', naverCoord);
-          
-          // 지도 이동
-          map.setCenter(naverCoord);
-          map.setZoom(17);
-
-          // 마커 생성
-          new window.naver.maps.Marker({
-            position: naverCoord,
-            map: map,
-            icon: {
-              content: '<div class="current-location-marker"></div>',
-              anchor: new window.naver.maps.Point(15, 15)
-            }
-          });
-          console.log('지도 이동 및 마커 생성 완료');
-        } catch (error) {
-          console.error('지도 조작 중 오류 발생:', error);
-          alert('지도 조작 중 오류가 발생했습니다.');
-        }
-      },
-      (error) => {
-        console.error('위치 정보를 가져오는데 실패했습니다:', error);
-        alert('위치 정보를 가져오는데 실패했습니다.');
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 0,
-        timeout: 5000
-      }
-    );
-  }, [map]);
-
   const buttons = [
     { label: '검색',        icon: <FaSearch size={18} />,       onClick: onSearch },
     { label: '히트맵',      icon: <FaThermometerHalf size={18} />, onClick: onToggleHeatmap },
@@ -214,18 +150,7 @@ function MapToolbar({
               </div>
             </button>
           ))}
-          <button
-            onClick={handleLocationClick}
-            aria-label="내 위치"
-            className="flex items-center justify-center w-14 h-12 hover:bg-gray-100 transition"
-          >
-            <div className="flex flex-col items-center text-sm">
-              <div className="mb-1">
-                <FaLocationArrow size={18} />
-              </div>
-              <span className="text-xs">내 위치</span>
-            </div>
-          </button>
+          <LocationControl map={map} />
           <ListViewControl 
             hospitals={hospitals} 
             pharmacies={pharmacies} 

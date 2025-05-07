@@ -104,4 +104,4 @@ function LayerControl({ onToggleLayers }) {
   );
 }
 
-export default LayerControl; 
+export default LayerControl;

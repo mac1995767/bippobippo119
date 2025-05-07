@@ -506,24 +506,7 @@ const MapPage = () => {
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
       <MapFilterBar />
-      <MapToolbar 
-        onZoomIn={handleZoomIn} 
-        onZoomOut={handleZoomOut} 
-        map={map}
-        onSearch={handleSearchResult}
-        onListView={() => {}}
-        onToggleLayers={handleLayerToggle}
-        onSwitchStyle={() => {}}
-        onToggleHeatmap={() => {}}
-        onPublicTransport={() => {}}
-        onBookmark={() => {}}
-        onCopyLink={() => {}}
-        onReset={handleReset}
-        onFilterChange={() => {}}
-        hospitals={hospitals}
-        pharmacies={pharmacies}
-        onItemClick={handleListItemClick}
-      />
+      <MapToolbar onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
 
       <div className="flex flex-row flex-1 h-0">
         <InfoSidebar info={selectedInfo} onClose={handleSidebarClose} />
