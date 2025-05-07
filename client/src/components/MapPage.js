@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   fetchMapTypeData,
   fetchMapSummary,
@@ -437,11 +437,51 @@ const MapPage = () => {
     console.log('sgguSummary:', sgguSummary);
   }, [sgguSummary]);
 
+  // 초기화 함수 추가
+  const handleReset = useCallback(() => {
+    if (!map) return;
+    
+    // 초기 중심점과 줌 레벨로 이동
+    const initialCenter = new window.naver.maps.LatLng(36.5, 127.8);
+    map.setCenter(initialCenter);
+    map.setZoom(8);
+
+    // 선택된 정보 초기화
+    setSelectedInfo(null);
+    setSelectedHospitalId(null);
+    setSelectedPharmacyId(null);
+
+    // 데이터 초기화
+    setHospitals([]);
+    setPharmacies([]);
+    setSidoSummary([]);
+    setSgguSummary([]);
+    setEmdongSummary([]);
+    setRegionNames([]);
+
+    // 초기 데이터 로드
+    fetchDataByBounds(map);
+  }, [map]);
+
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
       <MapFilterBar />
-      <MapToolbar onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
+      <MapToolbar 
+        onZoomIn={handleZoomIn} 
+        onZoomOut={handleZoomOut} 
+        map={map}
+        onSearch={handleSearchResult}
+        onListView={() => {}}
+        onToggleLayers={() => {}}
+        onSwitchStyle={() => {}}
+        onToggleHeatmap={() => {}}
+        onPublicTransport={() => {}}
+        onBookmark={() => {}}
+        onCopyLink={() => {}}
+        onReset={handleReset}
+        onFilterChange={() => {}}
+      />
 
       <div className="flex flex-row flex-1 h-0">
         <InfoSidebar info={selectedInfo} onClose={handleSidebarClose} />

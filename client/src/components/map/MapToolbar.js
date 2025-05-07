@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FaSearch,
   FaLocationArrow,
@@ -6,39 +6,43 @@ import {
   FaLayerGroup,
   FaMap,
   FaThermometerHalf,
-  FaRulerCombined,
+  FaBus,
   FaBookmark,
   FaShareAlt,
-  FaUndo,
-  FaExpand,
   FaInfoCircle,
-  FaSatellite
+  FaSatellite,
+  FaExpand,
+  FaCompress,
+  FaUndo
 } from 'react-icons/fa';
 import { MdOutlineKeyboardArrowUp } from 'react-icons/md';
 import { initialMedicalTypes, pharmacyTypes, getMedicalStats } from './constants';
 import FilterDropdown from './FilterDropdown';
 import ZoomControls from './ZoomControls';
 import HelpModal from './HelpModal';
+import FullscreenControl from './FullscreenControl';
+import LocationControl from './LocationControl';
+import ResetControl from './ResetControl';
 
 function MapToolbar({
   onSearch,
-  onLocate,
   onListView,
   onToggleLayers,
   onSwitchStyle,
   onToggleHeatmap,
-  onMeasure,
+  onPublicTransport,
   onBookmark,
   onCopyLink,
   onReset,
-  onFullscreen,
   onLegend,
   onZoomIn,
   onZoomOut,
-  onFilterChange
+  onFilterChange,
+  map
 }) {
   const [showFilter, setShowFilter] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [medicalStats, setMedicalStats] = useState({
     hospitals: initialMedicalTypes,
     pharmacies: pharmacyTypes
@@ -76,18 +80,116 @@ function MapToolbar({
     onFilterChange?.(next);
   };
 
+  const handleReset = () => {
+    console.log('초기화 실행');
+    if (onReset) {
+      onReset();
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`전체화면 오류: ${err.message}`);
+      });
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const handleLocationClick = useCallback(() => {
+    console.log('내 위치 버튼 클릭됨');
+    console.log('map 객체:', map);
+    
+    if (!map) {
+      console.log('map 객체가 없습니다');
+      return;
+    }
+    
+    if (!navigator.geolocation) {
+      console.log('geolocation을 지원하지 않습니다');
+      alert('이 브라우저에서는 위치 정보를 사용할 수 없습니다.');
+      return;
+    }
+
+    if (!window.naver || !window.naver.maps) {
+      console.log('네이버 지도 API가 로드되지 않았습니다');
+      alert('네이버 지도 API가 로드되지 않았습니다.');
+      return;
+    }
+
+    console.log('위치 정보 요청 시작');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        console.log('위치 정보 수신 성공:', position);
+        try {
+          const { latitude, longitude } = position.coords;
+          console.log('위치 좌표:', { latitude, longitude });
+          
+          // 네이버 지도 좌표로 변환
+          const naverCoord = new window.naver.maps.LatLng(latitude, longitude);
+          console.log('네이버 좌표:', naverCoord);
+          
+          // 지도 이동
+          map.setCenter(naverCoord);
+          map.setZoom(17);
+
+          // 마커 생성
+          new window.naver.maps.Marker({
+            position: naverCoord,
+            map: map,
+            icon: {
+              content: '<div class="current-location-marker"></div>',
+              anchor: new window.naver.maps.Point(15, 15)
+            }
+          });
+          console.log('지도 이동 및 마커 생성 완료');
+        } catch (error) {
+          console.error('지도 조작 중 오류 발생:', error);
+          alert('지도 조작 중 오류가 발생했습니다.');
+        }
+      },
+      (error) => {
+        console.error('위치 정보를 가져오는데 실패했습니다:', error);
+        alert('위치 정보를 가져오는데 실패했습니다.');
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 5000
+      }
+    );
+  }, [map]);
+
   const buttons = [
     { label: '검색',        icon: <FaSearch size={18} />,       onClick: onSearch },
-    { label: '내 위치',     icon: <FaLocationArrow size={18} />, onClick: onLocate },
+    { label: '내 위치',     icon: <FaLocationArrow size={18} />, onClick: () => {
+      console.log('내 위치 버튼 클릭됨 (buttons 배열)');
+      handleLocationClick();
+    }},
     { label: '목록',        icon: <FaListUl size={18} />,       onClick: onListView },
     { label: '레이어',      icon: <FaLayerGroup size={18} />,   onClick: onToggleLayers },
     { label: '지도스타일',  icon: <FaMap size={18} />,          onClick: onSwitchStyle },
     { label: '히트맵',      icon: <FaThermometerHalf size={18} />, onClick: onToggleHeatmap },
-    { label: '거리측정',    icon: <FaRulerCombined size={18} />, onClick: onMeasure },
+    { label: '대중교통',    icon: <FaBus size={18} />,          onClick: onPublicTransport },
     { label: '북마크',      icon: <FaBookmark size={18} />,     onClick: onBookmark },
     { label: '공유',        icon: <FaShareAlt size={18} />,     onClick: onCopyLink },
-    { label: '초기화',      icon: <FaUndo size={18} />,         onClick: onReset },
-    { label: '풀스크린',    icon: <FaExpand size={18} />,       onClick: onFullscreen },
+    { label: '풀스크린',    icon: isFullscreen ? <FaCompress size={18} /> : <FaExpand size={18} />, onClick: toggleFullscreen },
     { label: '도움말',      icon: <FaInfoCircle size={18} />,   onClick: () => setShowHelp(true) },
     { label: '필터',        icon: <FaSatellite size={18} />,    onClick: () => setShowFilter(v => !v) }
   ];
@@ -113,6 +215,7 @@ function MapToolbar({
               </div>
             </button>
           ))}
+          <ResetControl map={map} onReset={onReset} />
           <button className="flex items-center justify-center w-14 h-10 hover:bg-gray-100">
             <MdOutlineKeyboardArrowUp size={20} />
           </button>
