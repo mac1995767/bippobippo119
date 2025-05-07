@@ -23,6 +23,7 @@ import HelpModal from './HelpModal';
 import FullscreenControl from './FullscreenControl';
 import LocationControl from './LocationControl';
 import ResetControl from './ResetControl';
+import ListViewControl from './ListViewControl';
 
 function MapToolbar({
   onSearch,
@@ -38,7 +39,10 @@ function MapToolbar({
   onZoomIn,
   onZoomOut,
   onFilterChange,
-  map
+  map,
+  hospitals,
+  pharmacies,
+  onItemClick
 }) {
   const [showFilter, setShowFilter] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -178,11 +182,6 @@ function MapToolbar({
 
   const buttons = [
     { label: '검색',        icon: <FaSearch size={18} />,       onClick: onSearch },
-    { label: '내 위치',     icon: <FaLocationArrow size={18} />, onClick: () => {
-      console.log('내 위치 버튼 클릭됨 (buttons 배열)');
-      handleLocationClick();
-    }},
-    { label: '목록',        icon: <FaListUl size={18} />,       onClick: onListView },
     { label: '레이어',      icon: <FaLayerGroup size={18} />,   onClick: onToggleLayers },
     { label: '지도스타일',  icon: <FaMap size={18} />,          onClick: onSwitchStyle },
     { label: '히트맵',      icon: <FaThermometerHalf size={18} />, onClick: onToggleHeatmap },
@@ -202,9 +201,39 @@ function MapToolbar({
           메뉴
         </div>
         <div className="flex flex-col">
-          {buttons.map((btn, i) => (
+          {buttons.slice(0, 1).map((btn, i) => (
             <button
               key={i}
+              onClick={btn.onClick}
+              aria-label={btn.label}
+              className="flex items-center justify-center w-14 h-12 hover:bg-gray-100 transition"
+            >
+              <div className="flex flex-col items-center text-sm">
+                <div className="mb-1">{btn.icon}</div>
+                <span className="text-xs">{btn.label}</span>
+              </div>
+            </button>
+          ))}
+          <button
+            onClick={handleLocationClick}
+            aria-label="내 위치"
+            className="flex items-center justify-center w-14 h-12 hover:bg-gray-100 transition"
+          >
+            <div className="flex flex-col items-center text-sm">
+              <div className="mb-1">
+                <FaLocationArrow size={18} />
+              </div>
+              <span className="text-xs">내 위치</span>
+            </div>
+          </button>
+          <ListViewControl 
+            hospitals={hospitals} 
+            pharmacies={pharmacies} 
+            onItemClick={onItemClick}
+          />
+          {buttons.slice(1).map((btn, i) => (
+            <button
+              key={i + 1}
               onClick={btn.onClick}
               aria-label={btn.label}
               className="flex items-center justify-center w-14 h-12 hover:bg-gray-100 transition"

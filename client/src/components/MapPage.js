@@ -463,6 +463,29 @@ const MapPage = () => {
     fetchDataByBounds(map);
   }, [map]);
 
+  // 목록 아이템 클릭 핸들러
+  const handleListItemClick = useCallback((item) => {
+    if (!map) return;
+
+    // 병원인 경우
+    if (item.yadmNm || item.clCdNm) {
+      const position = new window.naver.maps.LatLng(
+        item.location?.lat || item.lat,
+        item.location?.lon || item.lng
+      );
+      map.setCenter(position);
+      map.setZoom(19);
+      handleHospitalClick(item);
+    }
+    // 약국인 경우
+    else {
+      const position = new window.naver.maps.LatLng(item.lat, item.lng);
+      map.setCenter(position);
+      map.setZoom(19);
+      handlePharmacyClick(item);
+    }
+  }, [map, handleHospitalClick, handlePharmacyClick]);
+
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
@@ -481,6 +504,9 @@ const MapPage = () => {
         onCopyLink={() => {}}
         onReset={handleReset}
         onFilterChange={() => {}}
+        hospitals={hospitals}
+        pharmacies={pharmacies}
+        onItemClick={handleListItemClick}
       />
 
       <div className="flex flex-row flex-1 h-0">
