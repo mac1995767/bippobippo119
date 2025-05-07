@@ -154,6 +154,7 @@ reindexBoundaries()
 
 // API 라우트 설정
 console.log('라우터 설정 시작');
+app.use('/api/geo', geoRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/email', emailRouter);
 app.use('/api/admin', adminRoutes);
@@ -176,7 +177,6 @@ app.use('/api/autocomplete', autoCompleteRouter);
 // map 라우터 설정
 console.log('map 라우터 설정');
 app.use('/api/map', mapRouter);
-app.use('/api/geo', geoRouter);
 // 라우터 디버깅 미들웨어
 app.use((req, res, next) => {
   console.log(`요청 경로: ${req.path}`);

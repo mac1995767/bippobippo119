@@ -5,7 +5,7 @@ const GeoBoundaryPolygon = ({ map, regionNames }) => {
   useEffect(() => {
     if (!map || !regionNames || regionNames.length === 0) return;
     regionNames.forEach(regionName => {
-      fetchGeoBoundary("제주시")
+      fetchGeoBoundary()
         .then(geojson => {
           console.log('geojson:', geojson); // 추가
           // GeoJSON이 객체가 아니라면 파싱
