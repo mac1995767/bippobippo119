@@ -22,6 +22,7 @@ const { reindex } = require('./elastic/elastics'); // reindex 불러오기
 const { reindexMap } = require('./elastic/elastics'); // reindexMap 불러오기
 const { reindexSgguCoord } = require('./elastic/elastics'); // reindexSgguCoord 불러오기
 //const { reindexPharmacies } = require('./elastic/elastics'); // reindexPharmacies 불러오기
+const { reindexBoundaries } = require('./elastic/elastics'); // reindexBoundaries 불러오기
 const User = require('./models/User');
 const cors = require('cors');
 const cookieParser = require('cookie-parser'); // cookie-parser 추가
@@ -32,7 +33,7 @@ const hospitalOriginRoutes = require('./routes/hospitalOriginRoutes');
 const path = require('path');
 const fs = require('fs');
 const mapRouter = require('./routes/map');
-
+const geoRouter = require('./routes/geo');
 const app = express();
 
 // uploads 디렉토리 생성
@@ -141,6 +142,16 @@ addDefaultOrigins();
 //    console.error("Stack trace:", err.stack);
 //  });
 
+// Elasticsearch Boundaries Reindexing
+reindexBoundaries()
+  .then(() => {
+    console.log("✅ Elasticsearch Boundaries Reindexing Complete!");
+  })
+  .catch(err => {
+    console.error("❌ Error in reindexing:", err);
+    console.error("Stack trace:", err.stack);
+  });
+
 // API 라우트 설정
 console.log('라우터 설정 시작');
 app.use('/api/auth', authRouter);
@@ -165,7 +176,7 @@ app.use('/api/autocomplete', autoCompleteRouter);
 // map 라우터 설정
 console.log('map 라우터 설정');
 app.use('/api/map', mapRouter);
-
+app.use('/api/geo', geoRouter);
 // 라우터 디버깅 미들웨어
 app.use((req, res, next) => {
   console.log(`요청 경로: ${req.path}`);

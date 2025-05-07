@@ -13,6 +13,9 @@ const { bulkMapIndex } = require('./bulkMapIndex');
 const { deleteSgguCoorIndex } = require('./deleteSgguCoordIndex');
 const { createSgguCoorIndex } = require('./createSgguCoorIndex');
 const { bulkIndexSgguCoordinates } = require('./bulkSgguCoordIndex');
+const { deleteBoundariesIndex } = require('./deleteBoundariesIndex');
+const { createBoundariesIndex } = require('./createBoundariesIndex');
+const { bulkBoundariesIndex } = require('./bulkBoundariesIndex');
 
 async function reindex() {
   try {
@@ -106,9 +109,32 @@ async function reindexSgguCoord() {
   }
 }
 
+async function reindexBoundaries() {
+  try {
+    console.log("🔄 Starting boundaries reindexing process...");
+    
+    console.log("Step 1: Deleting existing boundaries index...");
+    await deleteBoundariesIndex();
+    
+    console.log("Step 2: Creating new boundaries index...");
+    await createBoundariesIndex();
+    
+    console.log("Step 3: Bulk indexing boundaries...");
+    await bulkBoundariesIndex();
+    
+    console.log("✅ Boundaries reindexing process completed successfully!");
+  } catch (error) {
+    console.error("❌ Error during boundaries reindexing process:");
+    console.error("Error message:", error.message);
+    console.error("Stack trace:", error.stack);
+    throw error;
+  }
+}
+
 module.exports = { 
   reindex,
   reindexPharmacies,
   reindexMap,
-  reindexSgguCoord
+  reindexSgguCoord,
+  reindexBoundaries
 };

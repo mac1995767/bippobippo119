@@ -333,4 +333,15 @@ export const fetchEmdongSummary = async (params = {}) => {
   }
 };
 
+// GeoJSON 경계 데이터 받아오기
+export const fetchGeoBoundary = async (regionName) => {
+  try {
+    const response = await axios.get(`/api/geo/sggu/${regionName}`);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching geo boundary:', error);
+    throw error;
+  }
+};
+
 //console.log(`🔗 API Base URL: ${baseURL}`);

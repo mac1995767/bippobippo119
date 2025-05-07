@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const client = require('../config/elasticsearch');
 const SgguCoord = require('../models/SgguCoord');
+const path = require('path');
+const fs = require('fs');
 
 // 기본 경로 테스트
 router.get('/', (req, res) => {
@@ -471,5 +473,6 @@ router.get('/ri-summary', async (req, res) => {
     res.status(500).json({ error: err.message, stack: err.stack });
   }
 });
+
 
 module.exports = router; 

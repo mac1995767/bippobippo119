@@ -32,6 +32,7 @@ import GeneralHospitalMarker from './markers/GeneralHospitalMarker';
 import MentalHospitalMarker from './markers/MentalHospitalMarker';
 import DentalHospitalMarker from './markers/DentalHospitalMarker';
 import axios from 'axios';
+import GeoBoundaryPolygon from './GeoBoundaryPolygon';
 
 const MapPage = () => {
   const mapRef = useRef(null);
@@ -54,6 +55,9 @@ const MapPage = () => {
 
   const [markerClusterer, setMarkerClusterer] = useState(null);
   const markersRef = useRef([]);
+
+  const [regionName, setRegionName] = useState(null);
+  const [regionNames, setRegionNames] = useState([]);
 
   // 요약 데이터
   const getPharmacyUniqueId = (pharmacy) =>
@@ -402,6 +406,37 @@ const MapPage = () => {
     }
   };
 
+  // 지도 클릭 시 regionName을 '경기'로 설정
+  useEffect(() => {
+    if (!map) return;
+    const listener = window.naver.maps.Event.addListener(map, 'click', () => {
+      setRegionName('경기');
+    });
+    return () => window.naver.maps.Event.removeListener(listener);
+  }, [map]);
+
+  // 줌 레벨에 따라 regionNames 세팅
+  useEffect(() => {
+    if (!map) return;
+    if (zoomLevel >= 8 && zoomLevel <= 10) {
+      setRegionNames(sidoSummary.map(item => item.sidoNm));
+    } else if (zoomLevel >= 11 && zoomLevel <= 14) {
+      setRegionNames(sgguSummary.map(item => item.sgguNm));
+    } else if (zoomLevel >= 15) {
+      setRegionNames(emdongSummary.map(item => item.emdongNm));
+    } 
+  }, [zoomLevel, sidoSummary, sgguSummary, emdongSummary, map]);
+
+  // regionNames 값 콘솔 출력
+  useEffect(() => {
+    console.log('regionNames:', regionNames);
+  }, [regionNames]);
+
+  // sgguSummary 값 콘솔 출력
+  useEffect(() => {
+    console.log('sgguSummary:', sgguSummary);
+  }, [sgguSummary]);
+
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
@@ -520,6 +555,10 @@ const MapPage = () => {
                 </>
               )}
             </>
+          )}
+
+          {map && regionNames.length > 0 && (
+            <GeoBoundaryPolygon map={map} regionNames={regionNames} />
           )}
         </div>
       </div>
