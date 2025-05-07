@@ -43,6 +43,7 @@ const MapPage = () => {
   const [selectedInfo, setSelectedInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [isSearchBarVisible, setIsSearchBarVisible] = useState(false);
   const loadingTimeoutRef = useRef(null);
   const abortControllerRef = useRef(null);
   const [selectedHospitalId, setSelectedHospitalId] = useState(null);
@@ -502,6 +503,11 @@ const MapPage = () => {
     }
   }, [map, handleHospitalClick, handlePharmacyClick]);
 
+  // 검색바 토글 핸들러 추가
+  const handleSearchToggle = useCallback(() => {
+    setIsSearchBarVisible(prev => !prev);
+  }, []);
+
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
@@ -514,12 +520,13 @@ const MapPage = () => {
         onItemClick={handleListItemClick}
         map={map}
         onReset={handleReset}
+        onSearch={handleSearchToggle}
       />
 
       <div className="flex flex-row flex-1 h-0">
         <InfoSidebar info={selectedInfo} onClose={handleSidebarClose} />
         <div ref={mapRef} className="flex-1 p-0 m-0 relative">
-          <MapSearchBar onSearch={handleSearchResult} />
+          <MapSearchBar onSearch={handleSearchResult} isVisible={isSearchBarVisible} />
           {isLoading && (
             <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white p-6 rounded-lg shadow-lg">

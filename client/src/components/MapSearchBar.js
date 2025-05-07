@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { searchLocation } from '../service/api';
 
-const MapSearchBar = ({ onSearch }) => {
+const MapSearchBar = ({ onSearch, isVisible }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -15,9 +15,9 @@ const MapSearchBar = ({ onSearch }) => {
         setIsLoading(true);
         setError(null);
         try {
-          console.log('검색어:', searchQuery); // 디버깅을 위한 로그
+          console.log('검색어:', searchQuery);
           const results = await searchLocation(searchQuery);
-          console.log('검색 결과:', results); // 디버깅을 위한 로그
+          console.log('검색 결과:', results);
           setSuggestions(results);
           setShowSuggestions(true);
         } catch (error) {
@@ -43,8 +43,10 @@ const MapSearchBar = ({ onSearch }) => {
     onSearch(suggestion);
   };
 
+  if (!isVisible) return null;
+
   return (
-    <div className="absolute top-4 left-4 z-50 w-80">
+    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 w-80">
       <div className="relative">
         <input
           type="text"
@@ -55,6 +57,11 @@ const MapSearchBar = ({ onSearch }) => {
           placeholder="장소 검색..."
           className="w-full px-4 py-2 pr-10 rounded-lg shadow-lg bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
         {isLoading && (
           <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
             <svg className="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
