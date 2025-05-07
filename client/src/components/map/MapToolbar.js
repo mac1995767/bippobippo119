@@ -18,6 +18,7 @@ import { MdOutlineKeyboardArrowUp } from 'react-icons/md';
 import { initialMedicalTypes, pharmacyTypes, getMedicalStats } from './constants';
 import FilterDropdown from './FilterDropdown';
 import ZoomControls from './ZoomControls';
+import HelpModal from './HelpModal';
 
 function MapToolbar({
   onSearch,
@@ -37,6 +38,7 @@ function MapToolbar({
   onFilterChange
 }) {
   const [showFilter, setShowFilter] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [medicalStats, setMedicalStats] = useState({
     hospitals: initialMedicalTypes,
     pharmacies: pharmacyTypes
@@ -86,7 +88,7 @@ function MapToolbar({
     { label: '공유',        icon: <FaShareAlt size={18} />,     onClick: onCopyLink },
     { label: '초기화',      icon: <FaUndo size={18} />,         onClick: onReset },
     { label: '풀스크린',    icon: <FaExpand size={18} />,       onClick: onFullscreen },
-    { label: '도움말',      icon: <FaInfoCircle size={18} />,   onClick: onLegend },
+    { label: '도움말',      icon: <FaInfoCircle size={18} />,   onClick: () => setShowHelp(true) },
     { label: '필터',        icon: <FaSatellite size={18} />,    onClick: () => setShowFilter(v => !v) }
   ];
 
@@ -128,6 +130,9 @@ function MapToolbar({
 
       {/* 확대/축소 */}
       <ZoomControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
+
+      {/* 도움말 모달 */}
+      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
     </div>
   );
 }
