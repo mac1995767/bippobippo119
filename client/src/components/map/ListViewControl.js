@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { FaListUl, FaTimes } from 'react-icons/fa';
 
-function ListViewControl({ hospitals, pharmacies, onItemClick }) {
+function ListViewControl({ hospitals = [], pharmacies = [], onItemClick }) {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleToggle = useCallback(() => {
@@ -44,9 +44,9 @@ function ListViewControl({ hospitals, pharmacies, onItemClick }) {
           <div className="overflow-y-auto flex-1">
             {/* 병원 목록 */}
             <div className="p-4">
-              <h4 className="text-sm font-semibold text-gray-600 mb-2">병원 ({hospitals.length})</h4>
+              <h4 className="text-sm font-semibold text-gray-600 mb-2">병원 ({hospitals?.length || 0})</h4>
               <div className="space-y-2">
-                {hospitals.map((hospital) => (
+                {hospitals?.map((hospital) => (
                   <div
                     key={hospital.ykiho || `${hospital.yadmNm}_${hospital.location?.lat}_${hospital.location?.lon}`}
                     onClick={() => handleItemClick(hospital)}
@@ -62,9 +62,9 @@ function ListViewControl({ hospitals, pharmacies, onItemClick }) {
 
             {/* 약국 목록 */}
             <div className="p-4 border-t border-gray-200">
-              <h4 className="text-sm font-semibold text-gray-600 mb-2">약국 ({pharmacies.length})</h4>
+              <h4 className="text-sm font-semibold text-gray-600 mb-2">약국 ({pharmacies?.length || 0})</h4>
               <div className="space-y-2">
-                {pharmacies.map((pharmacy) => (
+                {pharmacies?.map((pharmacy) => (
                   <div
                     key={pharmacy.ykiho || `${pharmacy.name}_${pharmacy.lat}_${pharmacy.lng}`}
                     onClick={() => handleItemClick(pharmacy)}

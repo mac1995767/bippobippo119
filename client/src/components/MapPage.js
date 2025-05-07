@@ -506,7 +506,15 @@ const MapPage = () => {
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
       <MapFilterBar />
-      <MapToolbar onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
+      <MapToolbar 
+        onZoomIn={handleZoomIn} 
+        onZoomOut={handleZoomOut} 
+        hospitals={hospitals}
+        pharmacies={pharmacies}
+        onItemClick={handleListItemClick}
+        map={map}
+        onReset={handleReset}
+      />
 
       <div className="flex flex-row flex-1 h-0">
         <InfoSidebar info={selectedInfo} onClose={handleSidebarClose} />
