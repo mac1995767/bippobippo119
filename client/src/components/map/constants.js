@@ -27,9 +27,7 @@ export const pharmacyTypes = [
 // 통계 데이터 가져오기
 export const getMedicalStats = async () => {
   try {
-    console.log('의료기관 통계 데이터 요청 시작');
     const stats = await fetchMedicalStats();
-    console.log('받아온 통계 데이터:', stats);
 
     if (!stats || (!stats.hospitals && !stats.pharmacies)) {
       console.warn('통계 데이터가 없거나 형식이 올바르지 않습니다.');

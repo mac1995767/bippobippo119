@@ -127,13 +127,11 @@ const MapPage = () => {
         // 줌 레벨 변경 이벤트 리스너 추가
         window.naver.maps.Event.addListener(mapInstance, 'zoom_changed', () => {
           const newZoom = mapInstance.getZoom();
-          console.log('줌 레벨 변경:', newZoom);
           setZoomLevel(newZoom);
         });
 
         window.naver.maps.Event.addListener(mapInstance, 'idle', () => {
           const currentZoom = mapInstance.getZoom();
-          console.log('지도 idle 이벤트 - 현재 줌 레벨:', currentZoom);
           setZoomLevel(currentZoom);
           fetchDataByBoundsDebounced(mapInstance);
         });
@@ -150,13 +148,7 @@ const MapPage = () => {
 
   // zoomLevel 값 변경 추적
   useEffect(() => {
-    console.log('zoomLevel 상태 변경:', zoomLevel);
-  }, [zoomLevel]);
-
-  // 요약 데이터(fetchSido, fetchSggu, fetchEmdong) 호출 로직
-  useEffect(() => {
     if (!map) return;
-    console.log('요약 데이터 요청 - 현재 줌 레벨:', zoomLevel);
     
     const bounds = map.getBounds();
     const sw = bounds.getSW();
@@ -170,19 +162,16 @@ const MapPage = () => {
       neLng: ne.lng(),
       lat: center.lat(),
       lng: center.lng(),
-      zoom: zoomLevel.toString() // 줌 레벨을 문자열로 변환
+      zoom: zoomLevel.toString()
     };
 
     if (zoomLevel >= 8 && zoomLevel <= 10) {
-      console.log('시도 요약 데이터 요청');
       fetchSidoSummary(params).then(setSidoSummary).catch(console.error);
     }
     else if (zoomLevel >= 11 && zoomLevel <= 14) {
-      console.log('시군구 요약 데이터 요청');
       fetchSgguSummaryData(params);
     }
     else if (zoomLevel >= 15 && zoomLevel < 16) {
-      console.log('읍면동 요약 데이터 요청');
       fetchEmdongSummaryData(params);
     }
   }, [zoomLevel, map]);
@@ -248,8 +237,7 @@ const MapPage = () => {
 
   // 디버그 로그
   useEffect(() => {
-    hospitals.length && console.log('병원 샘플:', hospitals[0]);
-    pharmacies.length && console.log('약국 샘플:', pharmacies[0]);
+    // 병원과 약국 데이터 로깅 제거
   }, [hospitals, pharmacies]);
 
   // 병원 유형별 마커 컴포넌트 매핑
@@ -405,9 +393,7 @@ const MapPage = () => {
   const fetchSgguSummaryData = async (params) => {
     try {
       const data = await fetchSgguSummary(params);
-      console.log("시군구 요약 데이터 가져오기:", data);
       setSgguSummary(data);
-      
     } catch (error) {
       console.error('시군구 요약 데이터 조회 실패:', error);
     }
@@ -446,12 +432,19 @@ const MapPage = () => {
 
   // regionNames 값 콘솔 출력
   useEffect(() => {
-    console.log('regionNames:', regionNames);
-  }, [regionNames]);
+    if (!map) return;
+    if (zoomLevel >= 8 && zoomLevel <= 10) {
+      setRegionNames(sidoSummary.map(item => item.sidoNm));
+    } else if (zoomLevel >= 11 && zoomLevel <= 14) {
+      setRegionNames(sgguSummary.map(item => item.sgguNm));
+    } else if (zoomLevel >= 15) {
+      setRegionNames(emdongSummary.map(item => item.emdongNm));
+    } 
+  }, [zoomLevel, sidoSummary, sgguSummary, emdongSummary, map]);
 
   // sgguSummary 값 콘솔 출력
   useEffect(() => {
-    console.log('sgguSummary:', sgguSummary);
+    // sgguSummary 로깅 제거
   }, [sgguSummary]);
 
   // 초기화 함수 추가

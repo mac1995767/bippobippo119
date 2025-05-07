@@ -15,9 +15,7 @@ const MapSearchBar = ({ onSearch, isVisible }) => {
         setIsLoading(true);
         setError(null);
         try {
-          console.log('검색어:', searchQuery);
           const results = await searchLocation(searchQuery);
-          console.log('검색 결과:', results);
           setSuggestions(results);
           setShowSuggestions(true);
         } catch (error) {

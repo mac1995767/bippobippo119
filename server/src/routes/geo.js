@@ -5,7 +5,6 @@ const client = require('../config/elasticsearch');
 // 시군구 GeoJSON 경계 조회 API
 router.get('/sggu', async (req, res) => {
   const { regionName } = req.query;
-  console.log('요청받은 시군구 이름:', regionName);
 
   if (!regionName) {
     return res.status(400).json({ error: '시군구 이름이 필요합니다.' });

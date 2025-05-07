@@ -40,16 +40,10 @@ export const fetchNursingHospitalDetail = async (id) => {
 // 병원 상세 정보 가져오기
 export const fetchHospitalDetail = async (id) => {
   try {
-    console.log('병원 상세 정보 요청 ID:', id);
     const response = await axios.get(`${baseUrl}/api/hospitals/detail/${id}`);
-    console.log('병원 상세 정보 응답:', response.data);
     return response.data;
   } catch (error) {
-    console.error("❌ Error fetching hospital detail:", error);
-    if (error.response) {
-      console.error("응답 상태:", error.response.status);
-      console.error("응답 데이터:", error.response.data);
-    }
+    console.error('병원 상세 정보 조회 실패:', error);
     throw error;
   }
 };
@@ -80,14 +74,12 @@ export const fetchHospitalKeywordStats = async (hospitalId) => {
 // 요양병원 리뷰 목록 조회 (페이지네이션 및 정렬 포함)
 export const fetchHospitalReviews = async (hospitalId, page = 1, limit = 10, sort = 'latest') => {
   try {
-    console.log('Fetching reviews for hospital:', hospitalId);
     const response = await axios.get(`${baseUrl}/api/nursing-hospitals/hospital/${hospitalId}/reviews`, {
       params: { page, limit, sort }
     });
-    console.log('Reviews response:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error fetching reviews:', error);
+    console.error('병원 리뷰 조회 실패:', error);
     throw error;
   }
 };
@@ -95,7 +87,6 @@ export const fetchHospitalReviews = async (hospitalId, page = 1, limit = 10, sor
 // 요양병원 리뷰 작성
 export const submitHospitalReview = async (hospitalId, reviewData) => {
   try {
-    console.log('Submitting review for hospital:', hospitalId);
     const response = await axios.post(
       `${baseUrl}/api/nursing-hospitals/hospital/${hospitalId}/reviews`,
       reviewData,
@@ -106,10 +97,9 @@ export const submitHospitalReview = async (hospitalId, reviewData) => {
         withCredentials: true
       }
     );
-    console.log('Review submission response:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error submitting review:', error);
+    console.error('리뷰 작성 실패:', error);
     throw error;
   }
 };
@@ -117,7 +107,6 @@ export const submitHospitalReview = async (hospitalId, reviewData) => {
 // 요양병원 리뷰 수정
 export const updateHospitalReview = async (hospitalId, reviewId, reviewData) => {
   try {
-    console.log('Updating review:', reviewId);
     const response = await axios.put(
       `${baseUrl}/api/nursing-hospitals/hospital/${hospitalId}/reviews/${reviewId}`,
       reviewData,
@@ -128,10 +117,9 @@ export const updateHospitalReview = async (hospitalId, reviewId, reviewData) => 
         withCredentials: true
       }
     );
-    console.log('Review update response:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error updating review:', error);
+    console.error('리뷰 수정 실패:', error);
     throw error;
   }
 };
@@ -139,17 +127,15 @@ export const updateHospitalReview = async (hospitalId, reviewId, reviewData) => 
 // 요양병원 리뷰 삭제
 export const deleteHospitalReview = async (hospitalId, reviewId) => {
   try {
-    console.log('Deleting review:', reviewId);
     const response = await axios.delete(
       `${baseUrl}/api/nursing-hospitals/hospital/${hospitalId}/reviews/${reviewId}`,
       {
         withCredentials: true
       }
     );
-    console.log('Review delete response:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error deleting review:', error);
+    console.error('리뷰 삭제 실패:', error);
     throw error;
   }
 };
@@ -244,21 +230,10 @@ export const fetchMapTypeData = async (type, bounds = {}) => {
 // 지도 검색 API
 export const searchLocation = async (query) => {
   try {
-    console.log('API 호출 시작:', `${baseUrl}/api/map/search?query=${query}`);
-    const response = await axios.get(`${baseUrl}/api/map/search`, {
-      params: { query },
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    console.log('검색 결과:', response.data);
+    const response = await axios.get(`${baseUrl}/api/map/search?query=${query}`);
     return response.data;
   } catch (error) {
-    console.error('❌ Error searching location:', error);
-    if (error.response) {
-      console.error('응답 상태:', error.response.status);
-      console.error('응답 데이터:', error.response.data);
-    }
+    console.error('위치 검색 실패:', error);
     throw error;
   }
 };
@@ -269,7 +244,7 @@ export const fetchMapSummary = async () => {
     const response = await axios.get(`${baseUrl}/api/map/summary`);
     return response.data;
   } catch (error) {
-    console.error('❌ Error fetching map summary:', error);
+    console.error('지도 요약 데이터 조회 실패:', error);
     throw error;
   }
 };

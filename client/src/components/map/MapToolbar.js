@@ -59,23 +59,16 @@ function MapToolbar({
 
   // 통계 데이터 가져오기
   useEffect(() => {
-    const loadStats = async () => {
+    const fetchStats = async () => {
       try {
-        setIsLoading(true);
-        setError(null);
-        console.log('통계 데이터 로딩 시작');
         const stats = await getMedicalStats();
-        console.log('로딩된 통계 데이터:', stats);
         setMedicalStats(stats);
         setSelectedTypes(stats.hospitals.map(t => t.key));
-      } catch (err) {
-        console.error('통계 데이터 로딩 실패:', err);
-        setError('데이터를 불러오는데 실패했습니다.');
-      } finally {
-        setIsLoading(false);
+      } catch (error) {
+        console.error('통계 데이터 로딩 실패:', error);
       }
     };
-    loadStats();
+    fetchStats();
   }, []);
 
   const handleTypeToggle = (type) => {
@@ -87,7 +80,6 @@ function MapToolbar({
   };
 
   const handleReset = () => {
-    console.log('초기화 실행');
     if (onReset) {
       onReset();
     }
