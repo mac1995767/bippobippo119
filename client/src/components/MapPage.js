@@ -19,7 +19,7 @@ import ClusterMarker from './markers/ClusterMarker';
 import hospitalClusters from './cluster/HospitalClusterStats';
 import pharmacyClusters from './cluster/PharmacyClusterStats';
 import debounce from 'lodash.debounce';
-import MapZoomControl from './MapZoomControl';
+import MapToolbar from './map/MapToolbar';
 import InfoSidebar from './InfoSidebar';
 import MapSearchBar from './MapSearchBar';
 import SgguClusterMarker from './markers/SgguClusterMarker';
@@ -441,7 +441,7 @@ const MapPage = () => {
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
       <MapFilterBar />
-      <MapZoomControl onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
+      <MapToolbar onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
 
       <div className="flex flex-row flex-1 h-0">
         <InfoSidebar info={selectedInfo} onClose={handleSidebarClose} />
