@@ -24,6 +24,8 @@ import FullscreenControl from './FullscreenControl';
 import LocationControl from './LocationControl';
 import ResetControl from './ResetControl';
 import ListViewControl from './ListViewControl';
+import LayerControl from './LayerControl';
+import MapStyleControl from './MapStyleControl';
 
 function MapToolbar({
   onSearch,
@@ -182,8 +184,6 @@ function MapToolbar({
 
   const buttons = [
     { label: '검색',        icon: <FaSearch size={18} />,       onClick: onSearch },
-    { label: '레이어',      icon: <FaLayerGroup size={18} />,   onClick: onToggleLayers },
-    { label: '지도스타일',  icon: <FaMap size={18} />,          onClick: onSwitchStyle },
     { label: '히트맵',      icon: <FaThermometerHalf size={18} />, onClick: onToggleHeatmap },
     { label: '대중교통',    icon: <FaBus size={18} />,          onClick: onPublicTransport },
     { label: '북마크',      icon: <FaBookmark size={18} />,     onClick: onBookmark },
@@ -231,6 +231,8 @@ function MapToolbar({
             pharmacies={pharmacies} 
             onItemClick={onItemClick}
           />
+          <LayerControl onToggleLayers={onToggleLayers} />
+          <MapStyleControl map={map} onSwitchStyle={onSwitchStyle} />
           {buttons.slice(1).map((btn, i) => (
             <button
               key={i + 1}

@@ -59,6 +59,13 @@ const MapPage = () => {
   const [regionName, setRegionName] = useState(null);
   const [regionNames, setRegionNames] = useState([]);
 
+  const [visibleLayers, setVisibleLayers] = useState({
+    hospitals: true,
+    pharmacies: true,
+    publicTransport: false,
+    heatmap: false
+  });
+
   // 요약 데이터
   const getPharmacyUniqueId = (pharmacy) =>
     pharmacy.ykiho || `${pharmacy.name}_${pharmacy.lat}_${pharmacy.lng}`;
@@ -326,6 +333,11 @@ const MapPage = () => {
     };
   }, [map]);
 
+  // 레이어 변경 핸들러
+  const handleLayerToggle = useCallback((layers) => {
+    setVisibleLayers(layers);
+  }, []);
+
   // 마커 업데이트
   useEffect(() => {
     if (!markerClusterer || !map) return;
@@ -338,51 +350,55 @@ const MapPage = () => {
     // 새로운 마커 생성
     const newMarkers = [];
 
-    // 병원 마커 생성
-    hospitals.forEach(hospital => {
-      const marker = new window.naver.maps.Marker({
-        position: new window.naver.maps.LatLng(
-          hospital.location?.lat || hospital.lat,
-          hospital.location?.lon || hospital.lng
-        ),
-        map: map,
-        title: hospital.yadmNm || hospital.name,
-        icon: {
-          content: `<div style="width:16px;height:16px;background-color:#66BB6A;border:2px solid white;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
-          size: new window.naver.maps.Size(16, 16),
-          anchor: new window.naver.maps.Point(8, 8)
-        }
+    // 병원 마커 생성 (레이어가 활성화된 경우에만)
+    if (visibleLayers.hospitals) {
+      hospitals.forEach(hospital => {
+        const marker = new window.naver.maps.Marker({
+          position: new window.naver.maps.LatLng(
+            hospital.location?.lat || hospital.lat,
+            hospital.location?.lon || hospital.lng
+          ),
+          map: map,
+          title: hospital.yadmNm || hospital.name,
+          icon: {
+            content: `<div style="width:16px;height:16px;background-color:#66BB6A;border:2px solid white;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
+            size: new window.naver.maps.Size(16, 16),
+            anchor: new window.naver.maps.Point(8, 8)
+          }
+        });
+
+        window.naver.maps.Event.addListener(marker, 'click', () => handleHospitalClick(hospital));
+        newMarkers.push(marker);
       });
+    }
 
-      window.naver.maps.Event.addListener(marker, 'click', () => handleHospitalClick(hospital));
-      newMarkers.push(marker);
-    });
+    // 약국 마커 생성 (레이어가 활성화된 경우에만)
+    if (visibleLayers.pharmacies) {
+      pharmacies.forEach(pharmacy => {
+        const marker = new window.naver.maps.Marker({
+          position: new window.naver.maps.LatLng(
+            pharmacy.lat || pharmacy.location?.lat,
+            pharmacy.lng || pharmacy.location?.lon
+          ),
+          map: map,
+          title: pharmacy.name,
+          icon: {
+            content: `<div style="width:16px;height:16px;background-color:#42A5F5;border:2px solid white;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
+            size: new window.naver.maps.Size(16, 16),
+            anchor: new window.naver.maps.Point(8, 8)
+          }
+        });
 
-    // 약국 마커 생성
-    pharmacies.forEach(pharmacy => {
-      const marker = new window.naver.maps.Marker({
-        position: new window.naver.maps.LatLng(
-          pharmacy.lat || pharmacy.location?.lat,
-          pharmacy.lng || pharmacy.location?.lon
-        ),
-        map: map,
-        title: pharmacy.name,
-        icon: {
-          content: `<div style="width:16px;height:16px;background-color:#42A5F5;border:2px solid white;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
-          size: new window.naver.maps.Size(16, 16),
-          anchor: new window.naver.maps.Point(8, 8)
-        }
+        window.naver.maps.Event.addListener(marker, 'click', () => handlePharmacyClick(pharmacy));
+        newMarkers.push(marker);
       });
-
-      window.naver.maps.Event.addListener(marker, 'click', () => handlePharmacyClick(pharmacy));
-      newMarkers.push(marker);
-    });
+    }
 
     // 마커를 클러스터에 추가
     markerClusterer.addMarkers(newMarkers);
     markersRef.current = newMarkers;
 
-  }, [hospitals, pharmacies, markerClusterer, map]);
+  }, [hospitals, pharmacies, markerClusterer, map, visibleLayers]);
 
   // 시군구 요약 데이터 가져오기
   const fetchSgguSummaryData = async (params) => {
@@ -496,7 +512,7 @@ const MapPage = () => {
         map={map}
         onSearch={handleSearchResult}
         onListView={() => {}}
-        onToggleLayers={() => {}}
+        onToggleLayers={handleLayerToggle}
         onSwitchStyle={() => {}}
         onToggleHeatmap={() => {}}
         onPublicTransport={() => {}}
