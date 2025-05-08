@@ -8,7 +8,19 @@ const BATCH_SIZE = 1;
 const MAX_RETRIES = 3;
 const COORD_LIMIT = 4000;
 
-proj4.defs("EPSG:5186", "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=500000 +ellps=GRS80 +units=m +no_defs");
+proj4.defs(
+  "EPSG:5186",
+  "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 " +
+  "+x_0=200000 +y_0=500000 +ellps=GRS80 +units=m +no_defs"
+);
+
+// 변경 후 (Naver UTMK_NAVER ≒ EPSG:5179 정의)
+proj4.defs(
+  "EPSG:5179",
+  "+proj=tmerc +lat_0=38 +lon_0=127.5 +k=1 " +
+  "+x_0=1000000 +y_0=2000000 +ellps=GRS80 +units=m +no_defs"
+);
+
 proj4.defs("EPSG:4326", proj4.WGS84);
 
 function isValidCoordinate(coord) {
@@ -38,7 +50,7 @@ function convertCoordinates(coordinates, type, sgguName = '') {
           console.warn(`⚠️ [${sgguName}] Polygon ring(${i}) 유효 좌표 부족으로 제외됨`);
           return null;
         }
-        const converted = validRing.map(([x, y]) => proj4("EPSG:5186", "EPSG:4326", [x, y]));
+        const converted = validRing.map(([x, y]) => proj4("EPSG:5179", "EPSG:4326", [x, y]));
         return closeRing(converted);
       }).filter(ring => ring !== null);
     }
@@ -52,7 +64,7 @@ function convertCoordinates(coordinates, type, sgguName = '') {
           console.warn(`⚠️ [${sgguName}] MultiPolygon[${p}][${r}] 유효 좌표 부족으로 제외됨`);
           return null;
         }
-        return validRing.map(([x, y]) => proj4("EPSG:5186", "EPSG:4326", [x, y]));
+        return validRing.map(([x, y]) => proj4("EPSG:5179", "EPSG:4326", [x, y]));
       }).filter(ring => ring !== null);
 
       return converted.length > 0 ? converted : null;
@@ -80,23 +92,27 @@ async function bulkBoundariesIndex() {
       const { SGG_NM } = doc.properties || {};
 
       if (!doc.geometry || !['Polygon', 'MultiPolygon'].includes(doc.geometry.type)) {
+        if (i % 100 === 0) console.log(`[${i}/${documents.length}] 진행 중...`);
         console.warn(`❌ [${SGG_NM}] 잘못된 geometry type: ${doc.geometry?.type}`);
         continue;
       }
 
       if (!Array.isArray(doc.geometry.coordinates) || doc.geometry.coordinates.length === 0) {
+        if (i % 100 === 0) console.log(`[${i}/${documents.length}] 진행 중...`);
         console.warn(`❌ [${SGG_NM}] geometry.coordinates가 비어 있음`);
         continue;
       }
 
       const coordsCount = doc.geometry.coordinates.flat(Infinity).length;
       if (coordsCount > COORD_LIMIT) {
+        if (i % 100 === 0) console.log(`[${i}/${documents.length}] 진행 중...`);
         console.warn(`⚠️ [${SGG_NM}] 좌표 수 ${coordsCount}개로 매우 큽니다`);
       }
 
       try {
         doc.geometry.coordinates = convertCoordinates(doc.geometry.coordinates, doc.geometry.type, SGG_NM);
       } catch (err) {
+        fs.appendFileSync('failed_sggu.log', `[변환실패] ${SGG_NM}\n`);
         console.warn(`❌ [${SGG_NM}] 좌표 변환 실패:`, err);
         continue;
       }
@@ -133,17 +149,19 @@ async function bulkBoundariesIndex() {
           if (response.errors) {
             const erroredItems = response.items.filter(item => item.index && item.index.error);
             if (erroredItems.length > 0) {
+              fs.appendFileSync('failed_sggu.log', `[색인실패] ${SGG_NM}\n`);
               console.error(`❌ 색인 실패 (${SGG_NM}):`, erroredItems[0]);
             }
           }
 
-          console.log(`✅ ${i + 1}/${documents.length} 문서 색인 완료 (${SGG_NM})`);
+          if ((i + 1) % 100 === 0 || i === documents.length - 1) {
+            console.log(`✅ ${i + 1}/${documents.length} 문서 색인 완료 (${SGG_NM})`);
+          }
           success = true;
         } catch (err) {
-          console.warn(`⏱️ [${SGG_NM}] 재시도 ${attempt}/${MAX_RETRIES} 실패`);
           if (attempt === MAX_RETRIES) {
+            fs.appendFileSync('failed_sggu.log', `[최종실패] ${SGG_NM}\n`);
             console.error(`❌ 색인 실패: ${SGG_NM}`, err);
-            fs.appendFileSync('failed_sggu.log', `${SGG_NM}\n`);
           }
           await new Promise(res => setTimeout(res, 2000));
         }
@@ -153,7 +171,7 @@ async function bulkBoundariesIndex() {
     try {
       const countResponse = await client.count({ index: 'sggu-boundaries' });
       const count = countResponse.body ? countResponse.body.count : countResponse.count;
-      console.log(`�� Elasticsearch 색인된 문서 수: ${count}`);
+      console.log(`Elasticsearch 색인된 문서 수: ${count}`);
     } catch (error) {
       console.error('문서 개수 확인 중 오류:', error);
     }

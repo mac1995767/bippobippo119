@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchGeoBoundary } from '../service/api';
 
-// 폴리곤 중심(centroid) 계산 함수
+// 폴리곤 중심(centroid) 계산 함수 (변경 없음)
 function getPolygonCentroid(path) {
   let area = 0, x = 0, y = 0;
   const points = path.length;
@@ -31,12 +31,7 @@ const GeoBoundaryPolygon = ({ map, coordinates }) => {
       try {
         // 1) GeoJSON 데이터 호출
         const geoJson = await fetchGeoBoundary(coordinates[0], coordinates[1]);
-        console.log('▶️ fetchGeoBoundary returns:', geoJson);
-
-        if (!geoJson?.features?.length) {
-          console.warn('GeoJSON 데이터가 없거나 유효하지 않습니다.');
-          return;
-        }
+        if (!geoJson?.features?.length) return;
 
         // 2) 기존 객체 제거
         polygons.forEach(p => p.setMap(null));
@@ -49,28 +44,24 @@ const GeoBoundaryPolygon = ({ map, coordinates }) => {
 
         // 3) 각 feature 처리
         geoJson.features.forEach(feature => {
-          console.log('▶️ feature.properties:', feature.properties);
-
           const geom = feature.geometry;
-          if (!geom?.coordinates) {
-            console.warn('유효하지 않은 geometry:', feature);
-            return;
-          }
+          if (!geom?.coordinates) return;
 
           // 4) 경로(paths) 생성 (outer ring만 사용)
-          const rawArray = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
+          const rawArray = geom.type === 'Polygon'
+            ? [geom.coordinates]
+            : geom.coordinates;
+
+          // ✏️ 수정된 부분: EPSG:5186 평면좌표(x,y)를 UTMK → LatLng로 변환
           const paths = rawArray
             .map(polygon =>
               polygon[0]
                 .filter(pt => Array.isArray(pt) && pt.length === 2)
-                .map(([lon, lat]) => new window.naver.maps.LatLng(lat - 0.904, lon + 0.0030))
+                .map(([lng, lat]) => new window.naver.maps.LatLng(lat, lng))
             )
             .filter(path => path.length >= 3);
 
-          if (!paths.length) {
-            console.warn('유효한 경로 없음:', feature.properties);
-            return;
-          }
+          if (!paths.length) return;
 
           // 5) 폴리곤 렌더링
           const polygon = new window.naver.maps.Polygon({
@@ -85,22 +76,25 @@ const GeoBoundaryPolygon = ({ map, coordinates }) => {
           newPolygons.push(polygon);
 
           // 6) 레이블용 Marker & InfoWindow
-          const centroid = getPolygonCentroid(paths[0]);
-          const centerLat = centroid.lat;
-          const centerLng = centroid.lng;
-          const name = feature.properties.SGG_NM || '알 수 없음';
-
-          // Marker (invisible) for positioning label
+          const { lat, lng } = getPolygonCentroid(paths[0]);
           const marker = new window.naver.maps.Marker({
             map,
-            position: new window.naver.maps.LatLng(centerLat, centerLng),
+            position: new window.naver.maps.LatLng(lat, lng),
             visible: false,
           });
           newMarkers.push(marker);
 
-          // 항상 열린 InfoWindow (라벨처럼)
           const infoWindow = new window.naver.maps.InfoWindow({
-            content: `<div style="padding:4px 8px;background:white;border-radius:4px;border:1px solid #5347AA;color:#5347AA;font-size:12px;font-weight:bold;white-space:nowrap;">${name}</div>`,
+            content: `<div style="
+              padding:4px 8px;
+              background:white;
+              border-radius:4px;
+              border:1px solid #5347AA;
+              color:#5347AA;
+              font-size:12px;
+              font-weight:bold;
+              white-space:nowrap;
+            ">${feature.properties.SGG_NM || '알 수 없음'}</div>`,
             position: marker.getPosition(),
             disableAnchor: true,
             borderWidth: 0,
@@ -115,6 +109,7 @@ const GeoBoundaryPolygon = ({ map, coordinates }) => {
         setPolygons(newPolygons);
         setMarkers(newMarkers);
         setInfoWindows(newInfoWindows);
+
       } catch (err) {
         console.error('폴리곤 렌더링 중 오류:', err);
       }
@@ -122,7 +117,7 @@ const GeoBoundaryPolygon = ({ map, coordinates }) => {
 
     fetchAndRender();
 
-    // Cleanup on unmount or before next render
+    // 언마운트 시 또는 다음 렌더 전 cleanup
     return () => {
       polygons.forEach(p => p.setMap(null));
       markers.forEach(m => m.setMap(null));
