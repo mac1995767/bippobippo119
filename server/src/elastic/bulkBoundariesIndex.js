@@ -97,7 +97,7 @@ async function bulkBoundariesIndex() {
       try {
         doc.geometry.coordinates = convertCoordinates(doc.geometry.coordinates, doc.geometry.type, SGG_NM);
       } catch (err) {
-        console.warn(`❌ [${SGG_NM}] 좌표 변환 실패`, err);
+        console.warn(`❌ [${SGG_NM}] 좌표 변환 실패:`, err);
         continue;
       }
 
@@ -133,7 +133,7 @@ async function bulkBoundariesIndex() {
           if (response.errors) {
             const erroredItems = response.items.filter(item => item.index && item.index.error);
             if (erroredItems.length > 0) {
-              console.error(`❌ 색인 실패 (${SGG_NM})`, erroredItems[0]);
+              console.error(`❌ 색인 실패 (${SGG_NM}):`, erroredItems[0]);
             }
           }
 
@@ -153,9 +153,9 @@ async function bulkBoundariesIndex() {
     try {
       const countResponse = await client.count({ index: 'sggu-boundaries' });
       const count = countResponse.body ? countResponse.body.count : countResponse.count;
-      console.log(`📊 Elasticsearch 색인된 문서 수: ${count}`);
+      console.log(`�� Elasticsearch 색인된 문서 수: ${count}`);
     } catch (error) {
-      console.error('문서 개수 확인 중 오:', error);
+      console.error('문서 개수 확인 중 오류:', error);
     }
 
   } catch (error) {
@@ -164,4 +164,4 @@ async function bulkBoundariesIndex() {
   }
 }
 
-module.exports = { bulkBoundariesIndex };
+module.exports = { bulkBoundariesIndex }; 
