@@ -1,6 +1,24 @@
 import { useEffect, useState } from 'react';
 import { fetchGeoBoundary } from '../service/api';
 
+// 폴리곤 중심(centroid) 계산 함수
+function getPolygonCentroid(path) {
+  let area = 0, x = 0, y = 0;
+  const points = path.length;
+  for (let i = 0; i < points; i++) {
+    const lat1 = path[i].lat(), lng1 = path[i].lng();
+    const lat2 = path[(i + 1) % points].lat(), lng2 = path[(i + 1) % points].lng();
+    const f = lat1 * lng2 - lat2 * lng1;
+    area += f;
+    x += (lat1 + lat2) * f;
+    y += (lng1 + lng2) * f;
+  }
+  area /= 2;
+  x /= (6 * area);
+  y /= (6 * area);
+  return { lat: x, lng: y };
+}
+
 const GeoBoundaryPolygon = ({ map, coordinates }) => {
   const [polygons, setPolygons] = useState([]);
   const [markers, setMarkers] = useState([]);
@@ -45,7 +63,7 @@ const GeoBoundaryPolygon = ({ map, coordinates }) => {
             .map(polygon =>
               polygon[0]
                 .filter(pt => Array.isArray(pt) && pt.length === 2)
-                .map(([lon, lat]) => new window.naver.maps.LatLng(lat, lon))
+                .map(([lon, lat]) => new window.naver.maps.LatLng(lat - 0.904, lon + 0.0030))
             )
             .filter(path => path.length >= 3);
 
@@ -67,17 +85,9 @@ const GeoBoundaryPolygon = ({ map, coordinates }) => {
           newPolygons.push(polygon);
 
           // 6) 레이블용 Marker & InfoWindow
-          let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-          paths[0].forEach(latlng => {
-            const lat = latlng.lat();
-            const lng = latlng.lng();
-            if (lat < minLat) minLat = lat;
-            if (lat > maxLat) maxLat = lat;
-            if (lng < minLng) minLng = lng;
-            if (lng > maxLng) maxLng = lng;
-          });
-          const centerLat = (minLat + maxLat) / 2;
-          const centerLng = (minLng + maxLng) / 2;
+          const centroid = getPolygonCentroid(paths[0]);
+          const centerLat = centroid.lat;
+          const centerLng = centroid.lng;
           const name = feature.properties.SGG_NM || '알 수 없음';
 
           // Marker (invisible) for positioning label
