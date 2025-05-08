@@ -3,152 +3,120 @@ import { fetchGeoBoundary } from '../service/api';
 
 const GeoBoundaryPolygon = ({ map, coordinates }) => {
   const [polygons, setPolygons] = useState([]);
-  const [hoveredPolygon, setHoveredPolygon] = useState(null);
-  const [clickedInfoWindow, setClickedInfoWindow] = useState(null);
+  const [markers, setMarkers] = useState([]);
+  const [infoWindows, setInfoWindows] = useState([]);
 
   useEffect(() => {
-    if (!map || !coordinates) {
-      return;
-    }
+    if (!map || !coordinates?.length) return;
 
-    const createPolygon = (paths, properties) => {
-      console.log('폴리곤 properties:', properties);
-
-      if (!paths || paths.length === 0) {
-        return null;
-      }
-
-      const validPaths = paths.filter(path => 
-        path && path.length > 0 && 
-        path.every(point => 
-          point && typeof point.lat === 'number' && typeof point.lng === 'number'
-        )
-      );
-
-      if (validPaths.length === 0) {
-        return null;
-      }
-
-      const polygon = new window.naver.maps.Polygon({
-        map: map,
-        paths: validPaths,
-        strokeColor: '#5347AA',
-        strokeWeight: 2,
-        strokeOpacity: 0.8,
-        fillColor: '#5347AA',
-        fillOpacity: 0.2
-      });
-
-      // 마우스 이벤트 리스너 추가
-      window.naver.maps.Event.addListener(polygon, 'mouseover', () => {
-        setHoveredPolygon(true);
-        polygon.setOptions({
-          strokeWeight: 4,
-          strokeOpacity: 1,
-          fillOpacity: 0.4
-        });
-      });
-
-      window.naver.maps.Event.addListener(polygon, 'mouseout', () => {
-        setHoveredPolygon(null);
-        polygon.setOptions({
-          strokeWeight: 2,
-          strokeOpacity: 0.8,
-          fillOpacity: 0.2
-        });
-      });
-
-      // 클릭 이벤트 리스너 추가
-      window.naver.maps.Event.addListener(polygon, 'click', (e) => {
-        console.log('클릭한 폴리곤의 properties:', properties);
-
-        // 이전 인포윈도우 제거
-        if (clickedInfoWindow) {
-          clickedInfoWindow.close();
-        }
-
-        // 새로운 인포윈도우 생성
-        const infoWindow = new window.naver.maps.InfoWindow({
-          content: `
-            <div style="padding: 10px; min-width: 100px; text-align: center;">
-              <div style="font-weight: bold; margin-bottom: 5px;">${properties.SGG_NM}</div>
-              <div style="font-size: 12px; color: #666;">${properties.SIDO_NM}</div>
-            </div>
-          `,
-          position: e.coord,
-          pixelOffset: new window.naver.maps.Point(0, -10)
-        });
-
-        infoWindow.open(map);
-        setClickedInfoWindow(infoWindow);
-      });
-
-      return polygon;
-    };
-
-    const fetchAndCreatePolygon = async (coord) => {
+    const fetchAndRender = async () => {
       try {
-        const geojson = await fetchGeoBoundary({
-          lat: coord.lat,
-          lng: coord.lng
+        // 1) GeoJSON 데이터 호출
+        const geoJson = await fetchGeoBoundary(coordinates[0], coordinates[1]);
+        console.log('▶️ fetchGeoBoundary returns:', geoJson);
+
+        if (!geoJson?.features?.length) {
+          console.warn('GeoJSON 데이터가 없거나 유효하지 않습니다.');
+          return;
+        }
+
+        // 2) 기존 객체 제거
+        polygons.forEach(p => p.setMap(null));
+        markers.forEach(m => m.setMap(null));
+        infoWindows.forEach(w => w.close());
+
+        const newPolygons = [];
+        const newMarkers = [];
+        const newInfoWindows = [];
+
+        // 3) 각 feature 처리
+        geoJson.features.forEach(feature => {
+          console.log('▶️ feature.properties:', feature.properties);
+
+          const geom = feature.geometry;
+          if (!geom?.coordinates) {
+            console.warn('유효하지 않은 geometry:', feature);
+            return;
+          }
+
+          // 4) 경로(paths) 생성 (outer ring만 사용)
+          const rawArray = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
+          const paths = rawArray
+            .map(polygon =>
+              polygon[0]
+                .filter(pt => Array.isArray(pt) && pt.length === 2)
+                .map(([lon, lat]) => new window.naver.maps.LatLng(lat, lon))
+            )
+            .filter(path => path.length >= 3);
+
+          if (!paths.length) {
+            console.warn('유효한 경로 없음:', feature.properties);
+            return;
+          }
+
+          // 5) 폴리곤 렌더링
+          const polygon = new window.naver.maps.Polygon({
+            map,
+            paths,
+            strokeColor: '#5347AA',
+            strokeWeight: 2,
+            strokeOpacity: 0.8,
+            fillColor: '#5347AA',
+            fillOpacity: 0.2,
+          });
+          newPolygons.push(polygon);
+
+          // 6) 레이블용 Marker & InfoWindow
+          let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+          paths[0].forEach(latlng => {
+            const lat = latlng.lat();
+            const lng = latlng.lng();
+            if (lat < minLat) minLat = lat;
+            if (lat > maxLat) maxLat = lat;
+            if (lng < minLng) minLng = lng;
+            if (lng > maxLng) maxLng = lng;
+          });
+          const centerLat = (minLat + maxLat) / 2;
+          const centerLng = (minLng + maxLng) / 2;
+          const name = feature.properties.SGG_NM || '알 수 없음';
+
+          // Marker (invisible) for positioning label
+          const marker = new window.naver.maps.Marker({
+            map,
+            position: new window.naver.maps.LatLng(centerLat, centerLng),
+            visible: false,
+          });
+          newMarkers.push(marker);
+
+          // 항상 열린 InfoWindow (라벨처럼)
+          const infoWindow = new window.naver.maps.InfoWindow({
+            content: `<div style="padding:4px 8px;background:white;border-radius:4px;border:1px solid #5347AA;color:#5347AA;font-size:12px;font-weight:bold;white-space:nowrap;">${name}</div>`,
+            position: marker.getPosition(),
+            disableAnchor: true,
+            borderWidth: 0,
+            backgroundColor: 'transparent',
+            zIndex: 1000,
+          });
+          infoWindow.open(map);
+          newInfoWindows.push(infoWindow);
         });
 
-        console.log('받아온 GeoJSON 데이터:', geojson);
-
-        if (!geojson || !geojson.features || geojson.features.length === 0) {
-          return null;
-        }
-
-        const feature = geojson.features[0];
-        console.log('Feature 데이터:', feature);
-        console.log('Properties 데이터:', feature.properties);
-
-        const geometry = feature.geometry;
-        const geomType = geometry.type;
-        let paths = [];
-
-        if (geomType === 'MultiPolygon') {
-          paths = geometry.coordinates.map(polygon => 
-            polygon[0].map(coord => ({
-              lat: coord[1],
-              lng: coord[0]
-            }))
-          );
-        } else if (geomType === 'Polygon') {
-          paths = geometry.coordinates[0].map(coord => ({
-            lat: coord[1],
-            lng: coord[0]
-          }));
-        }
-
-        return createPolygon(paths, feature.properties);
-      } catch (error) {
-        console.error('지역 경계 데이터 처리 실패:', error);
-        return null;
+        // 7) state 업데이트
+        setPolygons(newPolygons);
+        setMarkers(newMarkers);
+        setInfoWindows(newInfoWindows);
+      } catch (err) {
+        console.error('폴리곤 렌더링 중 오류:', err);
       }
     };
 
-    const createPolygons = async () => {
-      const newPolygons = await Promise.all(
-        coordinates.map(coord => fetchAndCreatePolygon(coord))
-      );
-      setPolygons(newPolygons.filter(Boolean));
-    };
+    fetchAndRender();
 
-    createPolygons();
-
+    // Cleanup on unmount or before next render
     return () => {
-      // 이전 인포윈도우 제거
-      if (clickedInfoWindow) {
-        clickedInfoWindow.close();
-      }
-      
-      // 폴리곤 제거
-      polygons.forEach(polygon => {
-        if (polygon) {
-          polygon.setMap(null);
-        }
-      });
+      polygons.forEach(p => p.setMap(null));
+      markers.forEach(m => m.setMap(null));
+      infoWindows.forEach(w => w.close());
     };
   }, [map, coordinates]);
 

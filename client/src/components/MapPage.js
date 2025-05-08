@@ -560,7 +560,7 @@ const MapPage = () => {
                 />
               ))}
 
-              {/* 줌 11~12: 시군구 요약 */}
+              {/* 줌 11~14: 시군구 요약 */}
               {(zoomLevel >= 11 && zoomLevel <= 14) && sgguSummary.map(item => (
                 <SgguClusterMarker
                   key={item.sgguNm}
@@ -643,14 +643,13 @@ const MapPage = () => {
                   ))}
                 </>
               )}
-            </>
-          )}
 
-          {map && (
-            <GeoBoundaryPolygon 
-              map={map} 
-              coordinates={mousePosition ? [mousePosition] : []}
-            />
+              {/* 경계선 폴리곤 - 모든 줌 레벨에서 표시 */}
+              <GeoBoundaryPolygon 
+                map={map} 
+                coordinates={mousePosition ? [mousePosition] : []}
+              />
+            </>
           )}
         </div>
       </div>
