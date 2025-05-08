@@ -309,10 +309,17 @@ export const fetchEmdongSummary = async (params = {}) => {
 };
 
 // GeoJSON 경계 데이터 받아오기
-export const fetchGeoBoundary = async (regionName) => {
+export const fetchGeoBoundary = async (params) => {
   try {
-    const response = await axios.get(`${baseUrl}/api/geo/sggu`, {
-      params: { regionName }
+    if (!params.lat || !params.lng) {
+      throw new Error('좌표가 필요합니다.');
+    }
+
+    const response = await axios.get(`${baseUrl}/api/geo/sggu/coordinates`, {
+      params: {
+        lat: params.lat,
+        lng: params.lng
+      }
     });
     return response.data;
   } catch (error) {

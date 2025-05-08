@@ -67,6 +67,8 @@ const MapPage = () => {
     heatmap: false
   });
 
+  const [mousePosition, setMousePosition] = useState(null);
+
   // 요약 데이터
   const getPharmacyUniqueId = (pharmacy) =>
     pharmacy.ykiho || `${pharmacy.name}_${pharmacy.lat}_${pharmacy.lng}`;
@@ -134,6 +136,20 @@ const MapPage = () => {
           const currentZoom = mapInstance.getZoom();
           setZoomLevel(currentZoom);
           fetchDataByBoundsDebounced(mapInstance);
+        });
+
+        // 마우스 이동 이벤트 리스너 추가
+        window.naver.maps.Event.addListener(mapInstance, 'mousemove', (e) => {
+          const coord = e.coord;
+          setMousePosition({
+            lat: coord.y,
+            lng: coord.x
+          });
+        });
+
+        // 마우스가 지도를 벗어날 때 좌표 초기화
+        window.naver.maps.Event.addListener(mapInstance, 'mouseout', () => {
+          setMousePosition(null);
         });
 
         setMap(mapInstance);
@@ -630,8 +646,11 @@ const MapPage = () => {
             </>
           )}
 
-          {map && regionNames.length > 0 && (
-            <GeoBoundaryPolygon map={map} regionNames={regionNames} />
+          {map && (
+            <GeoBoundaryPolygon 
+              map={map} 
+              coordinates={mousePosition ? [mousePosition] : []}
+            />
           )}
         </div>
       </div>

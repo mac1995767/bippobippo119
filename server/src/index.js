@@ -144,13 +144,13 @@ addDefaultOrigins();
 
 // Elasticsearch Boundaries Reindexing
 //reindexBoundaries()
-//  .then(() => {
-//    console.log("✅ Elasticsearch Boundaries Reindexing Complete!");
-//  })
-//  .catch(err => {
-//    console.error("❌ Error in reindexing:", err);
-//    console.error("Stack trace:", err.stack);
-//  });
+ // .then(() => {
+ //   console.log("✅ Elasticsearch Boundaries Reindexing Complete!");
+ // })
+ // .catch(err => {
+ //   console.error("❌ Error in reindexing:", err);
+ //   console.error("Stack trace:", err.stack);
+ // });
 
 // API 라우트 설정
 console.log('라우터 설정 시작');
