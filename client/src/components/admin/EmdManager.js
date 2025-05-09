@@ -1,5 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../utils/api';
+import proj4 from 'proj4';
+
+// proj4 로그 비활성화
+proj4.defs("EPSG:5179","+proj=tmerc +lat_0=38 +lon_0=127.5 +k=0.9996 +x_0=1000000 +y_0=2000000 +ellps=GRS80 +units=m +no-defs");
+proj4.defs("EPSG:4326", proj4.WGS84);
+
+// 좌표 변환 함수
+function transformCoordinates(coords, type) {
+  const transformPoint = ([x, y]) => {
+    try {
+      // EPSG:5179 -> EPSG:4326
+      const [lon, lat] = proj4('EPSG:5179', 'EPSG:4326', [x, y]);
+      return [lon, lat];
+    } catch (error) {
+      console.warn('좌표 변환 실패:', error);
+      return null;
+    }
+  };
+
+  try {
+    if (type === 'Polygon') {
+      return coords.map(ring => {
+        const transformedRing = ring.map(transformPoint).filter(coord => coord !== null);
+        return transformedRing.length > 0 ? transformedRing : null;
+      }).filter(ring => ring !== null);
+    }
+
+    if (type === 'MultiPolygon') {
+      return coords.map(polygon => {
+        const transformedPolygon = polygon.map(ring => {
+          const transformedRing = ring.map(transformPoint).filter(coord => coord !== null);
+          return transformedRing.length > 0 ? transformedRing : null;
+        }).filter(ring => ring !== null);
+        return transformedPolygon.length > 0 ? transformedPolygon : null;
+      }).filter(polygon => polygon !== null);
+    }
+
+    return coords;
+  } catch (error) {
+    console.warn('좌표 변환 실패:', error);
+    return null;
+  }
+}
 
 const EmdManager = () => {
   const [files, setFiles] = useState([]);
@@ -78,21 +121,38 @@ const EmdManager = () => {
 
     setUploading(true);
     const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      await api.post('/api/admin/bucket/emd/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
+    
+    // GeoJSON 파일 읽기 및 좌표 변환
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const geoJson = JSON.parse(e.target.result);
+        if (geoJson.features) {
+          geoJson.features = geoJson.features.map(feature => ({
+            ...feature,
+            geometry: {
+              ...feature.geometry,
+              coordinates: transformCoordinates(feature.geometry.coordinates, feature.geometry.type)
+            }
+          }));
         }
-      });
-      setMessage('✅ 업로드 완료');
-      fetchFiles();
-    } catch (err) {
-      setMessage('❌ 업로드 실패: ' + err.message);
-    } finally {
-      setUploading(false);
-    }
+        const transformedBlob = new Blob([JSON.stringify(geoJson)], { type: 'application/json' });
+        formData.append('file', transformedBlob, file.name);
+        
+        await api.post('/api/admin/bucket/emd/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        setMessage('✅ 업로드 완료');
+        fetchFiles();
+      } catch (err) {
+        setMessage('❌ 업로드 실패: ' + err.message);
+      } finally {
+        setUploading(false);
+      }
+    };
+    reader.readAsText(file);
   };
 
   // 파일 삭제

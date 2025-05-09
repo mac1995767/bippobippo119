@@ -660,54 +660,103 @@ router.post('/bucket/sig/upload', upload.single('file'), async (req, res) => {
     const sigBoundaries = mongoose.connection.db.collection('sggu_boundaries_sig');
     await sigBoundaries.deleteMany({});
     
-    const documents = geoJson.features.map(feature => ({
-      type: 'Feature',
-      properties: feature.properties,
-      geometry: feature.geometry,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }));
+    const features = geoJson.features || [];
+    const totalDocs = features.length;
+    let insertedCount = 0;
 
-    if (documents.length > 0) {
-      await sigBoundaries.insertMany(documents);
+    const MAX_DOC_SIZE = 15 * 1024 * 1024;
+    const BATCH_SIZE = 10;
+    let currentBatch = [];
+    let currentBatchSize = 0;
+
+    for (let i = 0; i < features.length; i++) {
+      const feature = features[i];
+      if (!feature.properties || !feature.geometry || !feature.geometry.coordinates) {
+        continue;
+      }
+      
+      const { SIG_CD, SIG_KOR_NM, SIG_ENG_NM } = feature.properties;
+      if (!SIG_CD || !SIG_KOR_NM || !SIG_ENG_NM) {
+        continue;
+      }
+
+      const doc = {
+        type: 'Feature',
+        properties: { SIG_CD, SIG_KOR_NM, SIG_ENG_NM },
+        geometry: {
+          type: feature.geometry.type,
+          coordinates: feature.geometry.coordinates.map(polygon => 
+            polygon.map(ring => 
+              ring.map(coord => {
+                const lng = parseFloat(coord[0]);
+                const lat = parseFloat(coord[1]);
+                
+                if (isNaN(lng) || isNaN(lat) || 
+                    lng < -180 || lng > 180 || 
+                    lat < -90 || lat > 90) {
+                  return coord;
+                }
+                
+                return [lng, lat];
+              })
+            )
+          )
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      const cleanDoc = {
+        type: 'Feature',
+        properties: doc.properties,
+        geometry: doc.geometry,
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt
+      };
+
+      const docSize = JSON.stringify(cleanDoc).length;
+      
+      if (currentBatchSize + docSize > MAX_DOC_SIZE || currentBatch.length >= BATCH_SIZE) {
+        if (currentBatch.length > 0) {
+          for (const doc of currentBatch) {
+            try {
+              await sigBoundaries.insertOne(doc);
+              insertedCount++;
+            } catch (docErr) {
+              console.error(`문서 저장 실패: ${doc.properties.SIG_KOR_NM}`, docErr);
+            }
+          }
+        }
+        currentBatch = [doc];
+        currentBatchSize = docSize;
+      } else {
+        currentBatch.push(doc);
+        currentBatchSize += docSize;
+      }
+    }
+
+    if (currentBatch.length > 0) {
+      for (const doc of currentBatch) {
+        try {
+          await sigBoundaries.insertOne(doc);
+          insertedCount++;
+        } catch (docErr) {
+          console.error(`문서 저장 실패: ${doc.properties.SIG_KOR_NM}`, docErr);
+        }
+      }
     }
 
     fs.unlinkSync(req.file.path);
+    const totalCount = await sigBoundaries.countDocuments();
 
     res.json({ 
       message: '✅ 시군구 경계 업로드 완료',
-      insertedCount: documents.length
+      insertedCount,
+      totalCount
     });
 
   } catch (err) {
-    process.stdout.write('\n'); // 에러 발생 시 줄바꿈
-    console.error('\n❌ 오류 발생:');
-    console.error('----------------------------------------');
-    
-    // 에러 메시지에서 핵심 정보만 추출
-    const errorMessage = err.message.split('\n')[0]; // 첫 줄만 사용
-    console.error(errorMessage);
-    
-    // 좌표 관련 에러인 경우 추가 정보 표시
-    if (errorMessage.includes('longitude/latitude')) {
-      const coords = errorMessage.match(/lng: ([\d.]+) lat: ([\d.]+)/);
-      if (coords) {
-        console.error(`\n잘못된 좌표값: 경도(${coords[1]}), 위도(${coords[2]})`);
-        console.error('올바른 좌표 범위: 경도(-180 ~ 180), 위도(-90 ~ 90)');
-      }
-    }
-    
-    console.error('----------------------------------------');
-    if (err.stack) {
-      const stackLines = err.stack.split('\n');
-      const relevantStack = stackLines.find(line => line.includes('adminRoutes.js'));
-      if (relevantStack) {
-        console.error('\n에러 위치:');
-        console.error(relevantStack.trim());
-      }
-    }
-    console.error('\n');
-    res.status(500).json({ error: errorMessage });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -747,122 +796,106 @@ router.post('/bucket/emd/upload', upload.single('file'), async (req, res) => {
       throw new Error('유효하지 않은 GeoJSON 파일입니다');
     }
 
-    console.log('🔍 GeoJSON 데이터 검증 완료');
-    console.log('📊 전체 features 수:', geoJson.features.length);
-
-    // MongoDB 연결 확인
-    if (!mongoose.connection.readyState) {
-      throw new Error('MongoDB 연결이 되어있지 않습니다.');
-    }
-
     const emdBoundaries = mongoose.connection.db.collection('sggu_boundaries_emd');
-    console.log('🗑️ 기존 데이터 삭제 시작');
     await emdBoundaries.deleteMany({});
-    console.log('🗑️ 기존 데이터 삭제 완료');
     
-    // 배치 크기를 100으로 줄임
-    const BATCH_SIZE = 100;
-    const features = geoJson.features;
+    const features = geoJson.features || [];
+    const totalDocs = features.length;
     let insertedCount = 0;
 
-    // 배치 단위로 처리
-    for (let i = 0; i < features.length; i += BATCH_SIZE) {
-      const batch = features.slice(i, i + BATCH_SIZE);
-      console.log(`🔄 배치 처리 중: ${i + 1} ~ ${Math.min(i + BATCH_SIZE, features.length)}`);
+    const MAX_DOC_SIZE = 15 * 1024 * 1024;
+    const BATCH_SIZE = 10;
+    let currentBatch = [];
+    let currentBatchSize = 0;
+
+    for (let i = 0; i < features.length; i++) {
+      const feature = features[i];
+      if (!feature.properties || !feature.geometry || !feature.geometry.coordinates) {
+        continue;
+      }
       
-      const documents = batch.map(feature => {
-        // properties가 없는 경우 처리
-        if (!feature.properties) {
-          console.warn('⚠️ properties가 없는 feature 발견:', feature);
-          return null;
-        }
+      const { EMD_CD, EMD_KOR_NM, EMD_ENG_NM } = feature.properties;
+      if (!EMD_CD || !EMD_KOR_NM || !EMD_ENG_NM) {
+        continue;
+      }
 
-        // 필수 필드 확인
-        const { EMD_CD, EMD_ENG_NM, EMD_KOR_NM } = feature.properties;
-        if (!EMD_CD || !EMD_ENG_NM || !EMD_KOR_NM) {
-          console.warn('⚠️ 필수 필드가 없는 feature 발견:', feature.properties);
-          return null;
-        }
-
-        // geometry 최적화
-        const optimizedGeometry = {
+      const doc = {
+        type: 'Feature',
+        properties: { EMD_CD, EMD_KOR_NM, EMD_ENG_NM },
+        geometry: {
           type: feature.geometry.type,
-          coordinates: feature.geometry.coordinates
-        };
+          coordinates: feature.geometry.coordinates.map(polygon => 
+            polygon.map(ring => 
+              ring.map(coord => {
+                const lng = parseFloat(coord[0]);
+                const lat = parseFloat(coord[1]);
+                
+                if (isNaN(lng) || isNaN(lat) || 
+                    lng < -180 || lng > 180 || 
+                    lat < -90 || lat > 90) {
+                  return coord;
+                }
+                
+                return [lng, lat];
+              })
+            )
+          )
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
 
-        return {
-          type: 'Feature',
-          properties: {
-            EMD_CD,
-            EMD_ENG_NM,
-            EMD_KOR_NM
-          },
-          geometry: optimizedGeometry,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-      }).filter(doc => doc !== null); // null인 문서 제외
+      const cleanDoc = {
+        type: 'Feature',
+        properties: doc.properties,
+        geometry: doc.geometry,
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt
+      };
 
-      if (documents.length > 0) {
-        try {
-          console.log(`📝 저장할 문서 수: ${documents.length}`);
-          
-          // 각 문서를 개별적으로 저장
-          for (const doc of documents) {
-            await emdBoundaries.insertOne(doc);
-            insertedCount++;
+      const docSize = JSON.stringify(cleanDoc).length;
+      
+      if (currentBatchSize + docSize > MAX_DOC_SIZE || currentBatch.length >= BATCH_SIZE) {
+        if (currentBatch.length > 0) {
+          for (const doc of currentBatch) {
+            try {
+              await emdBoundaries.insertOne(doc);
+              insertedCount++;
+            } catch (docErr) {
+              console.error(`문서 저장 실패: ${doc.properties.EMD_KOR_NM}`, docErr);
+            }
           }
-          
-          console.log(`✅ 배치 ${i / BATCH_SIZE + 1} 저장 완료: ${documents.length}개`);
-        } catch (insertError) {
-          console.error('❌ 배치 저장 실패:', insertError);
-          throw insertError;
+        }
+        currentBatch = [doc];
+        currentBatchSize = docSize;
+      } else {
+        currentBatch.push(doc);
+        currentBatchSize += docSize;
+      }
+    }
+
+    if (currentBatch.length > 0) {
+      for (const doc of currentBatch) {
+        try {
+          await emdBoundaries.insertOne(doc);
+          insertedCount++;
+        } catch (docErr) {
+          console.error(`문서 저장 실패: ${doc.properties.EMD_KOR_NM}`, docErr);
         }
       }
     }
 
     fs.unlinkSync(req.file.path);
-    console.log('🧹 임시 파일 삭제 완료');
-
-    // 최종 데이터 확인
     const totalCount = await emdBoundaries.countDocuments();
-    console.log('📊 최종 저장된 문서 수:', totalCount);
 
     res.json({ 
       message: '✅ 읍면동 경계 업로드 완료',
-      insertedCount: insertedCount,
-      totalCount: totalCount
+      insertedCount,
+      totalCount
     });
 
   } catch (err) {
-    process.stdout.write('\n'); // 에러 발생 시 줄바꿈
-    console.error('\n❌ 오류 발생:');
-    console.error('----------------------------------------');
-    
-    // 에러 메시지에서 핵심 정보만 추출
-    const errorMessage = err.message.split('\n')[0]; // 첫 줄만 사용
-    console.error(errorMessage);
-    
-    // 좌표 관련 에러인 경우 추가 정보 표시
-    if (errorMessage.includes('longitude/latitude')) {
-      const coords = errorMessage.match(/lng: ([\d.]+) lat: ([\d.]+)/);
-      if (coords) {
-        console.error(`\n잘못된 좌표값: 경도(${coords[1]}), 위도(${coords[2]})`);
-        console.error('올바른 좌표 범위: 경도(-180 ~ 180), 위도(-90 ~ 90)');
-      }
-    }
-    
-    console.error('----------------------------------------');
-    if (err.stack) {
-      const stackLines = err.stack.split('\n');
-      const relevantStack = stackLines.find(line => line.includes('adminRoutes.js'));
-      if (relevantStack) {
-        console.error('\n에러 위치:');
-        console.error(relevantStack.trim());
-      }
-    }
-    console.error('\n');
-    res.status(500).json({ error: errorMessage });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -905,68 +938,103 @@ router.post('/bucket/li/upload', upload.single('file'), async (req, res) => {
     const liBoundaries = mongoose.connection.db.collection('sggu_boundaries_li');
     await liBoundaries.deleteMany({});
     
-    // 배치 크기 설정
-    const BATCH_SIZE = 1000;
-    const features = geoJson.features;
+    const features = geoJson.features || [];
+    const totalDocs = features.length;
     let insertedCount = 0;
 
-    // 배치 단위로 처리
-    for (let i = 0; i < features.length; i += BATCH_SIZE) {
-      const batch = features.slice(i, i + BATCH_SIZE);
-      const documents = batch.map(feature => ({
+    const MAX_DOC_SIZE = 15 * 1024 * 1024;
+    const BATCH_SIZE = 10;
+    let currentBatch = [];
+    let currentBatchSize = 0;
+
+    for (let i = 0; i < features.length; i++) {
+      const feature = features[i];
+      if (!feature.properties || !feature.geometry || !feature.geometry.coordinates) {
+        continue;
+      }
+      
+      const { LI_CD, LI_KOR_NM, LI_ENG_NM } = feature.properties;
+      if (!LI_CD || !LI_KOR_NM || !LI_ENG_NM) {
+        continue;
+      }
+
+      const doc = {
         type: 'Feature',
-        properties: {
-          LI_CD: feature.properties.LI_CD,
-          LI_ENG_NM: feature.properties.LI_ENG_NM,
-          LI_KOR_NM: feature.properties.LI_KOR_NM
+        properties: { LI_CD, LI_KOR_NM, LI_ENG_NM },
+        geometry: {
+          type: feature.geometry.type,
+          coordinates: feature.geometry.coordinates.map(polygon => 
+            polygon.map(ring => 
+              ring.map(coord => {
+                const lng = parseFloat(coord[0]);
+                const lat = parseFloat(coord[1]);
+                
+                if (isNaN(lng) || isNaN(lat) || 
+                    lng < -180 || lng > 180 || 
+                    lat < -90 || lat > 90) {
+                  return coord;
+                }
+                
+                return [lng, lat];
+              })
+            )
+          )
         },
-        geometry: feature.geometry,
         createdAt: new Date(),
         updatedAt: new Date()
-      }));
+      };
 
-      if (documents.length > 0) {
-        await liBoundaries.insertMany(documents);
-        insertedCount += documents.length;
+      const cleanDoc = {
+        type: 'Feature',
+        properties: doc.properties,
+        geometry: doc.geometry,
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt
+      };
+
+      const docSize = JSON.stringify(cleanDoc).length;
+      
+      if (currentBatchSize + docSize > MAX_DOC_SIZE || currentBatch.length >= BATCH_SIZE) {
+        if (currentBatch.length > 0) {
+          for (const doc of currentBatch) {
+            try {
+              await liBoundaries.insertOne(doc);
+              insertedCount++;
+            } catch (docErr) {
+              console.error(`문서 저장 실패: ${doc.properties.LI_KOR_NM}`, docErr);
+            }
+          }
+        }
+        currentBatch = [doc];
+        currentBatchSize = docSize;
+      } else {
+        currentBatch.push(doc);
+        currentBatchSize += docSize;
+      }
+    }
+
+    if (currentBatch.length > 0) {
+      for (const doc of currentBatch) {
+        try {
+          await liBoundaries.insertOne(doc);
+          insertedCount++;
+        } catch (docErr) {
+          console.error(`문서 저장 실패: ${doc.properties.LI_KOR_NM}`, docErr);
+        }
       }
     }
 
     fs.unlinkSync(req.file.path);
+    const totalCount = await liBoundaries.countDocuments();
 
     res.json({ 
-      message: '✅ 리 경계 업로드 완료',
-      insertedCount: insertedCount
+      message: '✅ 법정리 경계 업로드 완료',
+      insertedCount,
+      totalCount
     });
 
   } catch (err) {
-    process.stdout.write('\n'); // 에러 발생 시 줄바꿈
-    console.error('\n❌ 오류 발생:');
-    console.error('----------------------------------------');
-    
-    // 에러 메시지에서 핵심 정보만 추출
-    const errorMessage = err.message.split('\n')[0]; // 첫 줄만 사용
-    console.error(errorMessage);
-    
-    // 좌표 관련 에러인 경우 추가 정보 표시
-    if (errorMessage.includes('longitude/latitude')) {
-      const coords = errorMessage.match(/lng: ([\d.]+) lat: ([\d.]+)/);
-      if (coords) {
-        console.error(`\n잘못된 좌표값: 경도(${coords[1]}), 위도(${coords[2]})`);
-        console.error('올바른 좌표 범위: 경도(-180 ~ 180), 위도(-90 ~ 90)');
-      }
-    }
-    
-    console.error('----------------------------------------');
-    if (err.stack) {
-      const stackLines = err.stack.split('\n');
-      const relevantStack = stackLines.find(line => line.includes('adminRoutes.js'));
-      if (relevantStack) {
-        console.error('\n에러 위치:');
-        console.error(relevantStack.trim());
-      }
-    }
-    console.error('\n');
-    res.status(500).json({ error: errorMessage });
+    res.status(500).json({ error: err.message });
   }
 });
 
