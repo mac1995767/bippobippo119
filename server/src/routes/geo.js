@@ -3,41 +3,41 @@ const router = express.Router();
 const mongoose = require('mongoose');
 
 // 2dsphere 인덱스 생성 함수
-async function createGeoIndex() {
-  try {
-    // MongoDB 연결 확인
-    if (mongoose.connection.readyState !== 1) {
-      console.log('⏳ MongoDB 연결 대기 중...');
-      await new Promise(resolve => {
-        mongoose.connection.once('connected', resolve);
-      });
-    }
+// async function createGeoIndex() {
+//   try {
+//     // MongoDB 연결 확인
+//     if (mongoose.connection.readyState !== 1) {
+//       console.log('⏳ MongoDB 연결 대기 중...');
+//       await new Promise(resolve => {
+//         mongoose.connection.once('connected', resolve);
+//       });
+//     }
 
-    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
+//     const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
     
-    // 기존 인덱스 확인
-    const indexes = await ctpBoundaries.indexes();
-    const hasGeoIndex = indexes.some(index => 
-      index.key && index.key.geometry === '2dsphere'
-    );
+//     // 기존 인덱스 확인
+//     const indexes = await ctpBoundaries.indexes();
+//     const hasGeoIndex = indexes.some(index => 
+//       index.key && index.key.geometry === '2dsphere'
+//     );
 
-    if (!hasGeoIndex) {
-      console.log('🔧 2dsphere 인덱스 생성 중...');
-      await ctpBoundaries.createIndex({ geometry: '2dsphere' });
-      console.log('✅ 2dsphere 인덱스 생성 완료');
-    } else {
-      console.log('ℹ️ 2dsphere 인덱스가 이미 존재합니다.');
-    }
-  } catch (err) {
-    console.error('❌ 인덱스 생성 중 오류:', err);
-  }
-}
+//     if (!hasGeoIndex) {
+//       console.log('🔧 2dsphere 인덱스 생성 중...');
+//       await ctpBoundaries.createIndex({ geometry: '2dsphere' });
+//       console.log('✅ 2dsphere 인덱스 생성 완료');
+//     } else {
+//       console.log('ℹ️ 2dsphere 인덱스가 이미 존재합니다.');
+//     }
+//   } catch (err) {
+//     console.error('❌ 인덱스 생성 중 오류:', err);
+//   }
+// }
 
-// MongoDB 연결 완료 후 인덱스 생성
-mongoose.connection.on('connected', () => {
-  console.log('🔄 MongoDB 연결됨, 인덱스 생성 시작...');
-  createGeoIndex();
-});
+// // MongoDB 연결 완료 후 인덱스 생성
+// mongoose.connection.on('connected', () => {
+//   console.log('🔄 MongoDB 연결됨, 인덱스 생성 시작...');
+//   createGeoIndex();
+// });
 
 // 시도 경계 데이터 조회 API
 router.get('/ctp/coordinates', async (req, res) => {

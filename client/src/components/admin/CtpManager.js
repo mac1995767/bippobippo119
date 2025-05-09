@@ -14,19 +14,8 @@ function transformCoordinates(coords, type) {
       // EPSG:5179 -> EPSG:4326
       const [lon, lat] = proj4('EPSG:5179', 'EPSG:4326', [x, y]);
       
-      // 좌표 유효성 검사
-      if (isNaN(lon) || isNaN(lat)) {
-        console.warn('잘못된 좌표값:', x, y);
-        return null;
-      }
-      
-      // 좌표 범위 검사
-      if (lon < -180 || lon > 180 || lat < -90 || lat > 90) {
-        console.warn('좌표 범위 초과:', lon, lat);
-        return null;
-      }
-      
       return [lon, lat];
+
     } catch (error) {
       console.warn('좌표 변환 실패:', error);
       return null;
@@ -125,7 +114,7 @@ const CtpManager = () => {
       }
 
       formData.append('file', new File([JSON.stringify(geoJson)], file.name));
-
+      
       await api.post('/api/admin/bucket/ctp/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'

@@ -466,62 +466,140 @@ router.post('/bucket/ctp/upload', upload.single('file'), async (req, res) => {
       throw new Error('유효하지 않은 GeoJSON 파일입니다');
     }
 
+    console.log('🔍 GeoJSON 데이터 검증 완료');
+    console.log('📊 전체 features 수:', geoJson.features.length);
+
     // MongoDB 연결 확인
     if (mongoose.connection.readyState !== 1) {
       throw new Error('MongoDB 연결이 되어있지 않습니다.');
     }
 
     const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
+    console.log('🗑️ 기존 데이터 삭제 시작');
     await ctpBoundaries.deleteMany({});
+    console.log('🗑️ 기존 데이터 삭제 완료');
     
-    const BATCH_SIZE = 100;
     const features = geoJson.features || [];
     const totalDocs = features.length;
     let insertedCount = 0;
 
-    process.stdout.write(`\n진행률: 0/${totalDocs} (0.00%)\n`);
+    // 16MB 제한을 고려한 배치 크기 계산
+    const MAX_DOC_SIZE = 15 * 1024 * 1024; // 15MB (안전 마진 포함)
+    const BATCH_SIZE = 10; // 기본 배치 크기
+    let currentBatch = [];
+    let currentBatchSize = 0;
 
-    // 배치 단위로 처리 (필요하다면 BATCH_SIZE 조정)
-    for (let batchStart = 0; batchStart < features.length; batchStart += BATCH_SIZE) {
-      const batch = features.slice(batchStart, batchStart + BATCH_SIZE);
-      const documents = batch.map(feature => {
-        if (!feature.properties || !feature.geometry || !feature.geometry.coordinates) return null;
-        const { CTPRVN_CD, CTP_KOR_NM, CTP_ENG_NM } = feature.properties;
-        if (!CTPRVN_CD || !CTP_KOR_NM || !CTP_ENG_NM) return null;
-        return {
-          type: 'Feature',
-          properties: { CTPRVN_CD, CTP_KOR_NM, CTP_ENG_NM },
-          geometry: feature.geometry,
-          createdAt: new Date(),
-          updatedAt: new Date()
+    console.log('🚀 데이터 삽입 시작');
+
+    for (let i = 0; i < features.length; i++) {
+      const feature = features[i];
+      if (!feature.properties || !feature.geometry || !feature.geometry.coordinates) {
+        console.warn(`⚠️ 잘못된 feature 발견: ${i + 1}번째`);
+        continue;
+      }
+      
+      const { CTPRVN_CD, CTP_KOR_NM, CTP_ENG_NM } = feature.properties;
+      if (!CTPRVN_CD || !CTP_KOR_NM || !CTP_ENG_NM) {
+        console.warn(`⚠️ 필수 속성 누락: ${i + 1}번째`);
+        continue;
+      }
+
+      const doc = {
+        type: 'Feature',
+        properties: { CTPRVN_CD, CTP_KOR_NM, CTP_ENG_NM },
+        geometry: {
+          type: feature.geometry.type,
+          coordinates: feature.geometry.coordinates
+        },
+        location: {
+          type: 'Point',
+          coordinates: [0, 0]
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // MultiPolygon의 경우 첫 번째 좌표의 중심점을 location으로 설정
+      if (feature.geometry.type === 'MultiPolygon') {
+        const firstPolygon = feature.geometry.coordinates[0][0];
+        const sumLng = firstPolygon.reduce((sum, coord) => sum + coord[0], 0);
+        const sumLat = firstPolygon.reduce((sum, coord) => sum + coord[1], 0);
+        const centerLng = sumLng / firstPolygon.length;
+        const centerLat = sumLat / firstPolygon.length;
+        doc.location = {
+          type: 'Point',
+          coordinates: [centerLng, centerLat]
         };
-      }).filter(d => d);
+      }
 
-      for (let j = 0; j < documents.length; j++) {
-        const doc = documents[j];
-        const globalIndex = batchStart + j + 1;
+      // MongoDB 지리공간 인덱스 요구사항에 맞게 데이터 정리
+      const cleanDoc = {
+        type: 'Feature',
+        properties: doc.properties,
+        geometry: doc.geometry,
+        location: doc.location,
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt
+      };
 
-        try {
-          // 중복 좌표 제거 (turf cleanCoords 사용)
-          const cleaned = turf.cleanCoords({ type: 'Feature', properties: {}, geometry: doc.geometry });
-          doc.geometry = cleaned.geometry;
-
-          await ctpBoundaries.insertOne(doc);
-          insertedCount++;
-        } catch (insertErr) {
-          console.error(`❌ [삽입실패] 문서 #${globalIndex} ${JSON.stringify(doc.properties)}`, insertErr);
-          continue; // 다음 문서로 계속
+      const docSize = JSON.stringify(cleanDoc).length;
+      console.log(`📝 문서 크기: ${docSize} bytes - ${CTP_KOR_NM}`);
+      
+      // 현재 배치에 추가할 수 있는지 확인
+      if (currentBatchSize + docSize > MAX_DOC_SIZE || currentBatch.length >= BATCH_SIZE) {
+        // 현재 배치 저장
+        if (currentBatch.length > 0) {
+          try {
+            console.log(`💾 배치 저장 시작: ${currentBatch.length}개 문서`);
+            // 개별 문서 저장으로 변경
+            for (const doc of currentBatch) {
+              try {
+                await ctpBoundaries.insertOne(doc);
+                insertedCount++;
+                console.log(`✅ 문서 저장 완료: ${insertedCount}/${totalDocs} - ${doc.properties.CTP_KOR_NM}`);
+              } catch (docErr) {
+                console.error(`❌ 문서 저장 실패: ${doc.properties.CTP_KOR_NM}`, docErr);
+              }
+            }
+          } catch (insertErr) {
+            console.error(`❌ 배치 처리 실패:`, insertErr);
+          }
         }
-
-        const pct = (insertedCount / totalDocs) * 100;
-        process.stdout.write(`\r진행률: ${insertedCount}/${totalDocs} (${pct.toFixed(2)}%)`);
+        // 새 배치 시작
+        currentBatch = [doc];
+        currentBatchSize = docSize;
+      } else {
+        // 현재 배치에 추가
+        currentBatch.push(doc);
+        currentBatchSize += docSize;
       }
     }
 
-    process.stdout.write('\n');
+    // 마지막 배치 처리
+    if (currentBatch.length > 0) {
+      try {
+        console.log(`💾 마지막 배치 저장 시작: ${currentBatch.length}개 문서`);
+        // 개별 문서 저장으로 변경
+        for (const doc of currentBatch) {
+          try {
+            await ctpBoundaries.insertOne(doc);
+            insertedCount++;
+            console.log(`✅ 문서 저장 완료: ${insertedCount}/${totalDocs} - ${doc.properties.CTP_KOR_NM}`);
+          } catch (docErr) {
+            console.error(`❌ 문서 저장 실패: ${doc.properties.CTP_KOR_NM}`, docErr);
+          }
+        }
+      } catch (insertErr) {
+        console.error(`❌ 마지막 배치 처리 실패:`, insertErr);
+      }
+    }
+
     fs.unlinkSync(req.file.path);
+    console.log('🧹 임시 파일 삭제 완료');
 
     const totalCount = await ctpBoundaries.countDocuments();
+    console.log('📊 최종 저장된 문서 수:', totalCount);
+
     res.json({ 
       message: '✅ 시도 경계 업로드 완료',
       insertedCount,
@@ -529,21 +607,9 @@ router.post('/bucket/ctp/upload', upload.single('file'), async (req, res) => {
     });
 
   } catch (err) {
-    process.stdout.write('\n');
     console.error('\n❌ 오류 발생:');
     console.error('----------------------------------------');
-
-    const errorMessage = err.message.split('\n')[0];
-    console.error(errorMessage);
-
-    if (errorMessage.includes('longitude/latitude')) {
-      const coords = errorMessage.match(/lng: ([\d.]+) lat: ([\d.]+)/);
-      if (coords) {
-        console.error(`\n잘못된 좌표값: 경도(${coords[1]}), 위도(${coords[2]})`);
-        console.error('올바른 좌표 범위: 경도(-180 ~ 180), 위도(-90 ~ 90)');
-      }
-    }
-    
+    console.error(err.message);
     console.error('----------------------------------------');
     if (err.stack) {
       const stackLines = err.stack.split('\n');
@@ -552,8 +618,7 @@ router.post('/bucket/ctp/upload', upload.single('file'), async (req, res) => {
         console.error('\n에러 위치:', relevant.trim());
       }
     }
-    console.error('\n');
-    res.status(500).json({ error: errorMessage });
+    res.status(500).json({ error: err.message });
   }
 });
 
