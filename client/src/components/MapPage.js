@@ -647,7 +647,10 @@ const MapPage = () => {
               {/* 경계선 폴리곤 - 모든 줌 레벨에서 표시 */}
               <GeoBoundaryPolygon 
                 map={map} 
-                coordinates={mousePosition ? [mousePosition] : []}
+                coordinates={mousePosition ? {
+                  lat: mousePosition.lat,
+                  lng: mousePosition.lng
+                } : null}
               />
             </>
           )}

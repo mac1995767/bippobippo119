@@ -149,7 +149,8 @@ async function bulkBoundariesIndex() {
         if (res.errors) {
           const errItem = res.items.find(i => i.index?.error);
           fs.appendFileSync('failed_sggu.log', `[색인실패] ${name}\n`);
-          console.error(`❌ [${name}] 색인 에러:`, errItem);
+          console.error(`❌ [${name}] 색인 에러:`, JSON.stringify(errItem.index.error, null, 2));
+          console.error('전송된 데이터:', JSON.stringify(bulkBody[1], null, 2));
         } else {
           if ((i + 1) % 100 === 0 || i === docs.length - 1) {
             console.log(`✅ ${i+1}/${docs.length} 색인 완료 (${name})`);
@@ -175,4 +176,300 @@ async function bulkBoundariesIndex() {
   }
 }
 
-module.exports = { bulkBoundariesIndex };
+// 시도 경계 색인
+async function bulkCtpBoundariesIndex() {
+  let Model;
+  try {
+    Model = mongoose.model('CtpBoundary');
+  } catch {
+    Model = mongoose.model(
+      'CtpBoundary',
+      new mongoose.Schema({}, { strict: false }),
+      'sggu_boundaries_ctprvn'
+    );
+  }
+
+  const docs = await Model.find({}).lean();
+  console.log(`시도 경계 총 ${docs.length}개 문서 색인 시작`);
+
+  for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+    const doc = docs[i];
+    const name = doc.properties?.CTP_KOR_NM || 'unknown';
+    const geom = doc.geometry;
+
+    if (!geom || !['Polygon', 'MultiPolygon'].includes(geom.type)) {
+      console.warn(`❌ [${name}] geometry type 문제: ${geom?.type}`);
+      continue;
+    }
+
+    try {
+      doc.geometry.coordinates = convertCoordinates(
+        geom.coordinates,
+        geom.type,
+        name
+      );
+    } catch (e) {
+      fs.appendFileSync('failed_ctp.log', `[변환실패] ${name}\n`);
+      console.warn(`❌ [${name}] 변환 실패`, e);
+      continue;
+    }
+
+    const bulkBody = [
+      { index: { _index: 'ctp-boundaries' } },
+      {
+        type: doc.type,
+        properties: {
+          CTPRVN_CD: doc.properties.CTPRVN_CD,
+          CTP_KOR_NM: name,
+          CTP_ENG_NM: doc.properties.CTP_ENG_NM
+        },
+        geometry: doc.geometry
+      }
+    ];
+
+    await processBulkRequest(bulkBody, name, i, docs.length, 'ctp');
+  }
+
+  await logIndexCount('ctp-boundaries');
+}
+
+// 시군구 경계 색인
+async function bulkSigBoundariesIndex() {
+  let Model;
+  try {
+    Model = mongoose.model('SigBoundary');
+  } catch {
+    Model = mongoose.model(
+      'SigBoundary',
+      new mongoose.Schema({}, { strict: false }),
+      'sggu_boundaries_sig'
+    );
+  }
+
+  const docs = await Model.find({}).lean();
+  console.log(`시군구 경계 총 ${docs.length}개 문서 색인 시작`);
+
+  for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+    const doc = docs[i];
+    const name = doc.properties?.SIG_KOR_NM || 'unknown';
+    const geom = doc.geometry;
+
+    if (!geom || !['Polygon', 'MultiPolygon'].includes(geom.type)) {
+      console.warn(`❌ [${name}] geometry type 문제: ${geom?.type}`);
+      continue;
+    }
+
+    try {
+      doc.geometry.coordinates = convertCoordinates(
+        geom.coordinates,
+        geom.type,
+        name
+      );
+    } catch (e) {
+      fs.appendFileSync('failed_sig.log', `[변환실패] ${name}\n`);
+      console.warn(`❌ [${name}] 변환 실패`, e);
+      continue;
+    }
+
+    const bulkBody = [
+      { index: { _index: 'sig-boundaries' } },
+      {
+        type: doc.type,
+        properties: {
+          SIG_CD: doc.properties.SIG_CD,
+          SIG_KOR_NM: name,
+          SIG_ENG_NM: doc.properties.SIG_ENG_NM,
+          CTPRVN_CD: doc.properties.CTPRVN_CD
+        },
+        geometry: doc.geometry
+      }
+    ];
+
+    await processBulkRequest(bulkBody, name, i, docs.length, 'sig');
+  }
+
+  await logIndexCount('sig-boundaries');
+}
+
+// 읍면동 경계 색인
+async function bulkEmdBoundariesIndex() {
+  let Model;
+  try {
+    Model = mongoose.model('EmdBoundary');
+  } catch {
+    Model = mongoose.model(
+      'EmdBoundary',
+      new mongoose.Schema({}, { strict: false }),
+      'sggu_boundaries_emd'
+    );
+  }
+
+  const docs = await Model.find({}).lean();
+  console.log(`읍면동 경계 총 ${docs.length}개 문서 색인 시작`);
+
+  for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+    const doc = docs[i];
+    const name = doc.properties?.EMD_KOR_NM || 'unknown';
+    const geom = doc.geometry;
+
+    if (!geom || !['Polygon', 'MultiPolygon'].includes(geom.type)) {
+      console.warn(`❌ [${name}] geometry type 문제: ${geom?.type}`);
+      continue;
+    }
+
+    try {
+      doc.geometry.coordinates = convertCoordinates(
+        geom.coordinates,
+        geom.type,
+        name
+      );
+    } catch (e) {
+      fs.appendFileSync('failed_emd.log', `[변환실패] ${name}\n`);
+      console.warn(`❌ [${name}] 변환 실패`, e);
+      continue;
+    }
+
+    const bulkBody = [
+      { index: { _index: 'emd-boundaries' } },
+      {
+        type: doc.type,
+        properties: {
+          EMD_CD: doc.properties.EMD_CD,
+          EMD_KOR_NM: name,
+          EMD_ENG_NM: doc.properties.EMD_ENG_NM,
+          SIG_CD: doc.properties.SIG_CD
+        },
+        geometry: doc.geometry
+      }
+    ];
+
+    await processBulkRequest(bulkBody, name, i, docs.length, 'emd');
+  }
+
+  await logIndexCount('emd-boundaries');
+}
+
+// 리 경계 색인
+async function bulkLiBoundariesIndex() {
+  let Model;
+  try {
+    Model = mongoose.model('LiBoundary');
+  } catch {
+    Model = mongoose.model(
+      'LiBoundary',
+      new mongoose.Schema({}, { strict: false }),
+      'sggu_boundaries_li'
+    );
+  }
+
+  const docs = await Model.find({}).lean();
+  console.log(`리 경계 총 ${docs.length}개 문서 색인 시작`);
+
+  for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+    const doc = docs[i];
+    const name = doc.properties?.LI_KOR_NM || 'unknown';
+    const geom = doc.geometry;
+
+    if (!geom || !['Polygon', 'MultiPolygon'].includes(geom.type)) {
+      console.warn(`❌ [${name}] geometry type 문제: ${geom?.type}`);
+      continue;
+    }
+
+    try {
+      doc.geometry.coordinates = convertCoordinates(
+        geom.coordinates,
+        geom.type,
+        name
+      );
+    } catch (e) {
+      fs.appendFileSync('failed_li.log', `[변환실패] ${name}\n`);
+      console.warn(`❌ [${name}] 변환 실패`, e);
+      continue;
+    }
+
+    const bulkBody = [
+      { index: { _index: 'li-boundaries' } },
+      {
+        type: doc.type,
+        properties: {
+          LI_CD: doc.properties.LI_CD,
+          LI_KOR_NM: name,
+          LI_ENG_NM: doc.properties.LI_ENG_NM,
+          EMD_CD: doc.properties.EMD_CD
+        },
+        geometry: doc.geometry
+      }
+    ];
+
+    await processBulkRequest(bulkBody, name, i, docs.length, 'li');
+  }
+
+  await logIndexCount('li-boundaries');
+}
+
+// 공통 bulk 요청 처리 함수
+async function processBulkRequest(bulkBody, name, index, total, type) {
+  let success = false;
+  for (let attempt = 1; attempt <= MAX_RETRIES && !success; attempt++) {
+    try {
+      const res = await client.bulk({ 
+        body: bulkBody, 
+        refresh: true,
+        timeout: '120s',  // 120초 타임아웃
+        wait_for_active_shards: 1
+      });
+      if (res.errors) {
+        const errItem = res.items.find(i => i.index?.error);
+        fs.appendFileSync(`failed_${type}.log`, `[색인실패] ${name}\n`);
+        console.error(`❌ [${name}] 색인 에러:`, JSON.stringify(errItem.index.error, null, 2));
+        console.error('전송된 데이터:', JSON.stringify(bulkBody[1], null, 2));
+      } else {
+        if ((index + 1) % 100 === 0 || index === total - 1) {
+          console.log(`✅ ${index+1}/${total} 색인 완료 (${name})`);
+        }
+      }
+      success = true;
+    } catch (err) {
+      if (attempt === MAX_RETRIES) {
+        fs.appendFileSync(`failed_${type}.log`, `[최종실패] ${name}\n`);
+        console.error(`❌ [${name}] 색인 최종 실패`, err);
+      } else {
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+  }
+}
+
+// 인덱스 문서 수 로깅
+async function logIndexCount(indexName) {
+  try {
+    const countRes = await client.count({ index: indexName });
+    console.log(`${indexName} 총 색인 문서 수: ${countRes.body?.count || countRes.count || 0}`);
+  } catch (e) {
+    console.error(`${indexName} 카운트 에러`, e);
+  }
+}
+
+// 모든 경계 데이터 색인 실행
+async function indexAllBoundaries() {
+  console.log('모든 경계 데이터 색인 시작...');
+  
+  try {
+    await bulkCtpBoundariesIndex();
+    await bulkSigBoundariesIndex();
+    await bulkEmdBoundariesIndex();
+    await bulkLiBoundariesIndex();
+    console.log('모든 경계 데이터 색인 완료!');
+  } catch (error) {
+    console.error('경계 데이터 색인 중 오류 발생:', error);
+  }
+}
+
+module.exports = { 
+  bulkBoundariesIndex,
+  bulkCtpBoundariesIndex,
+  bulkSigBoundariesIndex,
+  bulkEmdBoundariesIndex,
+  bulkLiBoundariesIndex,
+  indexAllBoundaries
+};

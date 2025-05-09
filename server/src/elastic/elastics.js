@@ -15,7 +15,12 @@ const { createSgguCoorIndex } = require('./createSgguCoorIndex');
 const { bulkIndexSgguCoordinates } = require('./bulkSgguCoordIndex');
 const { deleteBoundariesIndex } = require('./deleteBoundariesIndex');
 const { createBoundariesIndex } = require('./createBoundariesIndex');
-const { bulkBoundariesIndex } = require('./bulkBoundariesIndex');
+const { 
+  bulkCtpBoundariesIndex,
+  bulkSigBoundariesIndex,
+  bulkEmdBoundariesIndex,
+  bulkLiBoundariesIndex
+} = require('./bulkBoundariesIndex');
 
 async function reindex() {
   try {
@@ -111,22 +116,63 @@ async function reindexSgguCoord() {
 
 async function reindexBoundaries() {
   try {
-    console.log("🔄 Starting boundaries reindexing process...");
+    console.log("🔄 경계 데이터 재색인 프로세스 시작...");
     
-    console.log("Step 1: Deleting existing boundaries index...");
-    await deleteBoundariesIndex();
+    // 시도 경계 재색인
+    console.log("\n1️⃣ 시도 경계 재색인 시작");
+    console.log("Step 1: 기존 시도 경계 인덱스 삭제...");
+    await deleteBoundariesIndex('ctp-boundaries');
     
-    console.log("Step 2: Creating new boundaries index...");
-    await createBoundariesIndex();
+    console.log("Step 2: 새로운 시도 경계 인덱스 생성...");
+    await createBoundariesIndex('ctp-boundaries');
     
-    console.log("Step 3: Bulk indexing boundaries...");
-    await bulkBoundariesIndex();
+    console.log("Step 3: 시도 경계 데이터 색인...");
+    await bulkCtpBoundariesIndex();
     
-    console.log("✅ Boundaries reindexing process completed successfully!");
+    // 시군구 경계 재색인
+    /*
+    console.log("\n2️⃣ 시군구 경계 재색인 시작");
+    console.log("Step 1: 기존 시군구 경계 인덱스 삭제...");
+    await deleteBoundariesIndex('sig-boundaries');
+    
+    console.log("Step 2: 새로운 시군구 경계 인덱스 생성...");
+    await createBoundariesIndex('sig-boundaries');
+    
+    console.log("Step 3: 시군구 경계 데이터 색인...");
+    await bulkSigBoundariesIndex();
+    */
+    
+    // 읍면동 경계 재색인
+    /*
+    console.log("\n3️⃣ 읍면동 경계 재색인 시작");
+    console.log("Step 1: 기존 읍면동 경계 인덱스 삭제...");
+    await deleteBoundariesIndex('emd-boundaries');
+    
+    console.log("Step 2: 새로운 읍면동 경계 인덱스 생성...");
+    await createBoundariesIndex('emd-boundaries');
+    
+    console.log("Step 3: 읍면동 경계 데이터 색인...");
+    await bulkEmdBoundariesIndex();
+    */
+    
+    // 리 경계 재색인
+    /*
+    console.log("\n4️⃣ 리 경계 재색인 시작");
+    console.log("Step 1: 기존 리 경계 인덱스 삭제...");
+    await deleteBoundariesIndex('li-boundaries');
+    
+    console.log("Step 2: 새로운 리 경계 인덱스 생성...");
+    await createBoundariesIndex('li-boundaries');
+    
+    console.log("Step 3: 리 경계 데이터 색인...");
+    await bulkLiBoundariesIndex();
+    */
+    
+    console.log("\n✅ 시도 경계 데이터 재색인 완료!");
   } catch (error) {
-    console.error("❌ Error during boundaries reindexing process:");
-    console.error("Error message:", error.message);
-    console.error("Stack trace:", error.stack);
+    console.error("❌ 경계 데이터 재색인 중 오류 발생:");
+    console.error("오류 메시지:", error.message);
+    console.error("스택 트레이스:", error.stack);
     throw error;
   }
 }

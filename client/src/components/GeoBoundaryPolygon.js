@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchGeoBoundary } from '../service/api';
 
-// 폴리곤 중심(centroid) 계산 함수 (변경 없음)
+// 폴리곤 중심(centroid) 계산 함수
 function getPolygonCentroid(path) {
   let area = 0, x = 0, y = 0;
   const points = path.length;
@@ -25,13 +25,22 @@ const GeoBoundaryPolygon = ({ map, coordinates }) => {
   const [infoWindows, setInfoWindows] = useState([]);
 
   useEffect(() => {
-    if (!map || !coordinates?.length) return;
+    if (!map || !coordinates) {
+      console.log('지도 또는 좌표가 없습니다:', { map, coordinates });
+      return;
+    }
 
     const fetchAndRender = async () => {
       try {
+        console.log('전달된 좌표:', coordinates);
         // 1) GeoJSON 데이터 호출
-        const geoJson = await fetchGeoBoundary(coordinates[0], coordinates[1]);
-        if (!geoJson?.features?.length) return;
+        const geoJson = await fetchGeoBoundary(coordinates);
+        console.log('받아온 GeoJSON:', geoJson);
+        
+        if (!geoJson?.features?.length) {
+          console.log('GeoJSON features가 없습니다');
+          return;
+        }
 
         // 2) 기존 객체 제거
         polygons.forEach(p => p.setMap(null));
@@ -45,14 +54,16 @@ const GeoBoundaryPolygon = ({ map, coordinates }) => {
         // 3) 각 feature 처리
         geoJson.features.forEach(feature => {
           const geom = feature.geometry;
-          if (!geom?.coordinates) return;
+          if (!geom?.coordinates) {
+            console.log('geometry coordinates가 없습니다:', feature);
+            return;
+          }
 
           // 4) 경로(paths) 생성 (outer ring만 사용)
           const rawArray = geom.type === 'Polygon'
             ? [geom.coordinates]
             : geom.coordinates;
 
-          // ✏️ 수정된 부분: EPSG:5186 평면좌표(x,y)를 UTMK → LatLng로 변환
           const paths = rawArray
             .map(polygon =>
               polygon[0]
@@ -61,7 +72,10 @@ const GeoBoundaryPolygon = ({ map, coordinates }) => {
             )
             .filter(path => path.length >= 3);
 
-          if (!paths.length) return;
+          if (!paths.length) {
+            console.log('유효한 경로가 없습니다:', feature);
+            return;
+          }
 
           // 5) 폴리곤 렌더링
           const polygon = new window.naver.maps.Polygon({
@@ -94,7 +108,7 @@ const GeoBoundaryPolygon = ({ map, coordinates }) => {
               font-size:12px;
               font-weight:bold;
               white-space:nowrap;
-            ">${feature.properties.SGG_NM || '알 수 없음'}</div>`,
+            ">${feature.properties.CTP_KOR_NM || '알 수 없음'}</div>`,
             position: marker.getPosition(),
             disableAnchor: true,
             borderWidth: 0,

@@ -25,7 +25,7 @@ async function bulkIndexSgguCoordinates() {
         XPos: doc.XPos,
         location: {
           lat: doc.YPos,
-          lon: doc.XPos
+          lng: doc.XPos
         }
       }
     ]);

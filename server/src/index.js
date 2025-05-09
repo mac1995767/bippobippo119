@@ -146,7 +146,7 @@ addDefaultOrigins();
 //reindexBoundaries()
 //.then(() => {
 //  console.log("✅ Elasticsearch Boundaries Reindexing Complete!");
-//})
+//})  
 //.catch(err => {
 //  console.error("❌ Error in reindexing:", err);
 //  console.error("Stack trace:", err.stack);

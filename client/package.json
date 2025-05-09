@@ -21,6 +21,7 @@
     "emailjs-com": "^3.2.0",
     "framer-motion": "^12.4.3",
     "js-cookie": "^3.0.5",
+    "proj4": "^2.15.0",
     "react": "^18.3.1",
     "react-beautiful-dnd": "^13.1.1",
     "react-chartjs-2": "^5.2.0",

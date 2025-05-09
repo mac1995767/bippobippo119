@@ -315,7 +315,7 @@ export const fetchGeoBoundary = async (params) => {
       throw new Error('좌표가 필요합니다.');
     }
 
-    const response = await axios.get(`${baseUrl}/api/geo/sggu/coordinates`, {
+    const response = await axios.get(`${baseUrl}/api/geo/ctp/coordinates`, {
       params: {
         lat: params.lat,
         lng: params.lng

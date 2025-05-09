@@ -1,5 +1,62 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../utils/api';
+import proj4 from 'proj4';
+
+// proj4 로그 비활성화
+proj4.defs("EPSG:5179","+proj=tmerc +lat_0=38 +lon_0=127.5 +k=0.9996 +x_0=1000000 +y_0=2000000 +ellps=GRS80 +units=m +no-defs");
+proj4.defs("EPSG:4326", proj4.WGS84);
+
+
+// 좌표 변환 함수
+function transformCoordinates(coords, type) {
+  const transformPoint = ([x, y]) => {
+    try {
+      // EPSG:5179 -> EPSG:4326
+      const [lon, lat] = proj4('EPSG:5179', 'EPSG:4326', [x, y]);
+      
+      // 좌표 유효성 검사
+      if (isNaN(lon) || isNaN(lat)) {
+        console.warn('잘못된 좌표값:', x, y);
+        return null;
+      }
+      
+      // 좌표 범위 검사
+      if (lon < -180 || lon > 180 || lat < -90 || lat > 90) {
+        console.warn('좌표 범위 초과:', lon, lat);
+        return null;
+      }
+      
+      return [lon, lat];
+    } catch (error) {
+      console.warn('좌표 변환 실패:', error);
+      return null;
+    }
+  };
+
+  try {
+    if (type === 'Polygon') {
+      return coords.map(ring => {
+        const transformedRing = ring.map(transformPoint).filter(coord => coord !== null);
+        return transformedRing.length > 0 ? transformedRing : null;
+      }).filter(ring => ring !== null);
+    }
+
+    if (type === 'MultiPolygon') {
+      return coords.map(polygon => {
+        const transformedPolygon = polygon.map(ring => {
+          const transformedRing = ring.map(transformPoint).filter(coord => coord !== null);
+          return transformedRing.length > 0 ? transformedRing : null;
+        }).filter(ring => ring !== null);
+        return transformedPolygon.length > 0 ? transformedPolygon : null;
+      }).filter(polygon => polygon !== null);
+    }
+
+    return coords;
+  } catch (error) {
+    console.warn('좌표 변환 실패:', error);
+    return null;
+  }
+}
 
 const CtpManager = () => {
   const [files, setFiles] = useState([]);
@@ -50,9 +107,25 @@ const CtpManager = () => {
 
     setUploading(true);
     const formData = new FormData();
-    formData.append('file', file);
-
+    
     try {
+      const text = await file.text();
+      const geoJson = JSON.parse(text);
+      
+      if (geoJson.features) {
+        geoJson.features = geoJson.features.map(feature => {
+          if (feature.geometry && feature.geometry.coordinates) {
+            feature.geometry.coordinates = transformCoordinates(
+              feature.geometry.coordinates,
+              feature.geometry.type
+            );
+          }
+          return feature;
+        });
+      }
+
+      formData.append('file', new File([JSON.stringify(geoJson)], file.name));
+
       await api.post('/api/admin/bucket/ctp/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'

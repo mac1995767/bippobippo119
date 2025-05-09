@@ -11,7 +11,7 @@ const multer = require('multer');
 const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
-
+const turf = require('@turf/turf');
 // 임시 파일 저장 설정
 const upload = multer({ 
   dest: 'uploads/',
@@ -346,8 +346,34 @@ router.post('/bucket/upload', upload.single('file'), async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ 오류:', err);
-    res.status(500).json({ error: err.message });
+    process.stdout.write('\n'); // 에러 발생 시 줄바꿈
+    console.error('\n❌ 오류 발생:');
+    console.error('----------------------------------------');
+    
+    // 에러 메시지에서 핵심 정보만 추출
+    const errorMessage = err.message.split('\n')[0]; // 첫 줄만 사용
+    console.error(errorMessage);
+    
+    // 좌표 관련 에러인 경우 추가 정보 표시
+    if (errorMessage.includes('longitude/latitude')) {
+      const coords = errorMessage.match(/lng: ([\d.]+) lat: ([\d.]+)/);
+      if (coords) {
+        console.error(`\n잘못된 좌표값: 경도(${coords[1]}), 위도(${coords[2]})`);
+        console.error('올바른 좌표 범위: 경도(-180 ~ 180), 위도(-90 ~ 90)');
+      }
+    }
+    
+    console.error('----------------------------------------');
+    if (err.stack) {
+      const stackLines = err.stack.split('\n');
+      const relevantStack = stackLines.find(line => line.includes('adminRoutes.js'));
+      if (relevantStack) {
+        console.error('\n에러 위치:');
+        console.error(relevantStack.trim());
+      }
+    }
+    console.error('\n');
+    res.status(500).json({ error: errorMessage });
   }
 });
 
@@ -440,37 +466,100 @@ router.post('/bucket/ctp/upload', upload.single('file'), async (req, res) => {
       throw new Error('유효하지 않은 GeoJSON 파일입니다');
     }
 
-    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctp');
-    await ctpBoundaries.deleteMany({});
-    
-    const documents = geoJson.features.map(feature => ({
-      type: 'Feature',
-      properties: feature.properties,
-      geometry: feature.geometry,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }));
-
-    if (documents.length > 0) {
-      await ctpBoundaries.insertMany(documents);
+    // MongoDB 연결 확인
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error('MongoDB 연결이 되어있지 않습니다.');
     }
 
+    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
+    await ctpBoundaries.deleteMany({});
+    
+    const BATCH_SIZE = 100;
+    const features = geoJson.features || [];
+    const totalDocs = features.length;
+    let insertedCount = 0;
+
+    process.stdout.write(`\n진행률: 0/${totalDocs} (0.00%)\n`);
+
+    // 배치 단위로 처리 (필요하다면 BATCH_SIZE 조정)
+    for (let batchStart = 0; batchStart < features.length; batchStart += BATCH_SIZE) {
+      const batch = features.slice(batchStart, batchStart + BATCH_SIZE);
+      const documents = batch.map(feature => {
+        if (!feature.properties || !feature.geometry || !feature.geometry.coordinates) return null;
+        const { CTPRVN_CD, CTP_KOR_NM, CTP_ENG_NM } = feature.properties;
+        if (!CTPRVN_CD || !CTP_KOR_NM || !CTP_ENG_NM) return null;
+        return {
+          type: 'Feature',
+          properties: { CTPRVN_CD, CTP_KOR_NM, CTP_ENG_NM },
+          geometry: feature.geometry,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+      }).filter(d => d);
+
+      for (let j = 0; j < documents.length; j++) {
+        const doc = documents[j];
+        const globalIndex = batchStart + j + 1;
+
+        try {
+          // 중복 좌표 제거 (turf cleanCoords 사용)
+          const cleaned = turf.cleanCoords({ type: 'Feature', properties: {}, geometry: doc.geometry });
+          doc.geometry = cleaned.geometry;
+
+          await ctpBoundaries.insertOne(doc);
+          insertedCount++;
+        } catch (insertErr) {
+          console.error(`❌ [삽입실패] 문서 #${globalIndex} ${JSON.stringify(doc.properties)}`, insertErr);
+          continue; // 다음 문서로 계속
+        }
+
+        const pct = (insertedCount / totalDocs) * 100;
+        process.stdout.write(`\r진행률: ${insertedCount}/${totalDocs} (${pct.toFixed(2)}%)`);
+      }
+    }
+
+    process.stdout.write('\n');
     fs.unlinkSync(req.file.path);
 
+    const totalCount = await ctpBoundaries.countDocuments();
     res.json({ 
       message: '✅ 시도 경계 업로드 완료',
-      insertedCount: documents.length
+      insertedCount,
+      totalCount
     });
 
   } catch (err) {
-    console.error('❌ 오류:', err);
-    res.status(500).json({ error: err.message });
+    process.stdout.write('\n');
+    console.error('\n❌ 오류 발생:');
+    console.error('----------------------------------------');
+
+    const errorMessage = err.message.split('\n')[0];
+    console.error(errorMessage);
+
+    if (errorMessage.includes('longitude/latitude')) {
+      const coords = errorMessage.match(/lng: ([\d.]+) lat: ([\d.]+)/);
+      if (coords) {
+        console.error(`\n잘못된 좌표값: 경도(${coords[1]}), 위도(${coords[2]})`);
+        console.error('올바른 좌표 범위: 경도(-180 ~ 180), 위도(-90 ~ 90)');
+      }
+    }
+    
+    console.error('----------------------------------------');
+    if (err.stack) {
+      const stackLines = err.stack.split('\n');
+      const relevant = stackLines.find(line => line.includes('adminRoutes.js'));
+      if (relevant) {
+        console.error('\n에러 위치:', relevant.trim());
+      }
+    }
+    console.error('\n');
+    res.status(500).json({ error: errorMessage });
   }
 });
 
 router.get('/bucket/ctp/files', async (req, res) => {
   try {
-    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctp');
+    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
     const files = await ctpBoundaries.find({}).toArray();
     res.json(files);
   } catch (err) {
@@ -481,7 +570,7 @@ router.get('/bucket/ctp/files', async (req, res) => {
 
 router.delete('/bucket/ctp/files/:fileId', async (req, res) => {
   try {
-    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctp');
+    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
     await ctpBoundaries.deleteOne({ _id: new mongoose.Types.ObjectId(req.params.fileId) });
     res.json({ message: '✅ 시도 경계 삭제 완료' });
   } catch (err) {
@@ -527,8 +616,34 @@ router.post('/bucket/sig/upload', upload.single('file'), async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ 오류:', err);
-    res.status(500).json({ error: err.message });
+    process.stdout.write('\n'); // 에러 발생 시 줄바꿈
+    console.error('\n❌ 오류 발생:');
+    console.error('----------------------------------------');
+    
+    // 에러 메시지에서 핵심 정보만 추출
+    const errorMessage = err.message.split('\n')[0]; // 첫 줄만 사용
+    console.error(errorMessage);
+    
+    // 좌표 관련 에러인 경우 추가 정보 표시
+    if (errorMessage.includes('longitude/latitude')) {
+      const coords = errorMessage.match(/lng: ([\d.]+) lat: ([\d.]+)/);
+      if (coords) {
+        console.error(`\n잘못된 좌표값: 경도(${coords[1]}), 위도(${coords[2]})`);
+        console.error('올바른 좌표 범위: 경도(-180 ~ 180), 위도(-90 ~ 90)');
+      }
+    }
+    
+    console.error('----------------------------------------');
+    if (err.stack) {
+      const stackLines = err.stack.split('\n');
+      const relevantStack = stackLines.find(line => line.includes('adminRoutes.js'));
+      if (relevantStack) {
+        console.error('\n에러 위치:');
+        console.error(relevantStack.trim());
+      }
+    }
+    console.error('\n');
+    res.status(500).json({ error: errorMessage });
   }
 });
 
@@ -561,7 +676,6 @@ router.post('/bucket/emd/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: '파일이 없습니다' });
     }
 
-    console.log('📁 파일 업로드 시작:', req.file.path);
     const fileContent = fs.readFileSync(req.file.path, 'utf8');
     const geoJson = JSON.parse(fileContent);
     
@@ -657,8 +771,34 @@ router.post('/bucket/emd/upload', upload.single('file'), async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ 오류 발생:', err);
-    res.status(500).json({ error: err.message });
+    process.stdout.write('\n'); // 에러 발생 시 줄바꿈
+    console.error('\n❌ 오류 발생:');
+    console.error('----------------------------------------');
+    
+    // 에러 메시지에서 핵심 정보만 추출
+    const errorMessage = err.message.split('\n')[0]; // 첫 줄만 사용
+    console.error(errorMessage);
+    
+    // 좌표 관련 에러인 경우 추가 정보 표시
+    if (errorMessage.includes('longitude/latitude')) {
+      const coords = errorMessage.match(/lng: ([\d.]+) lat: ([\d.]+)/);
+      if (coords) {
+        console.error(`\n잘못된 좌표값: 경도(${coords[1]}), 위도(${coords[2]})`);
+        console.error('올바른 좌표 범위: 경도(-180 ~ 180), 위도(-90 ~ 90)');
+      }
+    }
+    
+    console.error('----------------------------------------');
+    if (err.stack) {
+      const stackLines = err.stack.split('\n');
+      const relevantStack = stackLines.find(line => line.includes('adminRoutes.js'));
+      if (relevantStack) {
+        console.error('\n에러 위치:');
+        console.error(relevantStack.trim());
+      }
+    }
+    console.error('\n');
+    res.status(500).json({ error: errorMessage });
   }
 });
 
@@ -735,8 +875,34 @@ router.post('/bucket/li/upload', upload.single('file'), async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ 오류:', err);
-    res.status(500).json({ error: err.message });
+    process.stdout.write('\n'); // 에러 발생 시 줄바꿈
+    console.error('\n❌ 오류 발생:');
+    console.error('----------------------------------------');
+    
+    // 에러 메시지에서 핵심 정보만 추출
+    const errorMessage = err.message.split('\n')[0]; // 첫 줄만 사용
+    console.error(errorMessage);
+    
+    // 좌표 관련 에러인 경우 추가 정보 표시
+    if (errorMessage.includes('longitude/latitude')) {
+      const coords = errorMessage.match(/lng: ([\d.]+) lat: ([\d.]+)/);
+      if (coords) {
+        console.error(`\n잘못된 좌표값: 경도(${coords[1]}), 위도(${coords[2]})`);
+        console.error('올바른 좌표 범위: 경도(-180 ~ 180), 위도(-90 ~ 90)');
+      }
+    }
+    
+    console.error('----------------------------------------');
+    if (err.stack) {
+      const stackLines = err.stack.split('\n');
+      const relevantStack = stackLines.find(line => line.includes('adminRoutes.js'));
+      if (relevantStack) {
+        console.error('\n에러 위치:');
+        console.error(relevantStack.trim());
+      }
+    }
+    console.error('\n');
+    res.status(500).json({ error: errorMessage });
   }
 });
 
