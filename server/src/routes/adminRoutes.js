@@ -351,14 +351,65 @@ router.post('/bucket/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// 파일 목록 조회 (sggu_boundaries 컬렉션의 데이터 조회)
-router.get('/bucket/files', async (req, res) => {
+// 파일 목록 조회 API
+router.get('/bucket/:type/files', async (req, res) => {
   try {
-    const sgguBoundaries = mongoose.connection.db.collection('sggu_boundaries');
-    const files = await sgguBoundaries.find({}).toArray();
-    res.json(files);
+    const { type } = req.params;
+    const { page = 1, limit = 10, search = '', field = '' } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    let collection;
+    let searchQuery = {};
+    
+    // 컬렉션 선택
+    switch (type) {
+      case 'ctp':
+        collection = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
+        if (search && field) {
+          searchQuery[`properties.${field}`] = { $regex: search, $options: 'i' };
+        }
+        break;
+      case 'sig':
+        collection = mongoose.connection.db.collection('sggu_boundaries_sig');
+        if (search && field) {
+          searchQuery[`properties.${field}`] = { $regex: search, $options: 'i' };
+        }
+        break;
+      case 'emd':
+        collection = mongoose.connection.db.collection('sggu_boundaries_emd');
+        if (search && field) {
+          searchQuery[`properties.${field}`] = { $regex: search, $options: 'i' };
+        }
+        break;
+      case 'li':
+        collection = mongoose.connection.db.collection('sggu_boundaries_li');
+        if (search && field) {
+          searchQuery[`properties.${field}`] = { $regex: search, $options: 'i' };
+        }
+        break;
+      default:
+        return res.status(400).json({ error: '잘못된 경계 타입입니다' });
+    }
+
+    // 전체 문서 수 조회
+    const total = await collection.countDocuments(searchQuery);
+    
+    // 페이지네이션된 데이터 조회
+    const files = await collection
+      .find(searchQuery)
+      .sort({ 'properties.CTP_KOR_NM': 1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .toArray();
+
+    res.json({
+      files,
+      total,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit))
+    });
   } catch (err) {
-    console.error('❌ 파일 목록 조회 실패:', err);
+    console.error('파일 목록 조회 실패:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -389,7 +440,7 @@ router.post('/bucket/ctp/upload', upload.single('file'), async (req, res) => {
       throw new Error('유효하지 않은 GeoJSON 파일입니다');
     }
 
-    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
+    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctp');
     await ctpBoundaries.deleteMany({});
     
     const documents = geoJson.features.map(feature => ({
@@ -419,7 +470,7 @@ router.post('/bucket/ctp/upload', upload.single('file'), async (req, res) => {
 
 router.get('/bucket/ctp/files', async (req, res) => {
   try {
-    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
+    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctp');
     const files = await ctpBoundaries.find({}).toArray();
     res.json(files);
   } catch (err) {
@@ -430,7 +481,7 @@ router.get('/bucket/ctp/files', async (req, res) => {
 
 router.delete('/bucket/ctp/files/:fileId', async (req, res) => {
   try {
-    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
+    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctp');
     await ctpBoundaries.deleteOne({ _id: new mongoose.Types.ObjectId(req.params.fileId) });
     res.json({ message: '✅ 시도 경계 삭제 완료' });
   } catch (err) {
@@ -510,6 +561,7 @@ router.post('/bucket/emd/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: '파일이 없습니다' });
     }
 
+    console.log('📁 파일 업로드 시작:', req.file.path);
     const fileContent = fs.readFileSync(req.file.path, 'utf8');
     const geoJson = JSON.parse(fileContent);
     
@@ -517,30 +569,95 @@ router.post('/bucket/emd/upload', upload.single('file'), async (req, res) => {
       throw new Error('유효하지 않은 GeoJSON 파일입니다');
     }
 
-    const emdBoundaries = mongoose.connection.db.collection('sggu_boundaries_emd');
-    await emdBoundaries.deleteMany({});
-    
-    const documents = geoJson.features.map(feature => ({
-      type: 'Feature',
-      properties: feature.properties,
-      geometry: feature.geometry,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }));
+    console.log('🔍 GeoJSON 데이터 검증 완료');
+    console.log('📊 전체 features 수:', geoJson.features.length);
 
-    if (documents.length > 0) {
-      await emdBoundaries.insertMany(documents);
+    // MongoDB 연결 확인
+    if (!mongoose.connection.readyState) {
+      throw new Error('MongoDB 연결이 되어있지 않습니다.');
+    }
+
+    const emdBoundaries = mongoose.connection.db.collection('sggu_boundaries_emd');
+    console.log('🗑️ 기존 데이터 삭제 시작');
+    await emdBoundaries.deleteMany({});
+    console.log('🗑️ 기존 데이터 삭제 완료');
+    
+    // 배치 크기를 100으로 줄임
+    const BATCH_SIZE = 100;
+    const features = geoJson.features;
+    let insertedCount = 0;
+
+    // 배치 단위로 처리
+    for (let i = 0; i < features.length; i += BATCH_SIZE) {
+      const batch = features.slice(i, i + BATCH_SIZE);
+      console.log(`🔄 배치 처리 중: ${i + 1} ~ ${Math.min(i + BATCH_SIZE, features.length)}`);
+      
+      const documents = batch.map(feature => {
+        // properties가 없는 경우 처리
+        if (!feature.properties) {
+          console.warn('⚠️ properties가 없는 feature 발견:', feature);
+          return null;
+        }
+
+        // 필수 필드 확인
+        const { EMD_CD, EMD_ENG_NM, EMD_KOR_NM } = feature.properties;
+        if (!EMD_CD || !EMD_ENG_NM || !EMD_KOR_NM) {
+          console.warn('⚠️ 필수 필드가 없는 feature 발견:', feature.properties);
+          return null;
+        }
+
+        // geometry 최적화
+        const optimizedGeometry = {
+          type: feature.geometry.type,
+          coordinates: feature.geometry.coordinates
+        };
+
+        return {
+          type: 'Feature',
+          properties: {
+            EMD_CD,
+            EMD_ENG_NM,
+            EMD_KOR_NM
+          },
+          geometry: optimizedGeometry,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+      }).filter(doc => doc !== null); // null인 문서 제외
+
+      if (documents.length > 0) {
+        try {
+          console.log(`📝 저장할 문서 수: ${documents.length}`);
+          
+          // 각 문서를 개별적으로 저장
+          for (const doc of documents) {
+            await emdBoundaries.insertOne(doc);
+            insertedCount++;
+          }
+          
+          console.log(`✅ 배치 ${i / BATCH_SIZE + 1} 저장 완료: ${documents.length}개`);
+        } catch (insertError) {
+          console.error('❌ 배치 저장 실패:', insertError);
+          throw insertError;
+        }
+      }
     }
 
     fs.unlinkSync(req.file.path);
+    console.log('🧹 임시 파일 삭제 완료');
+
+    // 최종 데이터 확인
+    const totalCount = await emdBoundaries.countDocuments();
+    console.log('📊 최종 저장된 문서 수:', totalCount);
 
     res.json({ 
       message: '✅ 읍면동 경계 업로드 완료',
-      insertedCount: documents.length
+      insertedCount: insertedCount,
+      totalCount: totalCount
     });
 
   } catch (err) {
-    console.error('❌ 오류:', err);
+    console.error('❌ 오류 발생:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -584,23 +701,37 @@ router.post('/bucket/li/upload', upload.single('file'), async (req, res) => {
     const liBoundaries = mongoose.connection.db.collection('sggu_boundaries_li');
     await liBoundaries.deleteMany({});
     
-    const documents = geoJson.features.map(feature => ({
-      type: 'Feature',
-      properties: feature.properties,
-      geometry: feature.geometry,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }));
+    // 배치 크기 설정
+    const BATCH_SIZE = 1000;
+    const features = geoJson.features;
+    let insertedCount = 0;
 
-    if (documents.length > 0) {
-      await liBoundaries.insertMany(documents);
+    // 배치 단위로 처리
+    for (let i = 0; i < features.length; i += BATCH_SIZE) {
+      const batch = features.slice(i, i + BATCH_SIZE);
+      const documents = batch.map(feature => ({
+        type: 'Feature',
+        properties: {
+          LI_CD: feature.properties.LI_CD,
+          LI_ENG_NM: feature.properties.LI_ENG_NM,
+          LI_KOR_NM: feature.properties.LI_KOR_NM
+        },
+        geometry: feature.geometry,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }));
+
+      if (documents.length > 0) {
+        await liBoundaries.insertMany(documents);
+        insertedCount += documents.length;
+      }
     }
 
     fs.unlinkSync(req.file.path);
 
     res.json({ 
       message: '✅ 리 경계 업로드 완료',
-      insertedCount: documents.length
+      insertedCount: insertedCount
     });
 
   } catch (err) {
