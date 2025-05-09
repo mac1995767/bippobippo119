@@ -21,6 +21,7 @@ import CtpManager from '../../components/admin/CtpManager';
 import SigManager from '../../components/admin/SigManager';
 import EmdManager from '../../components/admin/EmdManager';
 import LiManager from '../../components/admin/LiManager';
+import GeoIndexManager from '../../components/admin/GeoIndexManager';
 
 ChartJS.register(
   CategoryScale,
@@ -115,6 +116,14 @@ const DashboardPage = () => {
       icon: '🗺️',
       color: 'bg-blue-500',
       onClick: () => setActiveTab('boundaries')
+    },
+    {
+      title: '지리공간 인덱스 관리',
+      description: '행정구역 경계 데이터의 지리공간 인덱스를 관리합니다.',
+      icon: '🗺️',
+      path: '#',
+      color: 'bg-green-500',
+      onClick: () => setActiveTab('geo-index')
     },
   ];
 
@@ -382,6 +391,13 @@ const DashboardPage = () => {
           {activeBoundaryType === 'sig' && <SigManager />}
           {activeBoundaryType === 'emd' && <EmdManager />}
           {activeBoundaryType === 'li' && <LiManager />}
+        </div>
+      ) : activeTab === 'geo-index' ? (
+        <div className="p-6">
+          <h1 className="text-2xl font-bold mb-6">지리공간 인덱스 관리</h1>
+          <div className="bg-white rounded-lg shadow-lg">
+            <GeoIndexManager />
+          </div>
         </div>
       ) : null}
     </div>

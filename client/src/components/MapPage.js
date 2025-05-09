@@ -651,6 +651,7 @@ const MapPage = () => {
                   lat: mousePosition.lat,
                   lng: mousePosition.lng
                 } : null}
+                zoomLevel={zoomLevel}
               />
             </>
           )}

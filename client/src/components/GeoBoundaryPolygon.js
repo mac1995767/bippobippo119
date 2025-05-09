@@ -19,7 +19,7 @@ function getPolygonCentroid(path) {
   return { lat: x, lng: y };
 }
 
-const GeoBoundaryPolygon = ({ map, coordinates }) => {
+const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel }) => {
   const [polygons, setPolygons] = useState([]);
   const [markers, setMarkers] = useState([]);
   const [infoWindows, setInfoWindows] = useState([]);
@@ -32,10 +32,20 @@ const GeoBoundaryPolygon = ({ map, coordinates }) => {
 
     const fetchAndRender = async () => {
       try {
-        console.log('전달된 좌표:', coordinates);
+        // 줌 레벨에 따라 다른 경계선 타입 결정
+        let boundaryType;
+        if (zoomLevel >= 8 && zoomLevel <= 10) {
+          boundaryType = 'ctprvn'; // 시도
+        } else if (zoomLevel >= 11 && zoomLevel <= 14) {
+          boundaryType = 'sig'; // 시군구
+        } else if (zoomLevel >= 15 && zoomLevel < 16) {
+          boundaryType = 'emd'; // 읍면동
+        } else {
+          return; // 다른 줌 레벨에서는 경계선을 표시하지 않음
+        }
+
         // 1) GeoJSON 데이터 호출
-        const geoJson = await fetchGeoBoundary(coordinates);
-        console.log('받아온 GeoJSON:', geoJson);
+        const geoJson = await fetchGeoBoundary(coordinates, boundaryType);
         
         if (!geoJson?.features?.length) {
           console.log('GeoJSON features가 없습니다');
@@ -98,6 +108,22 @@ const GeoBoundaryPolygon = ({ map, coordinates }) => {
           });
           newMarkers.push(marker);
 
+          // 경계선 타입에 따라 다른 레이블 표시
+          let labelText;
+          switch (boundaryType) {
+            case 'ctprvn':
+              labelText = feature.properties.CTP_KOR_NM || '알 수 없음';
+              break;
+            case 'sig':
+              labelText = feature.properties.SIG_KOR_NM || '알 수 없음';
+              break;
+            case 'emd':
+              labelText = feature.properties.EMD_KOR_NM || '알 수 없음';
+              break;
+            default:
+              labelText = '알 수 없음';
+          }
+
           const infoWindow = new window.naver.maps.InfoWindow({
             content: `<div style="
               padding:4px 8px;
@@ -108,7 +134,7 @@ const GeoBoundaryPolygon = ({ map, coordinates }) => {
               font-size:12px;
               font-weight:bold;
               white-space:nowrap;
-            ">${feature.properties.CTP_KOR_NM || '알 수 없음'}</div>`,
+            ">${labelText}</div>`,
             position: marker.getPosition(),
             disableAnchor: true,
             borderWidth: 0,
@@ -137,7 +163,7 @@ const GeoBoundaryPolygon = ({ map, coordinates }) => {
       markers.forEach(m => m.setMap(null));
       infoWindows.forEach(w => w.close());
     };
-  }, [map, coordinates]);
+  }, [map, coordinates, zoomLevel]);
 
   return null;
 };

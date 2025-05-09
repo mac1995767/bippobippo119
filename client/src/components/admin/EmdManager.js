@@ -11,7 +11,7 @@ function transformCoordinates(coords, type) {
   const transformPoint = ([x, y]) => {
     try {
       // EPSG:5179 -> EPSG:4326
-      const [lon, lat] = proj4('EPSG:5179', 'EPSG:4326', [x, y]);
+      const [lat, lon] = proj4('EPSG:5179', 'EPSG:4326', [x, y]);
       return [lon, lat];
     } catch (error) {
       console.warn('좌표 변환 실패:', error);

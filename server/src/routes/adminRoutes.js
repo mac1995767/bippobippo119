@@ -11,7 +11,12 @@ const multer = require('multer');
 const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
+const proj4 = require('proj4');
 const turf = require('@turf/turf');
+
+// 모든 관리자 라우트에 인증 및 관리자 권한 검증 미들웨어 적용
+router.use(authenticateToken, isAdmin);
+
 // 임시 파일 저장 설정
 const upload = multer({ 
   dest: 'uploads/',
@@ -19,10 +24,6 @@ const upload = multer({
     fileSize: 500 * 1024 * 1024 // 500MB 제한
   }
 });
-
-// 모든 관리자 라우트에 인증 및 관리자 권한 검증 미들웨어 적용
-router.use(authenticateToken, isAdmin);
-
 // 대시보드 통계
 router.get('/dashboard/stats', async (req, res) => {
   try {
@@ -503,31 +504,39 @@ router.post('/bucket/ctp/upload', upload.single('file'), async (req, res) => {
         console.warn(`⚠️ 필수 속성 누락: ${i + 1}번째`);
         continue;
       }
+      // 1) 좌표 변환(transformCoordinates) 후 geometry 추출
+      let geometry = {
+        type: feature.geometry.type,
+        coordinates: feature.geometry.coordinates.map(polygon => 
+          polygon.map(ring => 
+            ring.map(coord => {
+              const lon = parseFloat(coord[0]);  // x축이 경도
+              const lat = parseFloat(coord[1]);  // y축이 위도
+              
+              if (isNaN(lon) || isNaN(lat) || 
+                  lon < -180 || lon > 180 || 
+                  lat < -90 || lat > 90) {
+                return coord;
+              }
+              
+              return [lon, lat];  // [경도, 위도] 순서로 저장
+            })
+          )
+        )
+      };
 
+      // 2) turf.cleanCoords 로 중복점·불필요 점 제거
+      const cleaned = turf.cleanCoords({
+        type: 'Feature',
+        properties: {},
+        geometry
+      });
+      geometry = cleaned.geometry;
+     
       const doc = {
         type: 'Feature',
         properties: { CTPRVN_CD, CTP_KOR_NM, CTP_ENG_NM },
-        geometry: {
-          type: feature.geometry.type,
-          coordinates: feature.geometry.coordinates.map(polygon => 
-            polygon.map(ring => 
-              ring.map(coord => {
-                const lng = parseFloat(coord[0]);
-                const lat = parseFloat(coord[1]);
-                
-                // 좌표값 유효성 검사
-                if (isNaN(lng) || isNaN(lat) || 
-                    lng < -180 || lng > 180 || 
-                    lat < -90 || lat > 90) {
-                  console.warn(`⚠️ 잘못된 좌표값 발견: [${coord[0]}, ${coord[1]}]`);
-                  return coord; // 원본 좌표값 유지
-                }
-                
-                return [lng, lat];
-              })
-            )
-          )
-        },
+        geometry,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -688,16 +697,16 @@ router.post('/bucket/sig/upload', upload.single('file'), async (req, res) => {
           coordinates: feature.geometry.coordinates.map(polygon => 
             polygon.map(ring => 
               ring.map(coord => {
-                const lng = parseFloat(coord[0]);
-                const lat = parseFloat(coord[1]);
+                const lon = parseFloat(coord[0]);  // x축이 경도
+                const lat = parseFloat(coord[1]);  // y축이 위도
                 
-                if (isNaN(lng) || isNaN(lat) || 
-                    lng < -180 || lng > 180 || 
+                if (isNaN(lon) || isNaN(lat) || 
+                    lon < -180 || lon > 180 || 
                     lat < -90 || lat > 90) {
                   return coord;
                 }
                 
-                return [lng, lat];
+                return [lon, lat];  // [경도, 위도] 순서로 저장
               })
             )
           )
@@ -827,16 +836,16 @@ router.post('/bucket/emd/upload', upload.single('file'), async (req, res) => {
           coordinates: feature.geometry.coordinates.map(polygon => 
             polygon.map(ring => 
               ring.map(coord => {
-                const lng = parseFloat(coord[0]);
-                const lat = parseFloat(coord[1]);
+                const lon = parseFloat(coord[0]);  // x축이 경도
+                const lat = parseFloat(coord[1]);  // y축이 위도
                 
-                if (isNaN(lng) || isNaN(lat) || 
-                    lng < -180 || lng > 180 || 
+                if (isNaN(lon) || isNaN(lat) || 
+                    lon < -180 || lon > 180 || 
                     lat < -90 || lat > 90) {
                   return coord;
                 }
                 
-                return [lng, lat];
+                return [lon, lat];  // [경도, 위도] 순서로 저장
               })
             )
           )
@@ -966,16 +975,16 @@ router.post('/bucket/li/upload', upload.single('file'), async (req, res) => {
           coordinates: feature.geometry.coordinates.map(polygon => 
             polygon.map(ring => 
               ring.map(coord => {
-                const lng = parseFloat(coord[0]);
-                const lat = parseFloat(coord[1]);
+                const lon = parseFloat(coord[0]);  // x축이 경도
+                const lat = parseFloat(coord[1]);  // y축이 위도
                 
-                if (isNaN(lng) || isNaN(lat) || 
-                    lng < -180 || lng > 180 || 
+                if (isNaN(lon) || isNaN(lat) || 
+                    lon < -180 || lon > 180 || 
                     lat < -90 || lat > 90) {
                   return coord;
                 }
                 
-                return [lng, lat];
+                return [lon, lat];  // [경도, 위도] 순서로 저장
               })
             )
           )
