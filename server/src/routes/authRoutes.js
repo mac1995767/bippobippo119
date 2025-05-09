@@ -499,7 +499,7 @@ router.post('/kakao/callback', async (req, res) => {
         const user = existingUser[0];
         const token = jwt.sign(
           { id: user.id, role: user.role },
-          process.env.JWT_SECRET,
+          process.env._SECRET,
           { expiresIn: '24h' }
         );
 

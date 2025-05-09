@@ -7,6 +7,18 @@ const CorsConfig = require('../models/CorsConfig');
 const User = require('../models/User');
 const { Hospital } = require('../models/hospital');
 const pool = require('../config/mysql');
+const multer = require('multer');
+const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
+
+// 임시 파일 저장 설정
+const upload = multer({ 
+  dest: 'uploads/',
+  limits: {
+    fileSize: 500 * 1024 * 1024 // 500MB 제한
+  }
+});
 
 // 모든 관리자 라우트에 인증 및 관리자 권한 검증 미들웨어 적용
 router.use(authenticateToken, isAdmin);
@@ -288,6 +300,334 @@ router.delete('/cors-configs/:id', async (req, res) => {
     res.json({ message: 'CORS 설정이 삭제되었습니다.' });
   } catch (error) {
     res.status(500).json({ message: 'CORS 설정 삭제에 실패했습니다.' });
+  }
+});
+
+// GeoJSON 파일 업로드
+router.post('/bucket/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '파일이 없습니다' });
+    }
+
+    // 파일 내용 확인 (GeoJSON 형식 검증)
+    const fileContent = fs.readFileSync(req.file.path, 'utf8');
+    const geoJson = JSON.parse(fileContent);
+    
+    if (!geoJson.type || !geoJson.features) {
+      throw new Error('유효하지 않은 GeoJSON 파일입니다');
+    }
+
+    // sggu_boundaries 컬렉션에 데이터 저장
+    const sgguBoundaries = mongoose.connection.db.collection('sggu_boundaries');
+    
+    // 기존 데이터 삭제
+    await sgguBoundaries.deleteMany({});
+    
+    // 새로운 데이터 삽입
+    const documents = geoJson.features.map(feature => ({
+      type: 'Feature',
+      properties: feature.properties,
+      geometry: feature.geometry,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }));
+
+    if (documents.length > 0) {
+      await sgguBoundaries.insertMany(documents);
+    }
+
+    // 임시 파일 삭제
+    fs.unlinkSync(req.file.path);
+
+    res.json({ 
+      message: '✅ 업로드 완료',
+      insertedCount: documents.length
+    });
+
+  } catch (err) {
+    console.error('❌ 오류:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 파일 목록 조회 (sggu_boundaries 컬렉션의 데이터 조회)
+router.get('/bucket/files', async (req, res) => {
+  try {
+    const sgguBoundaries = mongoose.connection.db.collection('sggu_boundaries');
+    const files = await sgguBoundaries.find({}).toArray();
+    res.json(files);
+  } catch (err) {
+    console.error('❌ 파일 목록 조회 실패:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 파일 삭제 (sggu_boundaries 컬렉션의 데이터 삭제)
+router.delete('/bucket/files/:fileId', async (req, res) => {
+  try {
+    const sgguBoundaries = mongoose.connection.db.collection('sggu_boundaries');
+    await sgguBoundaries.deleteOne({ _id: new mongoose.Types.ObjectId(req.params.fileId) });
+    res.json({ message: '✅ 삭제 완료' });
+  } catch (err) {
+    console.error('❌ 삭제 실패:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 시도(CTP) 경계 관리
+router.post('/bucket/ctp/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '파일이 없습니다' });
+    }
+
+    const fileContent = fs.readFileSync(req.file.path, 'utf8');
+    const geoJson = JSON.parse(fileContent);
+    
+    if (!geoJson.type || !geoJson.features) {
+      throw new Error('유효하지 않은 GeoJSON 파일입니다');
+    }
+
+    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
+    await ctpBoundaries.deleteMany({});
+    
+    const documents = geoJson.features.map(feature => ({
+      type: 'Feature',
+      properties: feature.properties,
+      geometry: feature.geometry,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }));
+
+    if (documents.length > 0) {
+      await ctpBoundaries.insertMany(documents);
+    }
+
+    fs.unlinkSync(req.file.path);
+
+    res.json({ 
+      message: '✅ 시도 경계 업로드 완료',
+      insertedCount: documents.length
+    });
+
+  } catch (err) {
+    console.error('❌ 오류:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/bucket/ctp/files', async (req, res) => {
+  try {
+    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
+    const files = await ctpBoundaries.find({}).toArray();
+    res.json(files);
+  } catch (err) {
+    console.error('❌ 시도 경계 목록 조회 실패:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/bucket/ctp/files/:fileId', async (req, res) => {
+  try {
+    const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
+    await ctpBoundaries.deleteOne({ _id: new mongoose.Types.ObjectId(req.params.fileId) });
+    res.json({ message: '✅ 시도 경계 삭제 완료' });
+  } catch (err) {
+    console.error('❌ 시도 경계 삭제 실패:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 시군구(SIG) 경계 관리
+router.post('/bucket/sig/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '파일이 없습니다' });
+    }
+
+    const fileContent = fs.readFileSync(req.file.path, 'utf8');
+    const geoJson = JSON.parse(fileContent);
+    
+    if (!geoJson.type || !geoJson.features) {
+      throw new Error('유효하지 않은 GeoJSON 파일입니다');
+    }
+
+    const sigBoundaries = mongoose.connection.db.collection('sggu_boundaries_sig');
+    await sigBoundaries.deleteMany({});
+    
+    const documents = geoJson.features.map(feature => ({
+      type: 'Feature',
+      properties: feature.properties,
+      geometry: feature.geometry,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }));
+
+    if (documents.length > 0) {
+      await sigBoundaries.insertMany(documents);
+    }
+
+    fs.unlinkSync(req.file.path);
+
+    res.json({ 
+      message: '✅ 시군구 경계 업로드 완료',
+      insertedCount: documents.length
+    });
+
+  } catch (err) {
+    console.error('❌ 오류:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/bucket/sig/files', async (req, res) => {
+  try {
+    const sigBoundaries = mongoose.connection.db.collection('sggu_boundaries_sig');
+    const files = await sigBoundaries.find({}).toArray();
+    res.json(files);
+  } catch (err) {
+    console.error('❌ 시군구 경계 목록 조회 실패:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/bucket/sig/files/:fileId', async (req, res) => {
+  try {
+    const sigBoundaries = mongoose.connection.db.collection('sggu_boundaries_sig');
+    await sigBoundaries.deleteOne({ _id: new mongoose.Types.ObjectId(req.params.fileId) });
+    res.json({ message: '✅ 시군구 경계 삭제 완료' });
+  } catch (err) {
+    console.error('❌ 시군구 경계 삭제 실패:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 읍면동(EMD) 경계 관리
+router.post('/bucket/emd/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '파일이 없습니다' });
+    }
+
+    const fileContent = fs.readFileSync(req.file.path, 'utf8');
+    const geoJson = JSON.parse(fileContent);
+    
+    if (!geoJson.type || !geoJson.features) {
+      throw new Error('유효하지 않은 GeoJSON 파일입니다');
+    }
+
+    const emdBoundaries = mongoose.connection.db.collection('sggu_boundaries_emd');
+    await emdBoundaries.deleteMany({});
+    
+    const documents = geoJson.features.map(feature => ({
+      type: 'Feature',
+      properties: feature.properties,
+      geometry: feature.geometry,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }));
+
+    if (documents.length > 0) {
+      await emdBoundaries.insertMany(documents);
+    }
+
+    fs.unlinkSync(req.file.path);
+
+    res.json({ 
+      message: '✅ 읍면동 경계 업로드 완료',
+      insertedCount: documents.length
+    });
+
+  } catch (err) {
+    console.error('❌ 오류:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/bucket/emd/files', async (req, res) => {
+  try {
+    const emdBoundaries = mongoose.connection.db.collection('sggu_boundaries_emd');
+    const files = await emdBoundaries.find({}).toArray();
+    res.json(files);
+  } catch (err) {
+    console.error('❌ 읍면동 경계 목록 조회 실패:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/bucket/emd/files/:fileId', async (req, res) => {
+  try {
+    const emdBoundaries = mongoose.connection.db.collection('sggu_boundaries_emd');
+    await emdBoundaries.deleteOne({ _id: new mongoose.Types.ObjectId(req.params.fileId) });
+    res.json({ message: '✅ 읍면동 경계 삭제 완료' });
+  } catch (err) {
+    console.error('❌ 읍면동 경계 삭제 실패:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 리(LI) 경계 관리
+router.post('/bucket/li/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '파일이 없습니다' });
+    }
+
+    const fileContent = fs.readFileSync(req.file.path, 'utf8');
+    const geoJson = JSON.parse(fileContent);
+    
+    if (!geoJson.type || !geoJson.features) {
+      throw new Error('유효하지 않은 GeoJSON 파일입니다');
+    }
+
+    const liBoundaries = mongoose.connection.db.collection('sggu_boundaries_li');
+    await liBoundaries.deleteMany({});
+    
+    const documents = geoJson.features.map(feature => ({
+      type: 'Feature',
+      properties: feature.properties,
+      geometry: feature.geometry,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }));
+
+    if (documents.length > 0) {
+      await liBoundaries.insertMany(documents);
+    }
+
+    fs.unlinkSync(req.file.path);
+
+    res.json({ 
+      message: '✅ 리 경계 업로드 완료',
+      insertedCount: documents.length
+    });
+
+  } catch (err) {
+    console.error('❌ 오류:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/bucket/li/files', async (req, res) => {
+  try {
+    const liBoundaries = mongoose.connection.db.collection('sggu_boundaries_li');
+    const files = await liBoundaries.find({}).toArray();
+    res.json(files);
+  } catch (err) {
+    console.error('❌ 리 경계 목록 조회 실패:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/bucket/li/files/:fileId', async (req, res) => {
+  try {
+    const liBoundaries = mongoose.connection.db.collection('sggu_boundaries_li');
+    await liBoundaries.deleteOne({ _id: new mongoose.Types.ObjectId(req.params.fileId) });
+    res.json({ message: '✅ 리 경계 삭제 완료' });
+  } catch (err) {
+    console.error('❌ 리 경계 삭제 실패:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -16,6 +16,11 @@ import CorsManager from '../../components/admin/CorsManager';
 import SocialConfigManager from '../../components/admin/SocialConfigManager';
 import ServerConfigManager from '../../components/admin/ServerConfigManager';
 import IndexingManager from '../../components/admin/IndexingManager';
+import BucketManager from '../../components/admin/CtpManager';
+import CtpManager from '../../components/admin/CtpManager';
+import SigManager from '../../components/admin/SigManager';
+import EmdManager from '../../components/admin/EmdManager';
+import LiManager from '../../components/admin/LiManager';
 
 ChartJS.register(
   CategoryScale,
@@ -41,6 +46,7 @@ const DashboardPage = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeBoundaryType, setActiveBoundaryType] = useState('ctp');
 
   const menuItems = [
     {
@@ -102,7 +108,14 @@ const DashboardPage = () => {
       path: '#',
       color: 'bg-blue-500',
       onClick: () => setActiveTab('indexing')
-    }
+    },
+    {
+      title: '행정구역 경계 관리',
+      description: '시도, 시군구, 읍면동, 리 경계 데이터 관리',
+      icon: '🗺️',
+      color: 'bg-blue-500',
+      onClick: () => setActiveTab('boundaries')
+    },
   ];
 
   useEffect(() => {
@@ -313,6 +326,62 @@ const DashboardPage = () => {
           <div className="bg-white rounded-lg shadow-lg">
             <IndexingManager />
           </div>
+        </div>
+      ) : activeTab === 'bucket' ? (
+        <div className="p-6">
+          <h1 className="text-2xl font-bold mb-6">GridFS 관리</h1>
+          <div className="bg-white rounded-lg shadow-lg">
+            <BucketManager />
+          </div>
+        </div>
+      ) : activeTab === 'boundaries' ? (
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold mb-4">행정구역 경계 관리</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <button
+                onClick={() => setActiveBoundaryType('ctp')}
+                className={`p-4 rounded-lg text-center ${
+                  activeBoundaryType === 'ctp' ? 'bg-blue-100' : 'bg-gray-50'
+                }`}
+              >
+                <div className="text-2xl mb-2">🏛️</div>
+                <div className="font-medium">시도 경계</div>
+              </button>
+              <button
+                onClick={() => setActiveBoundaryType('sig')}
+                className={`p-4 rounded-lg text-center ${
+                  activeBoundaryType === 'sig' ? 'bg-blue-100' : 'bg-gray-50'
+                }`}
+              >
+                <div className="text-2xl mb-2">🏢</div>
+                <div className="font-medium">시군구 경계</div>
+              </button>
+              <button
+                onClick={() => setActiveBoundaryType('emd')}
+                className={`p-4 rounded-lg text-center ${
+                  activeBoundaryType === 'emd' ? 'bg-blue-100' : 'bg-gray-50'
+                }`}
+              >
+                <div className="text-2xl mb-2">🏘️</div>
+                <div className="font-medium">읍면동 경계</div>
+              </button>
+              <button
+                onClick={() => setActiveBoundaryType('li')}
+                className={`p-4 rounded-lg text-center ${
+                  activeBoundaryType === 'li' ? 'bg-blue-100' : 'bg-gray-50'
+                }`}
+              >
+                <div className="text-2xl mb-2">🏡</div>
+                <div className="font-medium">리 경계</div>
+              </button>
+            </div>
+          </div>
+
+          {activeBoundaryType === 'ctp' && <CtpManager />}
+          {activeBoundaryType === 'sig' && <SigManager />}
+          {activeBoundaryType === 'emd' && <EmdManager />}
+          {activeBoundaryType === 'li' && <LiManager />}
         </div>
       ) : null}
     </div>
