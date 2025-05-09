@@ -509,35 +509,34 @@ router.post('/bucket/ctp/upload', upload.single('file'), async (req, res) => {
         properties: { CTPRVN_CD, CTP_KOR_NM, CTP_ENG_NM },
         geometry: {
           type: feature.geometry.type,
-          coordinates: feature.geometry.coordinates
-        },
-        location: {
-          type: 'Point',
-          coordinates: [0, 0]
+          coordinates: feature.geometry.coordinates.map(polygon => 
+            polygon.map(ring => 
+              ring.map(coord => {
+                const lng = parseFloat(coord[0]);
+                const lat = parseFloat(coord[1]);
+                
+                // 좌표값 유효성 검사
+                if (isNaN(lng) || isNaN(lat) || 
+                    lng < -180 || lng > 180 || 
+                    lat < -90 || lat > 90) {
+                  console.warn(`⚠️ 잘못된 좌표값 발견: [${coord[0]}, ${coord[1]}]`);
+                  return coord; // 원본 좌표값 유지
+                }
+                
+                return [lng, lat];
+              })
+            )
+          )
         },
         createdAt: new Date(),
         updatedAt: new Date()
       };
-
-      // MultiPolygon의 경우 첫 번째 좌표의 중심점을 location으로 설정
-      if (feature.geometry.type === 'MultiPolygon') {
-        const firstPolygon = feature.geometry.coordinates[0][0];
-        const sumLng = firstPolygon.reduce((sum, coord) => sum + coord[0], 0);
-        const sumLat = firstPolygon.reduce((sum, coord) => sum + coord[1], 0);
-        const centerLng = sumLng / firstPolygon.length;
-        const centerLat = sumLat / firstPolygon.length;
-        doc.location = {
-          type: 'Point',
-          coordinates: [centerLng, centerLat]
-        };
-      }
 
       // MongoDB 지리공간 인덱스 요구사항에 맞게 데이터 정리
       const cleanDoc = {
         type: 'Feature',
         properties: doc.properties,
         geometry: doc.geometry,
-        location: doc.location,
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt
       };
