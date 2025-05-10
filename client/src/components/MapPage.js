@@ -650,8 +650,17 @@ const MapPage = () => {
                 coordinates={mousePosition ? {
                   lat: mousePosition.lat,
                   lng: mousePosition.lng
-                } : null}
+                } : {
+                  lat: map.getCenter().y,
+                  lng: map.getCenter().x
+                }}
                 zoomLevel={zoomLevel}
+                apiEndpoint={
+                  zoomLevel >= 15 ? '/api/geo/li/coordinates' :
+                  zoomLevel >= 13 ? '/api/geo/emd/coordinates' :
+                  zoomLevel >= 11 ? '/api/geo/sig/coordinates' :
+                  '/api/geo/ctp/coordinates'
+                }
               />
             </>
           )}

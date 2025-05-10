@@ -315,7 +315,8 @@ export const fetchGeoBoundary = async (params) => {
       throw new Error('좌표가 필요합니다.');
     }
 
-    const response = await axios.get(`${baseUrl}/api/geo/ctp/coordinates`, {
+    const endpoint = params.endpoint || '/api/geo/ctp/coordinates';
+    const response = await axios.get(`${baseUrl}${endpoint}`, {
       params: {
         lat: params.lat,
         lng: params.lng
@@ -335,6 +336,82 @@ export const fetchMedicalStats = async () => {
     return response.data;
   } catch (error) {
     console.error('의료기관 통계 데이터 조회 실패:', error);
+    throw error;
+  }
+};
+
+// 시도 경계 데이터 조회
+export const fetchCtpBoundary = async (params) => {
+  try {
+    if (!params.lat || !params.lng) {
+      throw new Error('좌표가 필요합니다.');
+    }
+    const response = await axios.get(`${baseUrl}/api/geo/ctp/coordinates`, {
+      params: {
+        lat: params.lat,
+        lng: params.lng
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching ctp boundary:', error);
+    throw error;
+  }
+};
+
+// 시군구 경계 데이터 조회
+export const fetchSigBoundary = async (params) => {
+  try {
+    if (!params.lat || !params.lng) {
+      throw new Error('좌표가 필요합니다.');
+    }
+    const response = await axios.get(`${baseUrl}/api/geo/sig/coordinates`, {
+      params: {
+        lat: params.lat,
+        lng: params.lng
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching sig boundary:', error);
+    throw error;
+  }
+};
+
+// 읍면동 경계 데이터 조회
+export const fetchEmdBoundary = async (params) => {
+  try {
+    if (!params.lat || !params.lng) {
+      throw new Error('좌표가 필요합니다.');
+    }
+    const response = await axios.get(`${baseUrl}/api/geo/emd/coordinates`, {
+      params: {
+        lat: params.lat,
+        lng: params.lng
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching emd boundary:', error);
+    throw error;
+  }
+};
+
+// 리 경계 데이터 조회
+export const fetchLiBoundary = async (params) => {
+  try {
+    if (!params.lat || !params.lng) {
+      throw new Error('좌표가 필요합니다.');
+    }
+    const response = await axios.get(`${baseUrl}/api/geo/li/coordinates`, {
+      params: {
+        lat: params.lat,
+        lng: params.lng
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error fetching li boundary:', error);
     throw error;
   }
 };
