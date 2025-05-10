@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const proj4 = require('proj4');
 const turf = require('@turf/turf');
+const cleanCoords = require('@turf/clean-coords').default;
 
 // 모든 관리자 라우트에 인증 및 관리자 권한 검증 미들웨어 적용
 router.use(authenticateToken, isAdmin);
@@ -304,156 +305,505 @@ router.delete('/cors-configs/:id', async (req, res) => {
   }
 });
 
-// GeoJSON 파일 업로드
-router.post('/bucket/upload', upload.single('file'), async (req, res) => {
+// GeoJSON 유효성 검사
+function isValidGeometry(geom) {
+  if (!geom || !geom.type || !Array.isArray(geom.coordinates)) return false;
+  const { type, coordinates } = geom;
+  if (type !== 'Polygon' && type !== 'MultiPolygon') return false;
+  if (type === 'Polygon' && coordinates.length === 0) return false;
+  if (type === 'MultiPolygon' && coordinates.every(poly => poly.length === 0)) return false;
+  return true;
+}
+
+// 값 범위 검사: -180<=lng<=180, -90<=lat<=90
+function hasValidBounds(geometry) {
+  const coords = [];
+  if (geometry.type === 'Polygon') {
+    geometry.coordinates.forEach(ring => coords.push(...ring));
+  } else if (geometry.type === 'MultiPolygon') {
+    geometry.coordinates.forEach(poly => poly.forEach(ring => coords.push(...ring)));
+  }
+  return coords.every(([lng, lat]) => lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90);
+}
+
+// 좌표 정제 함수 개선
+function cleanPolygonRings(rings) {
+  return rings.map(ring => {
+    // 1. 중복 좌표 제거
+    const seen = new Set();
+    const unique = [];
+    ring.forEach(coord => {
+      const key = coord.join(',');
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(coord);
+      }
+    });
+
+    // 2. 최소 3개 이상의 점이 있는지 확인
+    if (unique.length < 3) {
+      console.warn('  ⚠️ 폴리곤의 점이 3개 미만입니다');
+      return ring;
+    }
+
+    // 3. 첫 점과 마지막 점이 같지 않으면 닫기
+    if (unique[0][0] !== unique[unique.length - 1][0] || 
+        unique[0][1] !== unique[unique.length - 1][1]) {
+      unique.push([...unique[0]]);
+    }
+
+    // 4. 좌표 범위 검증
+    const validCoords = unique.filter(([lng, lat]) => 
+      lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90
+    );
+
+    if (validCoords.length < 3) {
+      console.warn('  ⚠️ 유효한 좌표가 3개 미만입니다');
+      return ring;
+    }
+
+    return validCoords;
+  });
+}
+
+// kinks 검사 및 폴리곤 수정 함수
+async function detectKinksWithTimeout(feature, timeout) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('kinks 검사 시간 초과'));
+    }, timeout);
+
+    try {
+      // 1. 먼저 kinks 검사
+      const kinks = turf.kinks(feature);
+      
+      // 2. kinks가 있으면 수정 시도
+      if (kinks && kinks.features && kinks.features.length > 0) {
+        console.log(`  - kinks 발견: ${kinks.features.length}개, 수정 시도`);
+        
+        // 3. 폴리곤 타입에 따라 처리
+        if (feature.geometry.type === 'Polygon') {
+          // 3.1 단일 폴리곤 수정
+          const fixed = fixPolygon(feature.geometry.coordinates[0]);
+          if (fixed) {
+            feature.geometry.coordinates[0] = fixed;
+            console.log('  - 폴리곤 수정 완료');
+          }
+        } else if (feature.geometry.type === 'MultiPolygon') {
+          // 3.2 멀티폴리곤 수정
+          const fixedCoords = feature.geometry.coordinates.map(polygon => {
+            const fixed = fixPolygon(polygon[0]);
+            return fixed ? [fixed] : polygon;
+          });
+          feature.geometry.coordinates = fixedCoords;
+          console.log('  - 멀티폴리곤 수정 완료');
+        }
+      }
+
+      clearTimeout(timer);
+      resolve(kinks);
+    } catch (error) {
+      clearTimeout(timer);
+      reject(error);
+    }
+  });
+}
+
+// 폴리곤 강제 변환 함수
+function forceValidPolygon(coordinates) {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: '파일이 없습니다' });
+    // 1. 좌표 순서 강제 변경 [lat, lng] -> [lng, lat]
+    let fixedCoords = coordinates.map(coord => {
+      const [x, y] = coord;
+      // 좌표 범위 강제 조정
+      const lng = Math.max(-180, Math.min(180, Number(x)));
+      const lat = Math.max(-90, Math.min(90, Number(y)));
+      return [lng, lat];
+    });
+
+    // 2. 중복 좌표 제거
+    const unique = [];
+    const seen = new Set();
+    fixedCoords.forEach(coord => {
+      const key = coord.join(',');
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(coord);
+      }
+    });
+    fixedCoords = unique;
+
+    // 3. 점이 3개 미만이면 보간법으로 추가
+    if (fixedCoords.length < 3) {
+      console.log('  - 점이 3개 미만, 보간법으로 추가');
+      const first = fixedCoords[0];
+      const last = fixedCoords[fixedCoords.length - 1];
+      
+      // 첫 점과 마지막 점 사이에 중간점 추가
+      const midLng = (first[0] + last[0]) / 2;
+      const midLat = (first[1] + last[1]) / 2;
+      fixedCoords = [first, [midLng, midLat], last];
     }
 
-    // 파일 내용 확인 (GeoJSON 형식 검증)
-    const fileContent = fs.readFileSync(req.file.path, 'utf8');
-    const geoJson = JSON.parse(fileContent);
-    
-    if (!geoJson.type || !geoJson.features) {
-      throw new Error('유효하지 않은 GeoJSON 파일입니다');
+    // 4. 첫 점과 마지막 점이 다르면 강제로 닫기
+    if (fixedCoords[0][0] !== fixedCoords[fixedCoords.length - 1][0] || 
+        fixedCoords[0][1] !== fixedCoords[fixedCoords.length - 1][1]) {
+      fixedCoords.push([...fixedCoords[0]]);
     }
 
-    // sggu_boundaries 컬렉션에 데이터 저장
-    const sgguBoundaries = mongoose.connection.db.collection('sggu_boundaries');
+    // 5. self-intersection 수정
+    const polygon = turf.polygon([fixedCoords]);
+    if (!turf.booleanValid(polygon)) {
+      console.log('  - self-intersection 발견, 수정 시도');
+      
+      // 5.1 단순화 시도
+      const simplified = turf.simplify(polygon, { tolerance: 0.0001, highQuality: true });
+      if (turf.booleanValid(simplified)) {
+        console.log('  - 단순화로 수정 성공');
+        return simplified.geometry.coordinates[0];
+      }
+
+      // 5.2 버퍼 처리 시도
+      const buffered = turf.buffer(polygon, 0.0001);
+      if (turf.booleanValid(buffered)) {
+        console.log('  - 버퍼 처리로 수정 성공');
+        return buffered.geometry.coordinates[0];
+      }
+
+      // 5.3 convex hull 시도
+      const convex = turf.convex(polygon);
+      if (turf.booleanValid(convex)) {
+        console.log('  - convex hull로 수정 성공');
+        return convex.geometry.coordinates[0];
+      }
+    }
+
+    return fixedCoords;
+  } catch (e) {
+    console.warn('  ⚠️ 폴리곤 강제 변환 실패:', e.message);
+    return coordinates; // 실패시 원본 반환
+  }
+}
+
+// fixPolygon 함수 수정
+function fixPolygon(coordinates) {
+  try {
+    // 강제 변환 시도
+    const fixed = forceValidPolygon(coordinates);
     
-    // 기존 데이터 삭제
-    await sgguBoundaries.deleteMany({});
+    // 최종 유효성 검사
+    const polygon = turf.polygon([fixed]);
+    if (turf.booleanValid(polygon)) {
+      console.log('  - 폴리곤 강제 변환 성공');
+      return fixed;
+    }
+
+    console.warn('  ⚠️ 폴리곤 강제 변환 실패');
+    return null;
+  } catch (e) {
+    console.warn('  ⚠️ 폴리곤 수정 중 오류:', e.message);
+    return null;
+  }
+}
+
+// self-intersection 처리 함수 개선
+async function fixSelfIntersections(feature) {
+  try {
+    console.log('  - 중복 꼭지점 제거 시작');
     
-    // 새로운 데이터 삽입
-    const documents = geoJson.features.map(feature => ({
+    // 1) 중복 꼭지점 제거 & 고리 닫기
+    if (feature.geometry.type === 'Polygon') {
+      // 강제 변환 적용
+      const fixedCoords = forceValidPolygon(feature.geometry.coordinates[0]);
+      feature.geometry.coordinates = [fixedCoords];
+      console.log('  - Polygon 강제 변환 적용 완료');
+    } else if (feature.geometry.type === 'MultiPolygon') {
+      // 각 폴리곤에 대해 강제 변환 적용
+      const fixedCoords = feature.geometry.coordinates.map(polygon => {
+        const fixed = forceValidPolygon(polygon[0]);
+        return [fixed]; // 무조건 변환된 결과 사용
+      });
+      feature.geometry.coordinates = fixedCoords;
+      console.log('  - MultiPolygon 강제 변환 적용 완료');
+    }
+
+    // 2) kinks 검사 (타임아웃 보장)
+    console.log('  - kinks 검사 시작');
+    try {
+      const kinks = await detectKinksWithTimeout(feature, 5000);
+      if (kinks && kinks.features && kinks.features.length > 0) {
+        console.log(`  - kinks 발견: ${kinks.features.length}개`);
+      }
+    } catch (e) {
+      console.warn(`  ⚠️ kinks 단계 탈출: ${e.message}`);
+    }
+
+    // 3) 최종 유효성 검사 및 수정
+    let finalGeometry = feature.geometry;
+    let isValid = false;
+
+    // 3.1 단순화 시도
+    try {
+      const simplified = turf.simplify(turf.polygon(feature.geometry.coordinates), { 
+        tolerance: 0.0001, 
+        highQuality: true 
+      });
+      if (turf.booleanValid(simplified)) {
+        console.log('  - 단순화로 수정 성공');
+        finalGeometry = simplified.geometry;
+        isValid = true;
+      }
+    } catch (e) {
+      console.warn('  ⚠️ 단순화 실패:', e.message);
+    }
+
+    // 3.2 버퍼 처리 시도
+    if (!isValid) {
+      try {
+        const buffered = turf.buffer(turf.polygon(feature.geometry.coordinates), 0.0001);
+        if (turf.booleanValid(buffered)) {
+          console.log('  - 버퍼 처리로 수정 성공');
+          finalGeometry = buffered.geometry;
+          isValid = true;
+        }
+      } catch (e) {
+        console.warn('  ⚠️ 버퍼 처리 실패:', e.message);
+      }
+    }
+
+    // 3.3 convex hull 시도
+    if (!isValid) {
+      try {
+        const convex = turf.convex(turf.polygon(feature.geometry.coordinates));
+        if (turf.booleanValid(convex)) {
+          console.log('  - convex hull로 수정 성공');
+          finalGeometry = convex.geometry;
+          isValid = true;
+        }
+      } catch (e) {
+        console.warn('  ⚠️ convex hull 실패:', e.message);
+      }
+    }
+
+    // 3.4 좌표 정밀도 낮추기
+    if (!isValid) {
+      try {
+        const rounded = turf.cleanCoords(turf.polygon(feature.geometry.coordinates), {
+          precision: 4,
+          mutate: true
+        });
+        if (turf.booleanValid(rounded)) {
+          console.log('  - 좌표 정밀도 조정으로 수정 성공');
+          finalGeometry = rounded.geometry;
+          isValid = true;
+        }
+      } catch (e) {
+        console.warn('  ⚠️ 좌표 정밀도 조정 실패:', e.message);
+      }
+    }
+
+    // 3.5 더 강력한 단순화 시도
+    if (!isValid) {
+      try {
+        const simplified = turf.simplify(turf.polygon(feature.geometry.coordinates), { 
+          tolerance: 0.001, // 더 큰 허용 오차
+          highQuality: true 
+        });
+        if (turf.booleanValid(simplified)) {
+          console.log('  - 강력한 단순화로 수정 성공');
+          finalGeometry = simplified.geometry;
+          isValid = true;
+        }
+      } catch (e) {
+        console.warn('  ⚠️ 강력한 단순화 실패:', e.message);
+      }
+    }
+
+    // 3.6 더 큰 버퍼 처리 시도
+    if (!isValid) {
+      try {
+        const buffered = turf.buffer(turf.polygon(feature.geometry.coordinates), 0.001);
+        if (turf.booleanValid(buffered)) {
+          console.log('  - 큰 버퍼 처리로 수정 성공');
+          finalGeometry = buffered.geometry;
+          isValid = true;
+        }
+      } catch (e) {
+        console.warn('  ⚠️ 큰 버퍼 처리 실패:', e.message);
+      }
+    }
+
+    // 3.7 마지막 시도: 더 낮은 정밀도
+    if (!isValid) {
+      try {
+        const rounded = turf.cleanCoords(turf.polygon(feature.geometry.coordinates), {
+          precision: 3, // 더 낮은 정밀도
+          mutate: true
+        });
+        if (turf.booleanValid(rounded)) {
+          console.log('  - 낮은 정밀도로 수정 성공');
+          finalGeometry = rounded.geometry;
+          isValid = true;
+        }
+      } catch (e) {
+        console.warn('  ⚠️ 낮은 정밀도 조정 실패:', e.message);
+      }
+    }
+
+    if (!isValid) {
+      throw new Error('모든 수정 시도 실패');
+    }
+
+    console.log('  ✅ self-intersection 처리 완료');
+    return finalGeometry;
+
+  } catch (e) {
+    console.error('  ❌ self-intersection 처리 중 오류:', e.message);
+    throw e; // 오류를 상위로 전파
+  }
+}
+
+// [lat,lng] → [lng,lat] 순서 자동 교정
+function ensureLonLatOrder(geometry) {
+  const swap = coord => [coord[1], coord[0]];
+  let swapped = false;
+  if (geometry.type === 'Polygon') {
+    geometry.coordinates = geometry.coordinates.map(ring =>
+      ring.map(coord => {
+        if (coord[1] > 90 || coord[1] < -90) {
+          swapped = true;
+          return swap(coord);
+        }
+        return coord;
+      })
+    );
+  } else if (geometry.type === 'MultiPolygon') {
+    geometry.coordinates = geometry.coordinates.map(poly =>
+      poly.map(ring => ring.map(coord => {
+        if (coord[1] > 90 || coord[1] < -90) {
+          swapped = true;
+          return swap(coord);
+        }
+        return coord;
+      }))
+    );
+  }
+  if (swapped) console.log('⚙️ 좌표 순서 자동 교정됨 (lat/lon → lon/lat)');
+  return geometry;
+}
+
+// GeoJSON 데이터 정제
+async function cleanGeoJSON(feature) {
+  try {
+    console.log(`🔍 데이터 정제 시작: ${feature.properties.CTP_KOR_NM}`);
+    
+    // 1) 좌표 순서 보정
+    console.log('1️⃣ 좌표 순서 보정 시작');
+    let geom = ensureLonLatOrder(feature.geometry);
+    console.log('1️⃣ 좌표 순서 보정 완료');
+    
+    // 2) 엄격 검증
+    console.log('2️⃣ 엄격 검증 시작');
+    if (!isValidGeometry(geom) || !hasValidBounds(geom)) {
+      throw new Error('유효하지 않거나 범위 벗어난 geometry');
+    }
+    console.log('2️⃣ 엄격 검증 완료');
+
+    let featureObj = { type: 'Feature', properties: feature.properties, geometry: geom };
+    
+    // 3) cleanCoords → NaN/중복/정밀도 보장
+    console.log('3️⃣ cleanCoords 시작');
+    const cleaned = cleanCoords(featureObj, { precision: 6, mutate: true });
+    featureObj.geometry = cleaned.geometry;
+    console.log('3️⃣ cleanCoords 완료');
+    
+    // 4) self intersection 처리
+    console.log('4️⃣ self intersection 처리 시작');
+    featureObj.geometry = await fixSelfIntersections({ type: 'Feature', geometry: featureObj.geometry });
+    console.log('4️⃣ self intersection 처리 완료');
+    
+    // 5) 범위 재검증
+    console.log('5️⃣ 범위 재검증 시작');
+    if (!hasValidBounds(featureObj.geometry)) {
+      throw new Error('Bounds check 실패');
+    }
+    console.log('5️⃣ 범위 재검증 완료');
+
+    console.log(`✅ 데이터 정제 완료: ${feature.properties.CTP_KOR_NM}`);
+    return featureObj;
+  } catch (e) {
+    console.error(`❌ 데이터 정제 실패 (${feature.properties.CTP_KOR_NM}):`, e.message);
+    throw e;
+  }
+}
+
+// MongoDB 저장용 데이터 정제
+function sanitizeForMongoDB(doc) {
+  try {
+    // 1. 좌표값을 [경도, 위도] 순서로 정제 및 검증
+    const sanitizeCoordinates = (coords) => {
+      if (Array.isArray(coords)) {
+        if (coords.length === 2 && typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+          // 단일 좌표인 경우 [경도, 위도] 순서 확인 및 검증
+          const [x, y] = coords;
+          let lng, lat;
+
+          // 좌표 순서 판단 및 변환
+          if (x >= -180 && x <= 180 && y >= -90 && y <= 90) {
+            lng = x;
+            lat = y;
+          } else if (y >= -180 && y <= 180 && x >= -90 && x <= 90) {
+            lng = y;
+            lat = x;
+          } else {
+            throw new Error(`잘못된 좌표값: [${x}, ${y}]`);
+          }
+
+          // 최종 검증
+          if (lng < -180 || lng > 180 || lat < -90 || lat > 90) {
+            throw new Error(`좌표 범위 초과: [${lng}, ${lat}]`);
+          }
+
+          return [lng, lat];
+        }
+        return coords.map(coord => {
+          if (Array.isArray(coord)) {
+            return sanitizeCoordinates(coord);
+          }
+          return Number(coord);
+        });
+      }
+      return coords;
+    };
+
+    // 2. geometry 정제
+    const sanitizedGeometry = {
+      type: doc.geometry.type,
+      coordinates: sanitizeCoordinates(doc.geometry.coordinates)
+    };
+
+    // 3. properties 정제
+    const sanitizedProperties = {};
+    Object.entries(doc.properties).forEach(([key, value]) => {
+      // 문자열이 아닌 값은 문자열로 변환
+      sanitizedProperties[key] = String(value);
+    });
+
+    // 4. 최종 문서 구성
+    return {
       type: 'Feature',
-      properties: feature.properties,
-      geometry: feature.geometry,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }));
-
-    if (documents.length > 0) {
-      await sgguBoundaries.insertMany(documents);
-    }
-
-    // 임시 파일 삭제
-    fs.unlinkSync(req.file.path);
-
-    res.json({ 
-      message: '✅ 업로드 완료',
-      insertedCount: documents.length
-    });
-
-  } catch (err) {
-    process.stdout.write('\n'); // 에러 발생 시 줄바꿈
-    console.error('\n❌ 오류 발생:');
-    console.error('----------------------------------------');
-    
-    // 에러 메시지에서 핵심 정보만 추출
-    const errorMessage = err.message.split('\n')[0]; // 첫 줄만 사용
-    console.error(errorMessage);
-    
-    // 좌표 관련 에러인 경우 추가 정보 표시
-    if (errorMessage.includes('longitude/latitude')) {
-      const coords = errorMessage.match(/lng: ([\d.]+) lat: ([\d.]+)/);
-      if (coords) {
-        console.error(`\n잘못된 좌표값: 경도(${coords[1]}), 위도(${coords[2]})`);
-        console.error('올바른 좌표 범위: 경도(-180 ~ 180), 위도(-90 ~ 90)');
-      }
-    }
-    
-    console.error('----------------------------------------');
-    if (err.stack) {
-      const stackLines = err.stack.split('\n');
-      const relevantStack = stackLines.find(line => line.includes('adminRoutes.js'));
-      if (relevantStack) {
-        console.error('\n에러 위치:');
-        console.error(relevantStack.trim());
-      }
-    }
-    console.error('\n');
-    res.status(500).json({ error: errorMessage });
+      properties: sanitizedProperties,
+      geometry: sanitizedGeometry,
+      createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt
+    };
+  } catch (e) {
+    console.error('MongoDB 데이터 정제 실패:', e.message);
+    throw e;
   }
-});
+}
 
-// 파일 목록 조회 API
-router.get('/bucket/:type/files', async (req, res) => {
-  try {
-    const { type } = req.params;
-    const { page = 1, limit = 10, search = '', field = '' } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    let collection;
-    let searchQuery = {};
-    
-    // 컬렉션 선택
-    switch (type) {
-      case 'ctp':
-        collection = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
-        if (search && field) {
-          searchQuery[`properties.${field}`] = { $regex: search, $options: 'i' };
-        }
-        break;
-      case 'sig':
-        collection = mongoose.connection.db.collection('sggu_boundaries_sig');
-        if (search && field) {
-          searchQuery[`properties.${field}`] = { $regex: search, $options: 'i' };
-        }
-        break;
-      case 'emd':
-        collection = mongoose.connection.db.collection('sggu_boundaries_emd');
-        if (search && field) {
-          searchQuery[`properties.${field}`] = { $regex: search, $options: 'i' };
-        }
-        break;
-      case 'li':
-        collection = mongoose.connection.db.collection('sggu_boundaries_li');
-        if (search && field) {
-          searchQuery[`properties.${field}`] = { $regex: search, $options: 'i' };
-        }
-        break;
-      default:
-        return res.status(400).json({ error: '잘못된 경계 타입입니다' });
-    }
-
-    // 전체 문서 수 조회
-    const total = await collection.countDocuments(searchQuery);
-    
-    // 페이지네이션된 데이터 조회
-    const files = await collection
-      .find(searchQuery)
-      .sort({ 'properties.CTP_KOR_NM': 1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .toArray();
-
-    res.json({
-      files,
-      total,
-      page: parseInt(page),
-      totalPages: Math.ceil(total / parseInt(limit))
-    });
-  } catch (err) {
-    console.error('파일 목록 조회 실패:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 파일 삭제 (sggu_boundaries 컬렉션의 데이터 삭제)
-router.delete('/bucket/files/:fileId', async (req, res) => {
-  try {
-    const sgguBoundaries = mongoose.connection.db.collection('sggu_boundaries');
-    await sgguBoundaries.deleteOne({ _id: new mongoose.Types.ObjectId(req.params.fileId) });
-    res.json({ message: '✅ 삭제 완료' });
-  } catch (err) {
-    console.error('❌ 삭제 실패:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 시도(CTP) 경계 관리
+// GeoJSON 파일 업로드
 router.post('/bucket/ctp/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -483,12 +833,8 @@ router.post('/bucket/ctp/upload', upload.single('file'), async (req, res) => {
     const features = geoJson.features || [];
     const totalDocs = features.length;
     let insertedCount = 0;
-
-    // 16MB 제한을 고려한 배치 크기 계산
-    const MAX_DOC_SIZE = 15 * 1024 * 1024; // 15MB (안전 마진 포함)
-    const BATCH_SIZE = 10; // 기본 배치 크기
-    let currentBatch = [];
-    let currentBatchSize = 0;
+    let errorCount = 0;
+    let successCount = 0;
 
     console.log('🚀 데이터 삽입 시작');
 
@@ -496,109 +842,55 @@ router.post('/bucket/ctp/upload', upload.single('file'), async (req, res) => {
       const feature = features[i];
       if (!feature.properties || !feature.geometry || !feature.geometry.coordinates) {
         console.warn(`⚠️ 잘못된 feature 발견: ${i + 1}번째`);
+        errorCount++;
         continue;
       }
       
       const { CTPRVN_CD, CTP_KOR_NM, CTP_ENG_NM } = feature.properties;
       if (!CTPRVN_CD || !CTP_KOR_NM || !CTP_ENG_NM) {
         console.warn(`⚠️ 필수 속성 누락: ${i + 1}번째`);
+        errorCount++;
         continue;
       }
-      // 1) 좌표 변환(transformCoordinates) 후 geometry 추출
-      let geometry = {
-        type: feature.geometry.type,
-        coordinates: feature.geometry.coordinates.map(polygon => 
-          polygon.map(ring => 
-            ring.map(coord => {
-              const lon = parseFloat(coord[0]);  // x축이 경도
-              const lat = parseFloat(coord[1]);  // y축이 위도
-              
-              if (isNaN(lon) || isNaN(lat) || 
-                  lon < -180 || lon > 180 || 
-                  lat < -90 || lat > 90) {
-                return coord;
-              }
-              
-              return [lon, lat];  // [경도, 위도] 순서로 저장
-            })
-          )
-        )
-      };
 
-      // 2) turf.cleanCoords 로 중복점·불필요 점 제거
-      const cleaned = turf.cleanCoords({
-        type: 'Feature',
-        properties: {},
-        geometry
-      });
-      geometry = cleaned.geometry;
-     
-      const doc = {
-        type: 'Feature',
-        properties: { CTPRVN_CD, CTP_KOR_NM, CTP_ENG_NM },
-        geometry,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-
-      // MongoDB 지리공간 인덱스 요구사항에 맞게 데이터 정리
-      const cleanDoc = {
-        type: 'Feature',
-        properties: doc.properties,
-        geometry: doc.geometry,
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt
-      };
-
-      const docSize = JSON.stringify(cleanDoc).length;
-      console.log(`📝 문서 크기: ${docSize} bytes - ${CTP_KOR_NM}`);
-      
-      // 현재 배치에 추가할 수 있는지 확인
-      if (currentBatchSize + docSize > MAX_DOC_SIZE || currentBatch.length >= BATCH_SIZE) {
-        // 현재 배치 저장
-        if (currentBatch.length > 0) {
-          try {
-            console.log(`💾 배치 저장 시작: ${currentBatch.length}개 문서`);
-            // 개별 문서 저장으로 변경
-            for (const doc of currentBatch) {
-              try {
-                await ctpBoundaries.insertOne(doc);
-                insertedCount++;
-                console.log(`✅ 문서 저장 완료: ${insertedCount}/${totalDocs} - ${doc.properties.CTP_KOR_NM}`);
-              } catch (docErr) {
-                console.error(`❌ 문서 저장 실패: ${doc.properties.CTP_KOR_NM}`, docErr);
-              }
-            }
-          } catch (insertErr) {
-            console.error(`❌ 배치 처리 실패:`, insertErr);
-          }
-        }
-        // 새 배치 시작
-        currentBatch = [doc];
-        currentBatchSize = docSize;
-      } else {
-        // 현재 배치에 추가
-        currentBatch.push(doc);
-        currentBatchSize += docSize;
-      }
-    }
-
-    // 마지막 배치 처리
-    if (currentBatch.length > 0) {
       try {
-        console.log(`💾 마지막 배치 저장 시작: ${currentBatch.length}개 문서`);
-        // 개별 문서 저장으로 변경
-        for (const doc of currentBatch) {
-          try {
-            await ctpBoundaries.insertOne(doc);
-            insertedCount++;
-            console.log(`✅ 문서 저장 완료: ${insertedCount}/${totalDocs} - ${doc.properties.CTP_KOR_NM}`);
-          } catch (docErr) {
-            console.error(`❌ 문서 저장 실패: ${doc.properties.CTP_KOR_NM}`, docErr);
-          }
+        // GeoJSON 데이터 정제
+        const cleanedFeature = await cleanGeoJSON(feature);
+        
+        const doc = {
+          type: 'Feature',
+          properties: { CTPRVN_CD, CTP_KOR_NM, CTP_ENG_NM },
+          geometry: cleanedFeature.geometry,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+
+        // MongoDB 저장용 데이터 정제 (좌표 정제 및 검증 포함)
+        const sanitizedDoc = sanitizeForMongoDB(doc);
+        console.log(`📝 MongoDB 정제 완료: ${CTP_KOR_NM}`);
+
+        // MongoDB 지리공간 인덱스 요구사항에 맞게 데이터 정리
+        const cleanDoc = {
+          type: 'Feature',
+          properties: sanitizedDoc.properties,
+          geometry: sanitizedDoc.geometry,
+          createdAt: sanitizedDoc.createdAt,
+          updatedAt: sanitizedDoc.updatedAt
+        };
+
+        // 개별 문서 저장
+        try {
+          await ctpBoundaries.insertOne(cleanDoc);
+          insertedCount++;
+          successCount++;
+          console.log(`✅ 문서 저장 완료: ${insertedCount}/${totalDocs} - ${CTP_KOR_NM}`);
+        } catch (docErr) {
+          console.error(`❌ 문서 저장 실패: ${CTP_KOR_NM}`, docErr);
+          errorCount++;
         }
-      } catch (insertErr) {
-        console.error(`❌ 마지막 배치 처리 실패:`, insertErr);
+      } catch (err) {
+        console.error(`❌ 문서 처리 실패: ${CTP_KOR_NM}`, err.message);
+        errorCount++;
       }
     }
 
@@ -611,6 +903,8 @@ router.post('/bucket/ctp/upload', upload.single('file'), async (req, res) => {
     res.json({ 
       message: '✅ 시도 경계 업로드 완료',
       insertedCount,
+      errorCount,
+      successCount,
       totalCount
     });
 
@@ -630,14 +924,20 @@ router.post('/bucket/ctp/upload', upload.single('file'), async (req, res) => {
   }
 });
 
+// 시도(CTP) 경계 목록 조회
 router.get('/bucket/ctp/files', async (req, res) => {
   try {
     const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
     const files = await ctpBoundaries.find({}).toArray();
-    res.json(files);
+    // 데이터가 없는 경우 빈 배열 반환
+    if (!files || !Array.isArray(files)) {
+      return res.status(200).json([]);
+    }
+    res.status(200).json(files);
   } catch (err) {
     console.error('❌ 시도 경계 목록 조회 실패:', err);
-    res.status(500).json({ error: err.message });
+    // 에러 발생 시에도 빈 배열 반환
+    res.status(200).json([]);
   }
 });
 
@@ -769,14 +1069,20 @@ router.post('/bucket/sig/upload', upload.single('file'), async (req, res) => {
   }
 });
 
+// 시군구(SIG) 경계 목록 조회
 router.get('/bucket/sig/files', async (req, res) => {
   try {
     const sigBoundaries = mongoose.connection.db.collection('sggu_boundaries_sig');
     const files = await sigBoundaries.find({}).toArray();
-    res.json(files);
+    // 데이터가 없는 경우 빈 배열 반환
+    if (!files || !Array.isArray(files)) {
+      return res.status(200).json([]);
+    }
+    res.status(200).json(files);
   } catch (err) {
     console.error('❌ 시군구 경계 목록 조회 실패:', err);
-    res.status(500).json({ error: err.message });
+    // 에러 발생 시에도 빈 배열 반환
+    res.status(200).json([]);
   }
 });
 
@@ -908,14 +1214,20 @@ router.post('/bucket/emd/upload', upload.single('file'), async (req, res) => {
   }
 });
 
+// 읍면동(EMD) 경계 목록 조회
 router.get('/bucket/emd/files', async (req, res) => {
   try {
     const emdBoundaries = mongoose.connection.db.collection('sggu_boundaries_emd');
     const files = await emdBoundaries.find({}).toArray();
-    res.json(files);
+    // 데이터가 없는 경우 빈 배열 반환
+    if (!files || !Array.isArray(files)) {
+      return res.status(200).json([]);
+    }
+    res.status(200).json(files);
   } catch (err) {
     console.error('❌ 읍면동 경계 목록 조회 실패:', err);
-    res.status(500).json({ error: err.message });
+    // 에러 발생 시에도 빈 배열 반환
+    res.status(200).json([]);
   }
 });
 
@@ -1047,14 +1359,20 @@ router.post('/bucket/li/upload', upload.single('file'), async (req, res) => {
   }
 });
 
+// 리(LI) 경계 목록 조회
 router.get('/bucket/li/files', async (req, res) => {
   try {
     const liBoundaries = mongoose.connection.db.collection('sggu_boundaries_li');
     const files = await liBoundaries.find({}).toArray();
-    res.json(files);
+    // 데이터가 없는 경우 빈 배열 반환
+    if (!files || !Array.isArray(files)) {
+      return res.status(200).json([]);
+    }
+    res.status(200).json(files);
   } catch (err) {
     console.error('❌ 리 경계 목록 조회 실패:', err);
-    res.status(500).json({ error: err.message });
+    // 에러 발생 시에도 빈 배열 반환
+    res.status(200).json([]);
   }
 });
 

@@ -65,10 +65,13 @@ const SigManager = () => {
           field: searchField
         }
       });
-      setFiles(response.data.files);
-      setTotalPages(Math.ceil(response.data.total / itemsPerPage));
+      // 서버 응답이 배열인 경우 그대로 사용
+      const filesData = Array.isArray(response.data) ? response.data : [];
+      setFiles(filesData);
+      setTotalPages(Math.ceil(filesData.length / itemsPerPage));
     } catch (err) {
       setMessage('❌ 파일 목록 조회 실패: ' + err.message);
+      setFiles([]);
     }
   };
 
@@ -251,7 +254,7 @@ const SigManager = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {files.map((file) => (
+              {Array.isArray(files) && files.map((file) => (
                 <tr key={file._id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {file.properties?.SIG_CD || 'N/A'}
