@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-const SgguClusterMarker = ({ map, sggu }) => {
+const SgguClusterMarker = ({ map, sggu, onMouseOver, onMouseOut }) => {
   const markerRef = useRef(null);
 
   useEffect(() => {
@@ -11,6 +11,7 @@ const SgguClusterMarker = ({ map, sggu }) => {
       icon: {
         content: `
           <div style="
+            pointer-events: none;
             display: flex;
             align-items: center;
             background: #2563eb;
@@ -53,10 +54,19 @@ const SgguClusterMarker = ({ map, sggu }) => {
         anchor: new window.naver.maps.Point(60, 22),
       }
     });
+
+    // 마우스 이벤트 추가
+    if (onMouseOver) {
+      window.naver.maps.Event.addListener(markerRef.current, 'mouseover', () => onMouseOver());
+    }
+    if (onMouseOut) {
+      window.naver.maps.Event.addListener(markerRef.current, 'mouseout', () => onMouseOut());
+    }
+
     return () => {
       if (markerRef.current) markerRef.current.setMap(null);
     };
-  }, [map, sggu]);
+  }, [map, sggu, onMouseOver, onMouseOut]);
 
   return null;
 };

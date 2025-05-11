@@ -69,6 +69,8 @@ const MapPage = () => {
 
   const [mousePosition, setMousePosition] = useState(null);
 
+  const [hoveredMarker, setHoveredMarker] = useState(null);
+
   // 요약 데이터
   const getPharmacyUniqueId = (pharmacy) =>
     pharmacy.ykiho || `${pharmacy.name}_${pharmacy.lat}_${pharmacy.lng}`;
@@ -517,6 +519,21 @@ const MapPage = () => {
     setIsSearchBarVisible(prev => !prev);
   }, []);
 
+  // 마커에 마우스 이벤트 추가
+  const handleMarkerMouseOver = (position) => {
+    setHoveredMarker(prev => {
+      if (!prev || prev.lat !== position.lat || prev.lng !== position.lng) {
+        return position;
+      }
+      return prev;
+    });
+  };
+
+  const handleMarkerMouseOut = () => {
+    setHoveredMarker(null);
+    setMousePosition(null);  // 마우스 위치도 초기화
+  };
+
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
@@ -557,6 +574,8 @@ const MapPage = () => {
                     lng: item.XPos,
                     name: item.sidoNm
                   }}
+                  onMouseOver={() => handleMarkerMouseOver({ lat: item.YPos, lng: item.XPos })}
+                  onMouseOut={handleMarkerMouseOut}
                 />
               ))}
 
@@ -571,6 +590,8 @@ const MapPage = () => {
                     lng: item.XPos,
                     name: item.sgguNm
                   }}
+                  onMouseOver={() => handleMarkerMouseOver({ lat: item.YPos, lng: item.XPos })}
+                  onMouseOut={handleMarkerMouseOut}
                 />
               ))}
 
@@ -586,6 +607,8 @@ const MapPage = () => {
                     sidoNm: item.sidoNm,
                     sgguNm: item.sgguNm
                   }}
+                  onMouseOver={() => handleMarkerMouseOver({ lat: item.YPos, lng: item.XPos })}
+                  onMouseOut={handleMarkerMouseOut}
                 />
               ))}
 
@@ -644,24 +667,14 @@ const MapPage = () => {
                 </>
               )}
 
-              {/* 경계선 폴리곤 - 모든 줌 레벨에서 표시 */}
-              <GeoBoundaryPolygon 
-                map={map} 
-                coordinates={mousePosition ? {
-                  lat: mousePosition.lat,
-                  lng: mousePosition.lng
-                } : {
-                  lat: map.getCenter().y,
-                  lng: map.getCenter().x
-                }}
-                zoomLevel={zoomLevel}
-                apiEndpoint={
-                  zoomLevel >= 15 ? '/api/geo/li/coordinates' :
-                  zoomLevel >= 13 ? '/api/geo/emd/coordinates' :
-                  zoomLevel >= 11 ? '/api/geo/sig/coordinates' :
-                  '/api/geo/ctp/coordinates'
-                }
-              />
+              {/* 경계선 폴리곤 - 마커에 마우스 올렸을 때 표시 */}
+              {(hoveredMarker || mousePosition) && (
+                <GeoBoundaryPolygon 
+                  map={map} 
+                  coordinates={hoveredMarker || mousePosition}
+                  zoomLevel={zoomLevel}
+                />
+              )}
             </>
           )}
         </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-const ClusterMarker = ({ map, cluster }) => {
+const ClusterMarker = ({ map, cluster, onMouseOver, onMouseOut }) => {
   const markerRef = useRef(null);
 
   useEffect(() => {
@@ -12,6 +12,7 @@ const ClusterMarker = ({ map, cluster }) => {
       icon: {
         content: `
           <div style="
+            pointer-events: none;
             position: relative;
             background: white;
             border: 2px solid #3b82f6;
@@ -42,12 +43,20 @@ const ClusterMarker = ({ map, cluster }) => {
       }
     });
 
+    // 마우스 이벤트 추가
+    if (onMouseOver) {
+      window.naver.maps.Event.addListener(markerRef.current, 'mouseover', () => onMouseOver());
+    }
+    if (onMouseOut) {
+      window.naver.maps.Event.addListener(markerRef.current, 'mouseout', () => onMouseOut());
+    }
+
     return () => {
       if (markerRef.current) {
         markerRef.current.setMap(null);
       }
     };
-  }, [map, cluster]);
+  }, [map, cluster, onMouseOver, onMouseOut]);
 
   return null;
 };

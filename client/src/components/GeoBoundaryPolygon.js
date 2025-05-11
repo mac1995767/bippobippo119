@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { fetchCtpBoundary, fetchSigBoundary, fetchEmdBoundary, fetchLiBoundary } from '../service/api';
-
-const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081';
 
 // 폴리곤 중심(centroid) 계산 함수
 function getPolygonCentroid(path) {
@@ -22,11 +20,19 @@ function getPolygonCentroid(path) {
 }
 
 const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
-  const [polygons, setPolygons] = useState([]);
-  const [markers, setMarkers] = useState([]);
-  const [infoWindows, setInfoWindows] = useState([]);
+  const polygonsRef = useRef([]);
+  const markersRef = useRef([]);
+  const infoWindowsRef = useRef([]);
 
   useEffect(() => {
+    // 항상 최신 객체를 지우기
+    polygonsRef.current.forEach(p => p.setMap(null));
+    markersRef.current.forEach(m => m.setMap(null));
+    infoWindowsRef.current.forEach(w => w.close());
+    polygonsRef.current = [];
+    markersRef.current = [];
+    infoWindowsRef.current = [];
+
     if (!map || !coordinates) {
       console.log('지도 또는 좌표가 없습니다:', { map, coordinates });
       return;
@@ -53,15 +59,6 @@ const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
           console.log('GeoJSON features가 없습니다');
           return;
         }
-
-        // 기존 객체 제거
-        polygons.forEach(p => p.setMap(null));
-        markers.forEach(m => m.setMap(null));
-        infoWindows.forEach(w => w.close());
-
-        const newPolygons = [];
-        const newMarkers = [];
-        const newInfoWindows = [];
 
         // 각 feature 처리
         geoJson.features.forEach(feature => {
@@ -99,7 +96,7 @@ const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
             fillColor: '#5347AA',
             fillOpacity: 0.2,
           });
-          newPolygons.push(polygon);
+          polygonsRef.current.push(polygon);
 
           // 레이블용 Marker & InfoWindow
           const { lat, lng } = getPolygonCentroid(paths[0]);
@@ -108,7 +105,7 @@ const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
             position: new window.naver.maps.LatLng(lat, lng),
             visible: false,
           });
-          newMarkers.push(marker);
+          markersRef.current.push(marker);
 
           // 경계선 타입에 따라 다른 레이블 표시
           let labelText;
@@ -141,15 +138,9 @@ const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
             backgroundColor: 'transparent',
             zIndex: 1000,
           });
+          infoWindowsRef.current.push(infoWindow);
           infoWindow.open(map);
-          newInfoWindows.push(infoWindow);
         });
-
-        // state 업데이트
-        setPolygons(newPolygons);
-        setMarkers(newMarkers);
-        setInfoWindows(newInfoWindows);
-
       } catch (err) {
         console.error('폴리곤 렌더링 중 오류:', err);
       }
@@ -159,9 +150,12 @@ const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
 
     // 언마운트 시 또는 다음 렌더 전 cleanup
     return () => {
-      polygons.forEach(p => p.setMap(null));
-      markers.forEach(m => m.setMap(null));
-      infoWindows.forEach(w => w.close());
+      polygonsRef.current.forEach(p => p.setMap(null));
+      markersRef.current.forEach(m => m.setMap(null));
+      infoWindowsRef.current.forEach(w => w.close());
+      polygonsRef.current = [];
+      markersRef.current = [];
+      infoWindowsRef.current = [];
     };
   }, [map, coordinates, zoomLevel, apiEndpoint]);
 
