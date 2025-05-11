@@ -34,6 +34,7 @@ const path = require('path');
 const fs = require('fs');
 const mapRouter = require('./routes/map');
 const geoRouter = require('./routes/geo');
+const mapSummaryRouter = require('./routes/map-summary');
 const app = express();
 
 // uploads 디렉토리 생성
@@ -173,7 +174,7 @@ app.use('/api/boards', boardRoutes);
 app.use('/api/origins', hospitalOriginRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/autocomplete', autoCompleteRouter);
-
+app.use('/api/map-summary', mapSummaryRouter);
 // map 라우터 설정
 console.log('map 라우터 설정');
 app.use('/api/map', mapRouter);
