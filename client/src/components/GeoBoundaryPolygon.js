@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { fetchCtpBoundary, fetchSigBoundary, fetchEmdBoundary, fetchLiBoundary } from '../service/api';
+import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 
 // 폴리곤 중심(centroid) 계산 함수
 function getPolygonCentroid(path) {
@@ -23,6 +24,7 @@ const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
   const polygonsRef = useRef([]);
   const markersRef = useRef([]);
   const infoWindowsRef = useRef([]);
+  const lastGeoJsonRef = useRef(null);
 
   useEffect(() => {
     // 항상 최신 객체를 지우기
@@ -34,8 +36,40 @@ const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
     infoWindowsRef.current = [];
 
     if (!map || !coordinates) {
-      console.log('지도 또는 좌표가 없습니다:', { map, coordinates });
+      lastGeoJsonRef.current = null;
       return;
+    }
+
+    // 기존 폴리곤이 있고, 커서가 그 안에 있으면 fetch 생략
+    if (lastGeoJsonRef.current && lastGeoJsonRef.current.features?.length) {
+      const feature = lastGeoJsonRef.current.features[0];
+      const pt = [coordinates.lng, coordinates.lat];
+      if (booleanPointInPolygon(pt, feature)) {
+        // 기존 폴리곤을 다시 지도에 그리기
+        const geom = feature.geometry;
+        const rawArray = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
+        const paths = rawArray
+          .map(polygon =>
+            polygon[0]
+              .filter(pt => Array.isArray(pt) && pt.length === 2)
+              .map(([lng, lat]) => new window.naver.maps.LatLng(lat, lng))
+          )
+          .filter(path => path.length >= 3);
+        if (paths.length) {
+          const polygon = new window.naver.maps.Polygon({
+            map,
+            paths,
+            strokeColor: '#5347AA',
+            strokeWeight: 2,
+            strokeOpacity: 0.8,
+            fillColor: '#5347AA',
+            fillOpacity: 0.2,
+          });
+          polygonsRef.current.push(polygon);
+        }
+        // 레이블 및 인포윈도우도 필요하다면 추가
+        return;
+      }
     }
 
     const fetchAndRender = async () => {
@@ -43,22 +77,32 @@ const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
         console.log('API 호출 좌표:', coordinates);
         console.log('현재 줌 레벨:', zoomLevel);
 
-        // 줌 레벨에 따라 다른 API 호출
-        let geoJson;
-        if (zoomLevel >= 15) {
-          geoJson = await fetchLiBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-        } else if (zoomLevel >= 12) {
-          geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-        } else if (zoomLevel >= 9) {
-          geoJson = await fetchSigBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-        } else {
+        let geoJson = null;
+        if (zoomLevel == 8) {
           geoJson = await fetchCtpBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+        } else if (zoomLevel >= 9 && zoomLevel <= 12) {
+          geoJson = await fetchSigBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+        } else if (zoomLevel >= 13 && zoomLevel <= 15) {
+          // 1. Emd(동) 시도
+          geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+          if (!geoJson?.features?.length) {
+            // 2. Emd가 없으면 Li로 fallback
+            geoJson = await fetchLiBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+            if (!geoJson?.features?.length) {
+              // 3. Li도 없으면 Sig로 fallback
+              geoJson = await fetchSigBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+              if (!geoJson?.features?.length) {
+                // 4. Sig도 없으면 Ctp로 fallback
+                geoJson = await fetchCtpBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+              }
+            }
+          }
         }
-        
         if (!geoJson?.features?.length) {
-          console.log('GeoJSON features가 없습니다');
+          lastGeoJsonRef.current = null;
           return;
         }
+        lastGeoJsonRef.current = geoJson;
 
         // 각 feature 처리
         geoJson.features.forEach(feature => {
@@ -142,7 +186,7 @@ const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
           infoWindow.open(map);
         });
       } catch (err) {
-        console.error('폴리곤 렌더링 중 오류:', err);
+        lastGeoJsonRef.current = null;
       }
     };
 

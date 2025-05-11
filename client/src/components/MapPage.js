@@ -13,16 +13,10 @@ import HospitalMarker from './markers/HospitalMarker';
 import PharmacyMarker from './markers/PharmacyMarker';
 import DetailedHospitalMarker from './markers/DetailedHospitalMarker';
 import DetailedPharmacyMarker from './markers/DetailedPharmacyMarker';
-import SimpleHospitalMarker from './markers/SimpleHospitalMarker';
-import SimplePharmacyMarker from './markers/SimplePharmacyMarker';
-import ClusterMarker from './markers/ClusterMarker';
-import hospitalClusters from './cluster/HospitalClusterStats';
-import pharmacyClusters from './cluster/PharmacyClusterStats';
 import debounce from 'lodash.debounce';
 import MapToolbar from './map/MapToolbar';
 import InfoSidebar from './InfoSidebar';
 import MapSearchBar from './MapSearchBar';
-import SgguClusterMarker from './markers/SgguClusterMarker';
 import ClinicMarker from './markers/ClinicMarker';
 import OrientalHospitalMarker from './markers/OrientalHospitalMarker';
 import DentalClinicMarker from './markers/DentalClinicMarker';
@@ -31,7 +25,6 @@ import SuperGeneralHospitalMarker from './markers/SuperGeneralHospitalMarker';
 import GeneralHospitalMarker from './markers/GeneralHospitalMarker';
 import MentalHospitalMarker from './markers/MentalHospitalMarker';
 import DentalHospitalMarker from './markers/DentalHospitalMarker';
-import axios from 'axios';
 import GeoBoundaryPolygon from './GeoBoundaryPolygon';
 
 const MapPage = () => {
@@ -564,54 +557,6 @@ const MapPage = () => {
 
           {map && (
             <>
-              {/* 줌 8~10: 시도 요약 */}
-              {(zoomLevel >= 8 && zoomLevel <= 10) && sidoSummary.map(item => (
-                <ClusterMarker
-                  key={item.sidoNm}
-                  map={map}
-                  cluster={{
-                    lat: item.YPos,
-                    lng: item.XPos,
-                    name: item.sidoNm
-                  }}
-                  onMouseOver={() => handleMarkerMouseOver({ lat: item.YPos, lng: item.XPos })}
-                  onMouseOut={handleMarkerMouseOut}
-                />
-              ))}
-
-              {/* 줌 11~14: 시군구 요약 */}
-              {(zoomLevel >= 11 && zoomLevel <= 14) && sgguSummary.map(item => (
-                <SgguClusterMarker
-                  key={item.sgguNm}
-                  map={map}
-                  sggu={{
-                    ...item,
-                    lat: item.YPos,
-                    lng: item.XPos,
-                    name: item.sgguNm
-                  }}
-                  onMouseOver={() => handleMarkerMouseOver({ lat: item.YPos, lng: item.XPos })}
-                  onMouseOut={handleMarkerMouseOut}
-                />
-              ))}
-
-              {/* 줌 13~15: 읍면동 요약 */}
-              {(zoomLevel >= 13 && zoomLevel < 16) && emdongSummary.map(item => (
-                <ClusterMarker
-                  key={item.emdongNm}
-                  map={map}
-                  cluster={{
-                    lat: item.YPos,
-                    lng: item.XPos,
-                    name: item.emdongNm,
-                    sidoNm: item.sidoNm,
-                    sgguNm: item.sgguNm
-                  }}
-                  onMouseOver={() => handleMarkerMouseOver({ lat: item.YPos, lng: item.XPos })}
-                  onMouseOut={handleMarkerMouseOut}
-                />
-              ))}
-
               {/* 줌 16~18: 간단 마커(병원/약국) */}
               {(zoomLevel >= 16 && zoomLevel < 19) && (
                 <>
@@ -667,11 +612,11 @@ const MapPage = () => {
                 </>
               )}
 
-              {/* 경계선 폴리곤 - 마커에 마우스 올렸을 때 표시 */}
-              {(hoveredMarker || mousePosition) && (
+              {/* 경계선 폴리곤 - 지도 위에 마우스 올릴 때만 표시 */}
+              {mousePosition && (
                 <GeoBoundaryPolygon 
                   map={map} 
-                  coordinates={hoveredMarker || mousePosition}
+                  coordinates={mousePosition}
                   zoomLevel={zoomLevel}
                 />
               )}
