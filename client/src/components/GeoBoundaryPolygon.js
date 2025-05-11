@@ -78,24 +78,42 @@ const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
         console.log('현재 줌 레벨:', zoomLevel);
 
         let geoJson = null;
-        if (zoomLevel == 8) {
-          geoJson = await fetchCtpBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-        } else if (zoomLevel >= 9 && zoomLevel <= 12) {
-          geoJson = await fetchSigBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-        } else if (zoomLevel >= 13 && zoomLevel <= 15) {
-          // 1. Emd(동) 시도
-          geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-          if (!geoJson?.features?.length) {
-            // 2. Emd가 없으면 Li로 fallback
+        // Emd 정보로 지역 유형 판별
+        let emdJsonForType = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+        let emdName = '';
+        if (emdJsonForType?.features?.length) {
+          emdName = emdJsonForType.features[0]?.properties?.EMD_KOR_NM || '';
+        }
+        const isMetropolitanArea = emdName.endsWith('동');
+        console.log('emdName:', emdName);
+        console.log('isMetropolitanArea:', isMetropolitanArea);
+        if (isMetropolitanArea) {
+          // 수도권/광역시(동 단위)
+          if (zoomLevel <= 9) {
+            geoJson = await fetchCtpBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+          } else if (zoomLevel >= 10 && zoomLevel <= 13) {
+            geoJson = await fetchSigBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+          } else if (zoomLevel >= 14) {
+            geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng }); // 동만
+          }
+        } else {
+          // 군/읍/면/리 지역
+          if (zoomLevel === 11) {
+            geoJson = await fetchSigBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+          } else if (zoomLevel === 12) {
+            geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+          } else if (zoomLevel === 13) {
             geoJson = await fetchLiBoundary({ lat: coordinates.lat, lng: coordinates.lng });
             if (!geoJson?.features?.length) {
-              // 3. Li도 없으면 Sig로 fallback
-              geoJson = await fetchSigBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-              if (!geoJson?.features?.length) {
-                // 4. Sig도 없으면 Ctp로 fallback
-                geoJson = await fetchCtpBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-              }
+              geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
             }
+          } else if (zoomLevel >= 14) {
+            geoJson = await fetchLiBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+            if (!geoJson?.features?.length) {
+              geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+            }
+          } else if (zoomLevel <= 10) {
+            geoJson = await fetchCtpBoundary({ lat: coordinates.lat, lng: coordinates.lng });
           }
         }
         if (!geoJson?.features?.length) {
