@@ -512,20 +512,23 @@ const MapPage = () => {
     setIsSearchBarVisible(prev => !prev);
   }, []);
 
-  // 마커에 마우스 이벤트 추가
-  const handleMarkerMouseOver = (position) => {
-    setHoveredMarker(prev => {
-      if (!prev || prev.lat !== position.lat || prev.lng !== position.lng) {
-        return position;
-      }
-      return prev;
-    });
-  };
+  // zoomLevel이 바뀔 때마다 mousePosition을 null로 초기화
+  useEffect(() => {
+    setMousePosition(null);
+  }, [zoomLevel]);
 
-  const handleMarkerMouseOut = () => {
-    setHoveredMarker(null);
-    setMousePosition(null);  // 마우스 위치도 초기화
-  };
+  // 지도 클릭 시 줌 레벨 +1
+  useEffect(() => {
+    if (!map) return;
+    const handleMapClick = () => {
+      const currentZoom = map.getZoom();
+      map.setZoom(currentZoom + 1);
+    };
+    window.naver.maps.Event.addListener(map, 'click', handleMapClick);
+    return () => {
+      window.naver.maps.Event.clearInstanceListeners(map, 'click');
+    };
+  }, [map]);
 
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
@@ -613,9 +616,9 @@ const MapPage = () => {
               )}
 
               {/* 경계선 폴리곤 - 지도 위에 마우스 올릴 때만 표시 */}
-              {mousePosition && (
-                <GeoBoundaryPolygon 
-                  map={map} 
+              {map && mousePosition && (
+                <GeoBoundaryPolygon
+                  map={map}
                   coordinates={mousePosition}
                   zoomLevel={zoomLevel}
                 />

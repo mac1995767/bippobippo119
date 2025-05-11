@@ -89,9 +89,9 @@ const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
         console.log('isMetropolitanArea:', isMetropolitanArea);
         if (isMetropolitanArea) {
           // 수도권/광역시(동 단위)
-          if (zoomLevel <= 9) {
+          if (zoomLevel <= 8) {
             geoJson = await fetchCtpBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-          } else if (zoomLevel >= 10 && zoomLevel <= 13) {
+          } else if (zoomLevel >= 9 && zoomLevel <= 13) {
             geoJson = await fetchSigBoundary({ lat: coordinates.lat, lng: coordinates.lng });
           } else if (zoomLevel >= 14) {
             geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng }); // 동만
