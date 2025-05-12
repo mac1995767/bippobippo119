@@ -2,16 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 
-// 로그 출력 함수
-function logInfo(message, data = null) {
-  if (data) console.log(`[INFO] ${message}:`, JSON.stringify(data, null, 2));
-  else console.log(`[INFO] ${message}`);
-}
 
-function logError(message, error = null) {
-  if (error) console.error(`[ERROR] ${message}:`, error);
-  else console.error(`[ERROR] ${message}`);
-}
 
 // 시도 경계 데이터 조회 API
 router.get('/ctp/coordinates', async (req, res) => {
@@ -25,7 +16,6 @@ router.get('/ctp/coordinates', async (req, res) => {
   }
 
   try {
-    logInfo('시도 경계 조회 시작', { lat, lng });
     const ctpBoundaries = mongoose.connection.db.collection('sggu_boundaries_ctprvn');
     const point = { 
       type: 'Point', 
@@ -45,7 +35,6 @@ router.get('/ctp/coordinates', async (req, res) => {
       return res.status(404).json({ error: '해당 위치의 시도 경계를 찾을 수 없습니다.', coordinates: { lat, lng } });
     }
 
-    logInfo('경계 데이터 찾음', { type: result.geometry.type, properties: result.properties });
     res.json({
       type: 'FeatureCollection',
       features: [{ type: 'Feature', geometry: result.geometry, properties: {
@@ -55,7 +44,6 @@ router.get('/ctp/coordinates', async (req, res) => {
       }}]
     });
   } catch (err) {
-    logError('시도 경계 데이터 조회 중 오류');
     res.status(500).json({ error: '서버 오류가 발생했습니다.', details: err.message });
   }
 });
@@ -69,7 +57,6 @@ router.get('/sig/coordinates', async (req, res) => {
   }
 
   try {
-    logInfo('시군구 경계 조회 시작', { lat, lng });
     const sigBoundaries = mongoose.connection.db.collection('sggu_boundaries_sig');
     const point = { 
       type: 'Point', 
@@ -89,7 +76,6 @@ router.get('/sig/coordinates', async (req, res) => {
       return res.status(404).json({ error: '해당 위치의 시군구 경계를 찾을 수 없습니다.', coordinates: { lat, lng } });
     }
 
-    logInfo('경계 데이터 찾음', { type: result.geometry.type, properties: result.properties });
     res.json({
       type: 'FeatureCollection',
       features: [{ type: 'Feature', geometry: result.geometry, properties: {
@@ -113,7 +99,6 @@ router.get('/emd/coordinates', async (req, res) => {
   }
 
   try {
-    logInfo('읍면동 경계 조회 시작', { lat, lng });
     const emdBoundaries = mongoose.connection.db.collection('sggu_boundaries_emd');
     const point = { 
       type: 'Point', 
@@ -129,11 +114,9 @@ router.get('/emd/coordinates', async (req, res) => {
     });
 
     if (!result) {
-      logError('해당 좌표의 경계를 찾을 수 없음', { lat, lng });
       return res.status(404).json({ error: '해당 위치의 읍면동 경계를 찾을 수 없습니다.', coordinates: { lat, lng } });
     }
 
-    logInfo('경계 데이터 찾음', { type: result.geometry.type, properties: result.properties });
     res.json({
       type: 'FeatureCollection',
       features: [{ type: 'Feature', geometry: result.geometry, properties: {
@@ -143,7 +126,6 @@ router.get('/emd/coordinates', async (req, res) => {
       }}]
     });
   } catch (err) {
-    logError('읍면동 경계 데이터 조회 중 오류');
     res.status(500).json({ error: '서버 오류가 발생했습니다.', details: err.message });
   }
 });
@@ -157,7 +139,6 @@ router.get('/li/coordinates', async (req, res) => {
   }
 
   try {
-    logInfo('리 경계 조회 시작', { lat, lng });
     const liBoundaries = mongoose.connection.db.collection('sggu_boundaries_li');
     const point = { 
       type: 'Point', 
@@ -177,7 +158,6 @@ router.get('/li/coordinates', async (req, res) => {
       return res.status(404).json({ error: '해당 위치의 리 경계를 찾을 수 없습니다.', coordinates: { lat, lng } });
     }
 
-    logInfo('경계 데이터 찾음', { type: result.geometry.type, properties: result.properties });
     res.json({
       type: 'FeatureCollection',
       features: [{ type: 'Feature', geometry: result.geometry, properties: {

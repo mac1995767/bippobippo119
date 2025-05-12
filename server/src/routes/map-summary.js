@@ -140,65 +140,6 @@ router.get('/sggu', async (req, res) => {
   }
 });
 
-// 경계별 병원/약국 집계 (zoom에 따라 컬렉션 자동 선택)
-router.get('/boundary', async (req, res) => {
-  try {
-    const { zoom, swLat, swLng, neLat, neLng } = req.query;
-    const zoomNum = parseInt(zoom);
-    let collectionName;
-    if (zoomNum >= 8 && zoomNum <= 10) collectionName = 'sggu_boundaries_ctprvn';
-    else if (zoomNum >= 11 && zoomNum <= 12) collectionName = 'sggu_boundaries_sig';
-    else if (zoomNum >= 13 && zoomNum <= 14) collectionName = 'sggu_boundaries_emd';
-    else if (zoomNum === 15) collectionName = 'sggu_boundaries_li';
-    else return res.status(400).json({ error: 'Invalid zoom' });
-
-    // 현재 뷰포트 내 경계 폴리곤 조회
-    const Boundary = mongoose.connection.collection(collectionName);
-    const boundsPolygon = {
-      type: 'Polygon',
-      coordinates: [[
-        [parseFloat(swLng), parseFloat(swLat)],
-        [parseFloat(swLng), parseFloat(neLat)],
-        [parseFloat(neLng), parseFloat(neLat)],
-        [parseFloat(neLng), parseFloat(swLat)],
-        [parseFloat(swLng), parseFloat(swLat)]
-      ]]
-    };
-    const polygons = await Boundary.find({
-      geometry: {
-        $geoIntersects: { $geometry: boundsPolygon }
-      }
-    }).toArray();
-
-    // 병원/약국 집계 (각 폴리곤별로)
-    const mapData = mongoose.connection.collection('map_data');
-    const results = await Promise.all(polygons.map(async poly => {
-      const hospitalCount = await mapData.countDocuments({
-        type: 'hospital',
-        location: {
-          $geoWithin: { $geometry: poly.geometry }
-        }
-      });
-      const pharmacyCount = await mapData.countDocuments({
-        type: 'pharmacy',
-        location: {
-          $geoWithin: { $geometry: poly.geometry }
-        }
-      });
-      return {
-        boundaryId: poly._id,
-        name: poly.properties?.CTP_KOR_NM || poly.properties?.SIG_KOR_NM || poly.properties?.EMD_KOR_NM || poly.properties?.LI_KOR_NM || '',
-        hospitalCount,
-        pharmacyCount,
-        geometry: poly.geometry
-      };
-    }));
-    res.json(results);
-  } catch (err) {
-    res.status(500).json({ error: 'boundary 집계 오류', details: err.message });
-  }
-});
-
 // 통합된 지역 요약 데이터 처리 함수
 const processAreaSummary = async (req, res, collectionName) => {
   try {

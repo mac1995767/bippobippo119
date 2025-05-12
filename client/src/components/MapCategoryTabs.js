@@ -1,7 +1,8 @@
 import React from 'react';
 
 const categories = [
-  '지도'     
+  '병원 찾기',
+  '상권 분석',
 ];
 
 const MapCategoryTabs = () => (

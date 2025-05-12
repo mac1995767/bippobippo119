@@ -349,33 +349,6 @@ export const fetchEmdBoundary = async (params) => {
   }
 };
 
-// 시도별 좌표+집계
-export const fetchSidoSummary = async () => {
-  const res = await axios.get(`${baseUrl}/api/map/sido-summary`);
-  return res.data;
-};
-
-// 시군구별 좌표+집계 (바운드 파라미터 지원)
-export const fetchSgguSummary = async (params = {}) => {
-  try {
-    const response = await axios.get(`${baseUrl}/api/map/sggu-summary`, { 
-      params: {
-        swLat: params.swLat,
-        swLng: params.swLng,
-        neLat: params.neLat,
-        neLng: params.neLng,
-        lat: params.lat,
-        lng: params.lng,
-        zoom: params.zoom
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('시군구 요약 데이터 조회 실패:', error);
-    throw error;
-  }
-};
-
 // 읍면동별 좌표+집계 (바운드 파라미터 지원)
 export const fetchEmdongSummary = async (params = {}) => {
   try {
@@ -414,13 +387,6 @@ export const fetchLiBoundary = async (params) => {
     console.error('❌ Error fetching li boundary:', error);
     throw error;
   }
-};
-
-// 경계별 병원/약국 요약 (zoom, swLat, swLng, neLat, neLng)
-export const fetchMapBoundarySummary = async ({ zoom, swLat, swLng, neLat, neLng }) => {
-  const res = await fetch(`/api/map-summary/boundary?zoom=${zoom}&swLat=${swLat}&swLng=${swLng}&neLat=${neLat}&neLng=${neLng}`);
-  if (!res.ok) throw new Error('경계별 요약 데이터 조회 실패');
-  return await res.json();
 };
 
 // 줌 레벨에 따른 행정구역 타입 결정

@@ -1,10 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import {
-  fetchMapTypeData,
-  fetchSidoSummary,
-  fetchSgguSummary,
-  fetchEmdSummary
-} from '../service/api';
+import { fetchMapTypeData} from '../service/api';
 import MapCategoryTabs from './MapCategoryTabs';
 import MapFilterBar from './MapFilterBar';
 import HospitalMarker from './markers/HospitalMarker';
@@ -49,9 +44,6 @@ const MapPage = () => {
   const [markerClusterer, setMarkerClusterer] = useState(null);
   const markersRef = useRef([]);
 
-  const [regionName, setRegionName] = useState(null);
-  const [regionNames, setRegionNames] = useState([]);
-
   const [visibleLayers, setVisibleLayers] = useState({
     hospitals: true,
     pharmacies: true,
@@ -59,11 +51,7 @@ const MapPage = () => {
     heatmap: false
   });
 
-  const [mousePosition, setMousePosition] = useState(null);
-
-  const [hoveredMarker, setHoveredMarker] = useState(null);
-
-  const [boundaryData, setBoundaryData] = useState([]);
+  const [clickedPosition, setClickedPosition] = useState(null);
 
   // 요약 데이터
   const getPharmacyUniqueId = (pharmacy) =>
@@ -134,19 +122,18 @@ const MapPage = () => {
           fetchDataByBoundsDebounced(mapInstance);
         });
 
-        // 마우스 이동 이벤트 리스너 추가
-        window.naver.maps.Event.addListener(mapInstance, 'mousemove', (e) => {
+        
+
+        // 클릭 이벤트 리스너 추가
+        window.naver.maps.Event.addListener(mapInstance, 'click', (e) => {
           const coord = e.coord;
-          setMousePosition({
+          setClickedPosition({
             lat: coord.y,
             lng: coord.x
           });
         });
 
-        // 마우스가 지도를 벗어날 때 좌표 초기화
-        window.naver.maps.Event.addListener(mapInstance, 'mouseout', () => {
-          setMousePosition(null);
-        });
+        
 
         setMap(mapInstance);
         fetchDataByBounds(mapInstance);
@@ -371,27 +358,6 @@ const MapPage = () => {
 
   }, [hospitals, pharmacies, markerClusterer, map, visibleLayers]);
 
-  // 지도 클릭 시 regionName을 '경기'로 설정
-  useEffect(() => {
-    if (!map) return;
-    const listener = window.naver.maps.Event.addListener(map, 'click', () => {
-      setRegionName('경기');
-    });
-    return () => window.naver.maps.Event.removeListener(listener);
-  }, [map]);
-
-  // regionNames 업데이트 로직 수정
-  useEffect(() => {
-    if (!map) return;
-    if (zoomLevel >= 8 && zoomLevel <= 10) {
-      setRegionNames(sidoSummary.map(item => item.name));
-    } else if (zoomLevel >= 11 && zoomLevel <= 14) {
-      setRegionNames(sgguSummary.map(item => item.name));
-    } else if (zoomLevel >= 15) {
-      setRegionNames(emdongSummary.map(item => item.name));
-    }
-  }, [zoomLevel, sidoSummary, sgguSummary, emdongSummary, map]);
-
   // 초기화 함수 추가
   const handleReset = useCallback(() => {
     if (!map) return;
@@ -405,6 +371,7 @@ const MapPage = () => {
     setSelectedInfo(null);
     setSelectedHospitalId(null);
     setSelectedPharmacyId(null);
+    setClickedPosition(null);
 
     // 데이터 초기화
     setHospitals([]);
@@ -412,11 +379,11 @@ const MapPage = () => {
     setSidoSummary([]);
     setSgguSummary([]);
     setEmdongSummary([]);
-    setRegionNames([]);
 
     // 초기 데이터 로드
     fetchDataByBounds(map);
   }, [map]);
+
 
   // 목록 아이템 클릭 핸들러
   const handleListItemClick = useCallback((item) => {
@@ -446,23 +413,7 @@ const MapPage = () => {
     setIsSearchBarVisible(prev => !prev);
   }, []);
 
-  // zoomLevel이 바뀔 때마다 mousePosition을 null로 초기화
-  useEffect(() => {
-    setMousePosition(null);
-  }, [zoomLevel]);
 
-  // 지도 클릭 시 줌 레벨 +1
-  useEffect(() => {
-    if (!map) return;
-    const handleMapClick = () => {
-      const currentZoom = map.getZoom();
-      map.setZoom(currentZoom + 1);
-    };
-    window.naver.maps.Event.addListener(map, 'click', handleMapClick);
-    return () => {
-      window.naver.maps.Event.clearInstanceListeners(map, 'click');
-    };
-  }, [map]);
 
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
@@ -524,7 +475,7 @@ const MapPage = () => {
                           key={getPharmacyUniqueId(pharmacy)}
                           map={map}
                           pharmacy={pharmacy}
-                          zoomLevel={zoomLevel}
+                          zoomLevel={handleReset}
                           onClick={() => handlePharmacyClick(pharmacy)}
                         />
                   ))}
@@ -532,7 +483,7 @@ const MapPage = () => {
               )}
 
               {/* 줌 19+: 상세 마커 */}
-              {zoomLevel >= 19 && (
+              {handleReset >= 19 && (
                 <>
                   {hospitals.map(hospital => (
                     <DetailedHospitalMarker
@@ -555,11 +506,11 @@ const MapPage = () => {
                 </>
               )}
 
-              {/* 경계선 폴리곤 - 지도 위에 마우스 올릴 때만 표시 */}
-              {map && mousePosition && (
+              {/* 경계선 폴리곤 - 클릭했을 때만 표시 */}
+              {map && clickedPosition && (
                 <GeoBoundaryPolygon
                   map={map}
-                  coordinates={mousePosition}
+                  coordinates={clickedPosition}
                   zoomLevel={zoomLevel}
                 />
               )}
