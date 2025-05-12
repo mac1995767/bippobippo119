@@ -423,86 +423,29 @@ export const fetchMapBoundarySummary = async ({ zoom, swLat, swLng, neLat, neLng
   return await res.json();
 };
 
-// 리(ri)별 요약 데이터 조회 (바운드 파라미터 지원)
-export const fetchRiSummary = async (params = {}) => {
-  try {
-    const response = await axios.get(`/api/map-summary/ri`, {
-      params: {
-        swLat: params.swLat,
-        swLng: params.swLng,
-        neLat: params.neLat,
-        neLng: params.neLng,
-        lat: params.lat,
-        lng: params.lng,
-        zoom: params.zoom
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('리 요약 데이터 조회 실패:', error);
-    throw error;
-  }
+// 줌 레벨에 따른 행정구역 타입 결정
+const getAreaTypeByZoom = (zoom) => {
+  if (zoom >= 15) return 'ri';
+  if (zoom >= 13) return 'emd';
+  if (zoom >= 11) return 'sig';
+  return 'ctp';
 };
 
-// 시도(CTP)별 요약 데이터 조회
-export const fetchCtpSummary = async (params = {}) => {
+// 통합된 지역 요약 데이터 조회 함수
+export const fetchAreaSummary = async (bounds, zoom) => {
   try {
-    const response = await axios.get(`/api/map-summary/ctp`, {
+    const areaType = getAreaTypeByZoom(zoom);
+    const response = await axios.get(`${baseUrl}/api/map-summary/${areaType}`, {
       params: {
-        swLat: params.swLat,
-        swLng: params.swLng,
-        neLat: params.neLat,
-        neLng: params.neLng,
-        lat: params.lat,
-        lng: params.lng,
-        zoom: params.zoom
+        swLat: bounds.sw.lat,
+        swLng: bounds.sw.lng,
+        neLat: bounds.ne.lat,
+        neLng: bounds.ne.lng
       }
     });
     return response.data;
   } catch (error) {
-    console.error('시도 요약 데이터 조회 실패:', error);
-    throw error;
-  }
-};
-
-// 시군구(SIG)별 요약 데이터 조회
-export const fetchSigSummary = async (params = {}) => {
-  try {
-    const response = await axios.get(`/api/map-summary/sig`, {
-      params: {
-        swLat: params.swLat,
-        swLng: params.swLng,
-        neLat: params.neLat,
-        neLng: params.neLng,
-        lat: params.lat,
-        lng: params.lng,
-        zoom: params.zoom
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('시군구 요약 데이터 조회 실패:', error);
-    throw error;
-  }
-};
-
-// 읍면동(EMD)별 요약 데이터 조회
-export const fetchEmdSummary = async (params = {}) => {
-  try {
-    const response = await axios.get(`/api/map-summary/emd`, {
-      params: {
-        swLat: params.swLat,
-        swLng: params.swLng,
-        neLat: params.neLat,
-        neLng: params.neLng,
-        lat: params.lat,
-        lng: params.lng,
-        zoom: params.zoom
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('읍면동 요약 데이터 조회 실패:', error);
+    console.error('지역 요약 데이터 조회 실패:', error);
     throw error;
   }
 };

@@ -1,11 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   fetchMapTypeData,
-  fetchMapSummary,
-  fetchMapSummarySggu,
   fetchSidoSummary,
   fetchSgguSummary,
-  fetchEmdongSummary
+  fetchEmdSummary
 } from '../service/api';
 import MapCategoryTabs from './MapCategoryTabs';
 import MapFilterBar from './MapFilterBar';
@@ -26,6 +24,7 @@ import GeneralHospitalMarker from './markers/GeneralHospitalMarker';
 import MentalHospitalMarker from './markers/MentalHospitalMarker';
 import DentalHospitalMarker from './markers/DentalHospitalMarker';
 import GeoBoundaryPolygon from './GeoBoundaryPolygon';
+import AreaSummaryPolygon from './AreaSummaryPolygon';
 
 const MapPage = () => {
   const mapRef = useRef(null);
@@ -63,6 +62,8 @@ const MapPage = () => {
   const [mousePosition, setMousePosition] = useState(null);
 
   const [hoveredMarker, setHoveredMarker] = useState(null);
+
+  const [boundaryData, setBoundaryData] = useState([]);
 
   // 요약 데이터
   const getPharmacyUniqueId = (pharmacy) =>
@@ -156,36 +157,6 @@ const MapPage = () => {
       document.head.removeChild(script);
     };
   }, []);
-
-  // zoomLevel 값 변경 추적
-  useEffect(() => {
-    if (!map) return;
-    
-    const bounds = map.getBounds();
-    const sw = bounds.getSW();
-    const ne = bounds.getNE();
-    const center = map.getCenter();
-    
-    const params = {
-      swLat: sw.lat(),
-      swLng: sw.lng(),
-      neLat: ne.lat(),
-      neLng: ne.lng(),
-      lat: center.lat(),
-      lng: center.lng(),
-      zoom: zoomLevel.toString()
-    };
-
-    if (zoomLevel >= 8 && zoomLevel <= 10) {
-      fetchSidoSummary(params).then(setSidoSummary).catch(console.error);
-    }
-    else if (zoomLevel >= 11 && zoomLevel <= 14) {
-      fetchSgguSummaryData(params);
-    }
-    else if (zoomLevel >= 15 && zoomLevel < 16) {
-      fetchEmdongSummaryData(params);
-    }
-  }, [zoomLevel, map]);
 
   // 확대/축소 버튼
   const handleZoomIn = () => map && map.setZoom(map.getZoom() + 1);
@@ -400,26 +371,6 @@ const MapPage = () => {
 
   }, [hospitals, pharmacies, markerClusterer, map, visibleLayers]);
 
-  // 시군구 요약 데이터 가져오기
-  const fetchSgguSummaryData = async (params) => {
-    try {
-      const data = await fetchSgguSummary(params);
-      setSgguSummary(data);
-    } catch (error) {
-      console.error('시군구 요약 데이터 조회 실패:', error);
-    }
-  };
-
-  // 읍면동 요약 데이터 가져오기
-  const fetchEmdongSummaryData = async (params) => {
-    try {
-      const data = await fetchEmdongSummary(params);
-      setEmdongSummary(data);
-    } catch (error) {
-      console.error('읍면동 요약 데이터 조회 실패:', error);
-    }
-  };
-
   // 지도 클릭 시 regionName을 '경기'로 설정
   useEffect(() => {
     if (!map) return;
@@ -429,34 +380,17 @@ const MapPage = () => {
     return () => window.naver.maps.Event.removeListener(listener);
   }, [map]);
 
-  // 줌 레벨에 따라 regionNames 세팅
+  // regionNames 업데이트 로직 수정
   useEffect(() => {
     if (!map) return;
     if (zoomLevel >= 8 && zoomLevel <= 10) {
-      setRegionNames(sidoSummary.map(item => item.sidoNm));
+      setRegionNames(sidoSummary.map(item => item.name));
     } else if (zoomLevel >= 11 && zoomLevel <= 14) {
-      setRegionNames(sgguSummary.map(item => item.sgguNm));
+      setRegionNames(sgguSummary.map(item => item.name));
     } else if (zoomLevel >= 15) {
-      setRegionNames(emdongSummary.map(item => item.emdongNm));
-    } 
+      setRegionNames(emdongSummary.map(item => item.name));
+    }
   }, [zoomLevel, sidoSummary, sgguSummary, emdongSummary, map]);
-
-  // regionNames 값 콘솔 출력
-  useEffect(() => {
-    if (!map) return;
-    if (zoomLevel >= 8 && zoomLevel <= 10) {
-      setRegionNames(sidoSummary.map(item => item.sidoNm));
-    } else if (zoomLevel >= 11 && zoomLevel <= 14) {
-      setRegionNames(sgguSummary.map(item => item.sgguNm));
-    } else if (zoomLevel >= 15) {
-      setRegionNames(emdongSummary.map(item => item.emdongNm));
-    } 
-  }, [zoomLevel, sidoSummary, sgguSummary, emdongSummary, map]);
-
-  // sgguSummary 값 콘솔 출력
-  useEffect(() => {
-    // sgguSummary 로깅 제거
-  }, [sgguSummary]);
 
   // 초기화 함수 추가
   const handleReset = useCallback(() => {
@@ -560,6 +494,12 @@ const MapPage = () => {
 
           {map && (
             <>
+              {/* 요약 데이터 폴리곤 */}
+              <AreaSummaryPolygon
+                map={map}
+                zoomLevel={zoomLevel}
+              />
+
               {/* 줌 16~18: 간단 마커(병원/약국) */}
               {(zoomLevel >= 16 && zoomLevel < 19) && (
                 <>

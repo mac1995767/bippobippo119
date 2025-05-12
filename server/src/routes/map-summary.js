@@ -199,195 +199,16 @@ router.get('/boundary', async (req, res) => {
   }
 });
 
-// 시도별 summary (MongoDB + Elasticsearch 조합)
-router.get('/ctp', async (req, res) => {
-  try {
-    const Ctp = mongoose.connection.collection('sggu_boundaries_ctprvn');
-    const polys = await Ctp.find({}).toArray();
-    const results = await Promise.all(polys.map(async poly => {
-      // 병원 개수
-      const hospitalCount = await client.count({
-        index: 'map_data',
-        body: {
-          query: {
-            bool: {
-              filter: [
-                { term: { type: 'hospital' } },
-                {
-                  geo_shape: {
-                    location: {
-                      shape: poly.geometry,
-                      relation: 'within'
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        }
-      });
-      // 약국 개수
-      const pharmacyCount = await client.count({
-        index: 'map_data',
-        body: {
-          query: {
-            bool: {
-              filter: [
-                { term: { type: 'pharmacy' } },
-                {
-                  geo_shape: {
-                    location: {
-                      shape: poly.geometry,
-                      relation: 'within'
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        }
-      });
-      return {
-        boundaryId: poly._id,
-        name: poly.properties?.CTP_KOR_NM || '',
-        hospitalCount: hospitalCount.count,
-        pharmacyCount: pharmacyCount.count,
-        geometry: poly.geometry
-      };
-    }));
-    res.json(results);
-  } catch (err) {
-    res.status(500).json({ error: 'ctp summary 오류', details: err.message });
-  }
-});
-
-// 시군구별 summary (MongoDB + Elasticsearch 조합)
-router.get('/sig', async (req, res) => {
-  try {
-    const Sig = mongoose.connection.collection('sggu_boundaries_sig');
-    const polys = await Sig.find({}).toArray();
-    const results = await Promise.all(polys.map(async poly => {
-      const hospitalCount = await client.count({
-        index: 'map_data',
-        body: {
-          query: {
-            bool: {
-              filter: [
-                { term: { type: 'hospital' } },
-                {
-                  geo_shape: {
-                    location: {
-                      shape: poly.geometry,
-                      relation: 'within'
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        }
-      });
-      const pharmacyCount = await client.count({
-        index: 'map_data',
-        body: {
-          query: {
-            bool: {
-              filter: [
-                { term: { type: 'pharmacy' } },
-                {
-                  geo_shape: {
-                    location: {
-                      shape: poly.geometry,
-                      relation: 'within'
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        }
-      });
-      return {
-        boundaryId: poly._id,
-        name: poly.properties?.SIG_KOR_NM || '',
-        hospitalCount: hospitalCount.count,
-        pharmacyCount: pharmacyCount.count,
-        geometry: poly.geometry
-      };
-    }));
-    res.json(results);
-  } catch (err) {
-    res.status(500).json({ error: 'sig summary 오류', details: err.message });
-  }
-});
-
-// 읍면동별 summary (MongoDB + Elasticsearch 조합)
-router.get('/emd', async (req, res) => {
-  try {
-    const Emd = mongoose.connection.collection('sggu_boundaries_emd');
-    const polys = await Emd.find({}).toArray();
-    const results = await Promise.all(polys.map(async poly => {
-      const hospitalCount = await client.count({
-        index: 'map_data',
-        body: {
-          query: {
-            bool: {
-              filter: [
-                { term: { type: 'hospital' } },
-                {
-                  geo_shape: {
-                    location: {
-                      shape: poly.geometry,
-                      relation: 'within'
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        }
-      });
-      const pharmacyCount = await client.count({
-        index: 'map_data',
-        body: {
-          query: {
-            bool: {
-              filter: [
-                { term: { type: 'pharmacy' } },
-                {
-                  geo_shape: {
-                    location: {
-                      shape: poly.geometry,
-                      relation: 'within'
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        }
-      });
-      return {
-        boundaryId: poly._id,
-        name: poly.properties?.EMD_KOR_NM || '',
-        hospitalCount: hospitalCount.count,
-        pharmacyCount: pharmacyCount.count,
-        geometry: poly.geometry
-      };
-    }));
-    res.json(results);
-  } catch (err) {
-    res.status(500).json({ error: 'emd summary 오류', details: err.message });
-  }
-});
-
-// 리(ri) 경계별 요약
-router.get('/ri', async (req, res) => {
+// 통합된 지역 요약 데이터 처리 함수
+const processAreaSummary = async (req, res, collectionName) => {
   try {
     const { swLat, swLng, neLat, neLng } = req.query;
     
-    // MongoDB에서 리 경계 데이터 조회
-    const riBoundaries = await RiBoundary.find({
+    console.log('요청된 좌표 범위:', { swLat, swLng, neLat, neLng });
+    console.log('조회할 컬렉션:', collectionName);
+    
+    // MongoDB에서 해당 영역의 경계 데이터 조회
+    const boundaries = await mongoose.connection.collection(collectionName).find({
       geometry: {
         $geoIntersects: {
           $geometry: {
@@ -396,47 +217,97 @@ router.get('/ri', async (req, res) => {
               [parseFloat(swLng), parseFloat(swLat)],
               [parseFloat(neLng), parseFloat(swLat)],
               [parseFloat(neLng), parseFloat(neLat)],
-              [parseFloat(swLat), parseFloat(neLat)],
+              [parseFloat(swLng), parseFloat(neLat)],
               [parseFloat(swLng), parseFloat(swLat)]
             ]]
           }
         }
       }
-    });
+    }).toArray();
 
-    // 각 리별로 병원/약국 개수 집계
-    const summary = await Promise.all(riBoundaries.map(async (ri) => {
-      const hospitalCount = await Hospital.countDocuments({
-        location: {
-          $geoWithin: {
-            $geometry: ri.geometry
+    console.log('조회된 경계 데이터 수:', boundaries.length);
+    
+    if (boundaries.length === 0) {
+      console.log('경계 데이터가 없습니다. 컬렉션에 데이터가 있는지 확인해주세요.');
+      return res.json([]);
+    }
+
+    // 각 경계별로 병원/약국 개수 집계
+    const results = await Promise.all(boundaries.map(async (boundary) => {
+      console.log('경계 데이터 처리 중:', boundary._id);
+      
+      const hospitalCount = await client.count({
+        index: 'map_data',
+        body: {
+          query: {
+            bool: {
+              filter: [
+                { term: { type: 'hospital' } },
+                {
+                  geo_shape: {
+                    location: {
+                      shape: boundary.geometry,
+                      relation: 'within'
+                    }
+                  }
+                }
+              ]
+            }
           }
         }
       });
 
-      const pharmacyCount = await Pharmacy.countDocuments({
-        location: {
-          $geoWithin: {
-            $geometry: ri.geometry
+      const pharmacyCount = await client.count({
+        index: 'map_data',
+        body: {
+          query: {
+            bool: {
+              filter: [
+                { term: { type: 'pharmacy' } },
+                {
+                  geo_shape: {
+                    location: {
+                      shape: boundary.geometry,
+                      relation: 'within'
+                    }
+                  }
+                }
+              ]
+            }
           }
         }
       });
+
+      // 폴리곤의 중점 계산
+      const coordinates = boundary.geometry.coordinates[0];
+      const center = coordinates.reduce((acc, coord) => {
+        return [acc[0] + coord[0], acc[1] + coord[1]];
+      }, [0, 0]).map(coord => coord / coordinates.length);
 
       return {
-        name: ri.properties.riNm,
-        geometry: ri.geometry,
-        hospitalCount,
-        pharmacyCount
+        boundaryId: boundary._id,
+        name: boundary.properties?.name || '',
+        hospitalCount: hospitalCount.count,
+        pharmacyCount: pharmacyCount.count,
+        center: {
+          lng: center[0],
+          lat: center[1]
+        }
       };
     }));
 
-    res.json(summary);
-  } catch (error) {
-    console.error('리 경계 요약 조회 오류:', error);
-    res.status(500).json({ error: '리 경계 요약 조회 중 오류가 발생했습니다.' });
+    console.log('최종 결과:', results);
+    res.json(results);
+  } catch (err) {
+    console.error(`${collectionName} 요약 데이터 조회 오류:`, err);
+    res.status(500).json({ error: `${collectionName} 요약 데이터 조회 중 오류가 발생했습니다.` });
   }
-});
+};
 
-// 필요하다면읍면동 등 다른 경계별 요약도 추가 가능
+// 각 행정구역별 라우트
+router.get('/ctp', (req, res) => processAreaSummary(req, res, 'sggu_boundaries_ctprvn'));
+router.get('/sig', (req, res) => processAreaSummary(req, res, 'sggu_boundaries_sig'));
+router.get('/emd', (req, res) => processAreaSummary(req, res, 'sggu_boundaries_emd'));
+router.get('/ri', (req, res) => processAreaSummary(req, res, 'sggu_boundaries_ri'));
 
 module.exports = router; 
