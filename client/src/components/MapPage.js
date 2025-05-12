@@ -18,7 +18,6 @@ import SuperGeneralHospitalMarker from './markers/SuperGeneralHospitalMarker';
 import GeneralHospitalMarker from './markers/GeneralHospitalMarker';
 import MentalHospitalMarker from './markers/MentalHospitalMarker';
 import DentalHospitalMarker from './markers/DentalHospitalMarker';
-import GeoBoundaryPolygon from './GeoBoundaryPolygon';
 import AreaSummaryPolygon from './AreaSummaryPolygon';
 
 const MapPage = () => {
@@ -52,6 +51,8 @@ const MapPage = () => {
   });
 
   const [clickedPosition, setClickedPosition] = useState(null);
+  const [currentPolygon, setCurrentPolygon] = useState(null);
+  const [lastClickedPosition, setLastClickedPosition] = useState(null);
 
   // 요약 데이터
   const getPharmacyUniqueId = (pharmacy) =>
@@ -121,19 +122,37 @@ const MapPage = () => {
           setZoomLevel(currentZoom);
           fetchDataByBoundsDebounced(mapInstance);
         });
-
         
-
         // 클릭 이벤트 리스너 추가
         window.naver.maps.Event.addListener(mapInstance, 'click', (e) => {
           const coord = e.coord;
-          setClickedPosition({
+          const newPosition = {
             lat: coord.y,
             lng: coord.x
-          });
-        });
+          };
 
-        
+          // 이전 클릭 위치와 현재 클릭 위치가 같은지 확인
+          const isSamePosition = lastClickedPosition && 
+            Math.abs(lastClickedPosition.lat - newPosition.lat) < 0.0001 && 
+            Math.abs(lastClickedPosition.lng - newPosition.lng) < 0.0001;
+
+          if (isSamePosition) {
+            // 같은 위치를 클릭한 경우 폴리곤 제거
+            if (currentPolygon) {
+              currentPolygon.setMap(null);
+            }
+            setCurrentPolygon(null);
+            setClickedPosition(null);
+            setLastClickedPosition(null);
+          } else {
+            // 다른 위치를 클릭한 경우
+            if (currentPolygon) {
+              currentPolygon.setMap(null);
+            }
+            setClickedPosition(newPosition);
+            setLastClickedPosition(newPosition);
+          }
+        });
 
         setMap(mapInstance);
         fetchDataByBounds(mapInstance);
@@ -504,15 +523,6 @@ const MapPage = () => {
                     />
                   ))}
                 </>
-              )}
-
-              {/* 경계선 폴리곤 - 클릭했을 때만 표시 */}
-              {map && clickedPosition && (
-                <GeoBoundaryPolygon
-                  map={map}
-                  coordinates={clickedPosition}
-                  zoomLevel={zoomLevel}
-                />
               )}
             </>
           )}

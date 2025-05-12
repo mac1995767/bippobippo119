@@ -31,7 +31,6 @@ router.get('/ctp/coordinates', async (req, res) => {
     });
 
     if (!result) {
-      logError('해당 좌표의 경계를 찾을 수 없음', { lat, lng });
       return res.status(404).json({ error: '해당 위치의 시도 경계를 찾을 수 없습니다.', coordinates: { lat, lng } });
     }
 
@@ -72,7 +71,6 @@ router.get('/sig/coordinates', async (req, res) => {
     });
 
     if (!result) {
-      logError('해당 좌표의 경계를 찾을 수 없음', { lat, lng });
       return res.status(404).json({ error: '해당 위치의 시군구 경계를 찾을 수 없습니다.', coordinates: { lat, lng } });
     }
 
@@ -85,7 +83,6 @@ router.get('/sig/coordinates', async (req, res) => {
       }}]
     });
   } catch (err) {
-    logError('시군구 경계 데이터 조회 중 오류');
     res.status(500).json({ error: '서버 오류가 발생했습니다.', details: err.message });
   }
 });
@@ -154,7 +151,6 @@ router.get('/li/coordinates', async (req, res) => {
     });
 
     if (!result) {
-      logError('해당 좌표의 경계를 찾을 수 없음', { lat, lng });
       return res.status(404).json({ error: '해당 위치의 리 경계를 찾을 수 없습니다.', coordinates: { lat, lng } });
     }
 
@@ -167,7 +163,6 @@ router.get('/li/coordinates', async (req, res) => {
       }}]
     });
   } catch (err) {
-    logError('리 경계 데이터 조회 중 오류');
     res.status(500).json({ error: '서버 오류가 발생했습니다.', details: err.message });
   }
 });

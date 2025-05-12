@@ -20,7 +20,7 @@ function getPolygonCentroid(path) {
   return { lat: x, lng: y };
 }
 
-const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
+const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint, onPolygonCreated }) => {
   const polygonsRef = useRef([]);
   const markersRef = useRef([]);
   const infoWindowsRef = useRef([]);
@@ -159,6 +159,11 @@ const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
             fillOpacity: 0.2,
           });
           polygonsRef.current.push(polygon);
+          
+          // 폴리곤이 생성되면 부모 컴포넌트에 알림
+          if (onPolygonCreated) {
+            onPolygonCreated(polygon);
+          }
 
           // 레이블용 Marker & InfoWindow
           const { lat, lng } = getPolygonCentroid(paths[0]);
@@ -169,19 +174,40 @@ const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
           });
           markersRef.current.push(marker);
 
-          // 경계선 타입에 따라 다른 레이블 표시
-          let labelText;
-          if (feature.properties.CTP_KOR_NM) {
-            labelText = feature.properties.CTP_KOR_NM;
-          } else if (feature.properties.SIG_KOR_NM) {
-            labelText = feature.properties.SIG_KOR_NM;
-          } else if (feature.properties.EMD_KOR_NM) {
-            labelText = feature.properties.EMD_KOR_NM;
-          } else if (feature.properties.LI_KOR_NM) {
-            labelText = feature.properties.LI_KOR_NM;
-          } else {
-            labelText = '알 수 없음';
+          // 레이블 텍스트 결정
+          let labelText = '';
+          if (feature.properties) {
+            // 시/도 이름
+            if (feature.properties.CTP_KOR_NM) {
+              labelText = feature.properties.CTP_KOR_NM;
+            }
+            // 시/군/구 이름
+            else if (feature.properties.SIG_KOR_NM) {
+              labelText = feature.properties.SIG_KOR_NM;
+            }
+            // 읍/면/동 이름
+            else if (feature.properties.EMD_KOR_NM) {
+              labelText = feature.properties.EMD_KOR_NM;
+            }
+            // 리 이름
+            else if (feature.properties.LI_KOR_NM) {
+              labelText = feature.properties.LI_KOR_NM;
+            }
+            // 기타 속성에서 이름 찾기
+            else {
+              const possibleNames = [
+                feature.properties.name,
+                feature.properties.NAME,
+                feature.properties.ADM_NM,
+                feature.properties.ADM_NM_KOR,
+                feature.properties.ADM_NM_ENG
+              ];
+              labelText = possibleNames.find(name => name) || '알 수 없음';
+            }
           }
+
+          console.log('경계 데이터 속성:', feature.properties);
+          console.log('선택된 레이블:', labelText);
 
           const infoWindow = new window.naver.maps.InfoWindow({
             content: `<div style="
@@ -207,7 +233,7 @@ const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
         lastGeoJsonRef.current = null;
       }
     };
-
+    
     fetchAndRender();
 
     // 언마운트 시 또는 다음 렌더 전 cleanup
@@ -219,7 +245,7 @@ const GeoBoundaryPolygon = ({ map, coordinates, zoomLevel, apiEndpoint }) => {
       markersRef.current = [];
       infoWindowsRef.current = [];
     };
-  }, [map, coordinates, zoomLevel, apiEndpoint]);
+  }, [map, coordinates, zoomLevel, apiEndpoint, onPolygonCreated]);
 
   return null;
 };

@@ -227,7 +227,12 @@ const processAreaSummary = async (req, res, collectionName) => {
 
       return {
         boundaryId: boundary._id,
-        name: boundary.properties?.name || '',
+        name: boundary.properties?.name || 
+              boundary.properties?.CTP_KOR_NM || 
+              boundary.properties?.SIG_KOR_NM || 
+              boundary.properties?.EMD_KOR_NM || 
+              boundary.properties?.LI_KOR_NM || 
+              boundary.name || '',
         hospitalCount: hospitalCount.count,
         pharmacyCount: pharmacyCount.count,
         center: {

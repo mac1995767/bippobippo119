@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { fetchAreaSummary } from '../service/api';
+import { fetchCtpBoundary, fetchSigBoundary, fetchEmdBoundary, fetchLiBoundary } from '../service/api';
 
 const AreaSummaryPolygon = ({ map, zoomLevel }) => {
   const markersRef = useRef([]);
   const infoWindowRef = useRef(null);
   const [summaryData, setSummaryData] = useState([]);
   const eventListenersRef = useRef([]);
+  const currentPolygonRef = useRef(null);
 
   // 요약 데이터 가져오기
   const fetchSummaryData = async () => {
@@ -62,7 +64,83 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
     };
   }, [map, zoomLevel]);
 
-  // 요약 데이터를 마커로 표시
+  // 경계 데이터 가져오기
+  const fetchBoundary = async (coordinates) => {
+    try {
+      let geoJson = null;
+      // Emd 정보로 지역 유형 판별
+      let emdJsonForType = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+      let emdName = '';
+      if (emdJsonForType?.features?.length) {
+        emdName = emdJsonForType.features[0]?.properties?.EMD_KOR_NM || '';
+      }
+      const isMetropolitanArea = emdName.endsWith('동');
+
+      if (isMetropolitanArea) {
+        if (zoomLevel <= 8) {
+          geoJson = await fetchCtpBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+        } else if (zoomLevel >= 9 && zoomLevel <= 13) {
+          geoJson = await fetchSigBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+        } else if (zoomLevel >= 14) {
+          geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+        }
+      } else {
+        if (zoomLevel === 11) {
+          geoJson = await fetchSigBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+        } else if (zoomLevel === 12) {
+          geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+        } else if (zoomLevel === 13) {
+          geoJson = await fetchLiBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+          if (!geoJson?.features?.length) {
+            geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+          }
+        } else if (zoomLevel >= 14) {
+          geoJson = await fetchLiBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+          if (!geoJson?.features?.length) {
+            geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+          }
+        } else if (zoomLevel <= 10) {
+          geoJson = await fetchCtpBoundary({ lat: coordinates.lat, lng: coordinates.lng });
+        }
+      }
+
+      if (!geoJson?.features?.length) return;
+
+      // 기존 폴리곤 제거
+      if (currentPolygonRef.current) {
+        currentPolygonRef.current.setMap(null);
+      }
+
+      // 새로운 폴리곤 생성
+      const feature = geoJson.features[0];
+      const geom = feature.geometry;
+      const rawArray = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
+      const paths = rawArray
+        .map(polygon =>
+          polygon[0]
+            .filter(pt => Array.isArray(pt) && pt.length === 2)
+            .map(([lng, lat]) => new window.naver.maps.LatLng(lat, lng))
+        )
+        .filter(path => path.length >= 3);
+
+      if (paths.length) {
+        const polygon = new window.naver.maps.Polygon({
+          map,
+          paths,
+          strokeColor: '#5347AA',
+          strokeWeight: 2,
+          strokeOpacity: 0.8,
+          fillColor: '#5347AA',
+          fillOpacity: 0.2,
+        });
+        currentPolygonRef.current = polygon;
+      }
+    } catch (err) {
+      console.error('경계 데이터 조회 실패:', err);
+    }
+  };
+
+  // 마커 생성 및 이벤트 리스너 설정
   useEffect(() => {
     if (!map || !summaryData.length) return;
 
@@ -79,7 +157,6 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
     summaryData.forEach(data => {
       if (!data.center) return;
 
-      // 마커 생성
       const marker = new window.naver.maps.Marker({
         position: new window.naver.maps.LatLng(data.center.lat, data.center.lng),
         map,
@@ -87,7 +164,7 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
           content: `
             <div class="bg-white rounded-full p-1 shadow-md">
               <div class="text-xs font-bold text-gray-800">
-                ${data.hospitalCount + data.pharmacyCount}
+                ${data.hospitalCount + data.pharmacyCount} ${data.name}
               </div>
             </div>
           `,
@@ -100,14 +177,23 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
       // 인포윈도우 생성
       const infoWindow = new window.naver.maps.InfoWindow({
         content: `
-          <div class="p-2 bg-white rounded shadow-lg">
-            <h3 class="font-bold text-sm">${data.name}</h3>
-            <p class="text-xs">병원: ${data.hospitalCount}개</p>
-            <p class="text-xs">약국: ${data.pharmacyCount}개</p>
+          <div style="
+            padding: 6px 10px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #5347AA;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 11px;
+            color: #5347AA;
+            white-space: nowrap;
+          ">
+            <div style="display: flex; gap: 8px;">
+              <span style="color: #000000;">병원 ${data.hospitalCount}</span>
+              <span style="color: #000000;">약국 ${data.pharmacyCount}</span>
+            </div>
           </div>
         `,
-        position: new window.naver.maps.LatLng(data.center.lat, data.center.lng),
-        pixelOffset: new window.naver.maps.Point(0, -10),
+        position: marker.getPosition(),
         disableAnchor: true,
         borderWidth: 0,
         backgroundColor: 'transparent',
@@ -117,10 +203,15 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
       // 마우스 이벤트 리스너 추가
       const mouseoverListener = window.naver.maps.Event.addListener(marker, 'mouseover', () => {
         infoWindow.open(map);
+        fetchBoundary(data.center);
       });
 
       const mouseoutListener = window.naver.maps.Event.addListener(marker, 'mouseout', () => {
         infoWindow.close();
+        if (currentPolygonRef.current) {
+          currentPolygonRef.current.setMap(null);
+          currentPolygonRef.current = null;
+        }
       });
 
       markersRef.current.push(marker);
@@ -151,8 +242,12 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
       }
       markersRef.current.forEach(marker => marker.setMap(null));
       markersRef.current = [];
+      if (currentPolygonRef.current) {
+        currentPolygonRef.current.setMap(null);
+        currentPolygonRef.current = null;
+      }
     };
-  }, [map, summaryData]);
+  }, [map, summaryData, zoomLevel]);
 
   return null;
 };
