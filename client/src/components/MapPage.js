@@ -34,12 +34,6 @@ const MapPage = () => {
   const abortControllerRef = useRef(null);
   const [selectedHospitalId, setSelectedHospitalId] = useState(null);
   const [selectedPharmacyId, setSelectedPharmacyId] = useState(null);
-
-  // 요약 데이터
-  const [sidoSummary, setSidoSummary] = useState([]);
-  const [sgguSummary, setSgguSummary] = useState([]);
-  const [emdongSummary, setEmdongSummary] = useState([]);
-
   const [markerClusterer, setMarkerClusterer] = useState(null);
   const markersRef = useRef([]);
 
@@ -50,7 +44,6 @@ const MapPage = () => {
     heatmap: false
   });
 
-  const [clickedPosition, setClickedPosition] = useState(null);
   const [currentPolygon, setCurrentPolygon] = useState(null);
   const [lastClickedPosition, setLastClickedPosition] = useState(null);
 
@@ -149,14 +142,12 @@ const MapPage = () => {
               currentPolygon.setMap(null);
             }
             setCurrentPolygon(null);
-            setClickedPosition(null);
             setLastClickedPosition(null);
           } else {
             // 다른 위치를 클릭한 경우
             if (currentPolygon) {
               currentPolygon.setMap(null);
             }
-            setClickedPosition(newPosition);
             setLastClickedPosition(newPosition);
           }
         });
@@ -397,14 +388,10 @@ const MapPage = () => {
     setSelectedInfo(null);
     setSelectedHospitalId(null);
     setSelectedPharmacyId(null);
-    setClickedPosition(null);
 
     // 데이터 초기화
     setHospitals([]);
     setPharmacies([]);
-    setSidoSummary([]);
-    setSgguSummary([]);
-    setEmdongSummary([]);
 
     // 초기 데이터 로드
     fetchDataByBounds(map);

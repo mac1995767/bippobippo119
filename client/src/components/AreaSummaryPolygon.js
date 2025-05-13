@@ -1,19 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { fetchAreaSummary } from '../service/api';
-import axios from 'axios';
+import { fetchAreaSummary, checkAreaSummaryCacheStatus, fetchCachedAreaSummary } from '../service/api';
 
 const AreaSummaryPolygon = ({ map, zoomLevel }) => {
   const markersRef = useRef([]);
   const infoWindowRef = useRef(null);
   const [summaryData, setSummaryData] = useState([]);
   const eventListenersRef = useRef([]);
-  const currentPolygonRef = useRef(null);
-  const [boundaryCache, setBoundaryCache] = useState({
-    ctp: new Map(),
-    sig: new Map(),
-    emd: new Map(),
-    li: new Map()
-  });
 
   // 요약 데이터 가져오기
   const fetchSummaryData = async () => {
@@ -24,13 +16,38 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
     const ne = bounds.getNE();
     
     try {
-      const data = await fetchAreaSummary(
+      // Redis 캐시 상태 확인
+      const cacheStatus = await checkAreaSummaryCacheStatus(
         {
           sw: { lat: sw.lat(), lng: sw.lng() },
           ne: { lat: ne.lat(), lng: ne.lng() }
         },
         zoomLevel
       );
+
+      let data;
+      if (cacheStatus.isCached) {
+        // 캐시된 데이터가 있으면 캐시에서 조회
+        data = await fetchCachedAreaSummary(
+          {
+            sw: { lat: sw.lat(), lng: sw.lng() },
+            ne: { lat: ne.lat(), lng: ne.lng() }
+          },
+          zoomLevel
+        );
+        console.log('Redis 캐시에서 데이터 조회 완료');
+      } else {
+        // 캐시된 데이터가 없으면 일반 API 호출
+        data = await fetchAreaSummary(
+          {
+            sw: { lat: sw.lat(), lng: sw.lng() },
+            ne: { lat: ne.lat(), lng: ne.lng() }
+          },
+          zoomLevel
+        );
+        console.log('일반 API에서 데이터 조회 완료');
+      }
+      
       setSummaryData(data);
     } catch (error) {
       console.error('요약 데이터 조회 실패:', error);
@@ -69,75 +86,6 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
       }
     };
   }, [map, zoomLevel]);
-
-  // 경계 데이터 가져오기
-  const fetchBoundary = async (data) => {
-    try {
-      if (currentPolygonRef.current) {
-        currentPolygonRef.current.setMap(null);
-      }
-
-      const boundaryId = data.boundaryId;
-      let type = '';
-      
-      // 줌 레벨에 따라 적절한 타입 결정
-      if (zoomLevel <= 8) {
-        type = 'ctp';
-      } else if (zoomLevel <= 13) {
-        type = 'sig';
-      } else if (zoomLevel <= 15) {
-        type = 'emd';
-      } else {
-        type = 'li';
-      }
-
-      // 캐시에서 데이터 확인
-      let geoJson = boundaryCache[type].get(boundaryId);
-      
-      // 캐시에 없으면 서버에서 가져오기
-      if (!geoJson) {
-        const response = await axios.get(`/api/boundary/${type}/${boundaryId}`);
-        geoJson = response.data;
-        if (geoJson) {
-          boundaryCache[type].set(boundaryId, geoJson);
-          setBoundaryCache(prev => ({
-            ...prev,
-            [type]: new Map(prev[type]).set(boundaryId, geoJson)
-          }));
-        }
-      }
-
-      if (!geoJson) {
-        console.log('경계 데이터를 찾을 수 없음:', boundaryId);
-        return;
-      }
-
-      const geom = geoJson.geometry;
-      const rawArray = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
-      const paths = rawArray
-        .map(polygon =>
-          polygon[0]
-            .filter(pt => Array.isArray(pt) && pt.length === 2)
-            .map(([lng, lat]) => new window.naver.maps.LatLng(lat, lng))
-        )
-        .filter(path => path.length >= 3);
-
-      if (paths.length) {
-        const polygon = new window.naver.maps.Polygon({
-          map,
-          paths,
-          strokeColor: '#5347AA',
-          strokeWeight: 2,
-          strokeOpacity: 0.8,
-          fillColor: '#5347AA',
-          fillOpacity: 0.2,
-        });
-        currentPolygonRef.current = polygon;
-      }
-    } catch (err) {
-      console.error('경계 데이터 조회 실패:', err, data);
-    }
-  };
 
   // 마커 생성 및 이벤트 리스너 설정
   useEffect(() => {
@@ -202,15 +150,10 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
       // 마우스 이벤트 리스너 추가
       const mouseoverListener = window.naver.maps.Event.addListener(marker, 'mouseover', () => {
         infoWindow.open(map);
-        fetchBoundary(data);
       });
 
       const mouseoutListener = window.naver.maps.Event.addListener(marker, 'mouseout', () => {
         infoWindow.close();
-        if (currentPolygonRef.current) {
-          currentPolygonRef.current.setMap(null);
-          currentPolygonRef.current = null;
-        }
       });
 
       markersRef.current.push(marker);
@@ -241,10 +184,6 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
       }
       markersRef.current.forEach(marker => marker.setMap(null));
       markersRef.current = [];
-      if (currentPolygonRef.current) {
-        currentPolygonRef.current.setMap(null);
-        currentPolygonRef.current = null;
-      }
     };
   }, [map, summaryData, zoomLevel]);
 

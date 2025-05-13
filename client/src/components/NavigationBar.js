@@ -71,7 +71,7 @@ const NavigationBar = () => {
                 to="/map"
                 className={getMenuItemClasses('/map')}
               >
-                전체보기
+                지도
               </Link>
             </div>
           </div>

@@ -416,25 +416,64 @@ export const fetchAreaSummary = async (bounds, zoom) => {
   }
 };
 
+// 지역 요약 데이터 캐시 상태 확인
+export const checkAreaSummaryCacheStatus = async (bounds, zoom) => {
+  try {
+    const areaType = getAreaTypeByZoom(zoom);
+    const response = await axios.get(`${baseUrl}/api/map-summary/cache-status`, {
+      params: {
+        swLat: bounds.sw.lat,
+        swLng: bounds.sw.lng,
+        neLat: bounds.ne.lat,
+        neLng: bounds.ne.lng,
+        zoomLevel: zoom
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('지역 요약 데이터 캐시 상태 확인 실패:', error);
+    throw error;
+  }
+};
 
-// 경계 데이터 캐시 상태 확인
-export const checkBoundaryCacheStatus = async (boundaryId) => {
+// 캐시된 지역 요약 데이터 조회
+export const fetchCachedAreaSummary = async (bounds, zoom) => {
+  try {
+    const areaType = getAreaTypeByZoom(zoom);
+    const response = await axios.get(`${baseUrl}/api/map-summary/cached`, {
+      params: {
+        swLat: bounds.sw.lat,
+        swLng: bounds.sw.lng,
+        neLat: bounds.ne.lat,
+        neLng: bounds.ne.lng,
+        zoomLevel: zoom
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('캐시된 지역 요약 데이터 조회 실패:', error);
+    throw error;
+  }
+};
+
+// 경계 데이터 조회 (Redis 캐시 활용)
+export const fetchBoundaryWithCache = async (boundaryId, type) => {
     try {
-        const response = await axios.get(`${baseUrl}/api/boundaries/cache-status/${boundaryId}`);
+        const response = await axios.get(`${baseUrl}/api/boundaries/${type}/${boundaryId}`);
         return response.data;
     } catch (error) {
-        console.error('캐시 상태 확인 실패:', error);
+        console.error('경계 데이터 조회 실패:', error);
         throw error;
     }
 };
 
-// 경계 데이터 조회 (Redis 캐시 활용)
-export const fetchBoundaryWithCache = async (boundaryId) => {
+// 경계 데이터 캐시 상태 확인
+export const checkBoundaryCacheStatus = async (boundaryId, type) => {
     try {
-        const response = await axios.get(`${baseUrl}/api/boundaries/${boundaryId}`);
+        const response = await axios.get(`${baseUrl}/api/boundaries/cache-status/${type}/${boundaryId}`);
         return response.data;
     } catch (error) {
-        console.error('경계 데이터 조회 실패:', error);
+        console.error('캐시 상태 확인 실패:', error);
         throw error;
     }
 };

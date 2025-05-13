@@ -21,12 +21,11 @@ const ClinicMarker = ({ map, hospital, onClick, selected }) => {
     }
 
     const position = new window.naver.maps.LatLng(lat, lng);
-    const size = selected ? 36 : 28;
-    const imgSrc = selected ? '/images/markers/s-clinic.png' : '/images/markers/clinic.png';
+    const size = selected ? 24 : 20;
 
     const markerHtml = `
-      <div style="display: flex; align-items: center; justify-content: center;">
-        <img src='${imgSrc}' alt='의원' style='width:${size}px; height:${size}px;' />
+      <div style="display: flex; align-items: center; justify-content: center; font-size: ${size}px;">
+        ➕
       </div>
     `;
 

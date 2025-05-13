@@ -1,59 +1,52 @@
 import React, { useEffect, useRef } from 'react';
 
-const PharmacyMarker = ({ map, pharmacy, zoomLevel, onClick, selected }) => {
+const PharmacyMarker = ({ map, pharmacy, onClick, selected }) => {
   const markerRef = useRef(null);
 
+  // 좌표 getter
+  const getLat = p => parseFloat(p.lat);
+  const getLng = p => parseFloat(p.lng);
+
   useEffect(() => {
-    if (!map) return;
+    if (!map || !pharmacy) return;
 
-    let markerOptions = {
-      position: new window.naver.maps.LatLng(pharmacy.lat, pharmacy.lng),
-      map: map,
-      title: pharmacy.name,
-    };
-
-    if (zoomLevel >= 12) {
-      markerOptions = {
-        ...markerOptions,
-        icon: {
-          content: `<div style=\"display: flex; align-items: center; justify-content: center;\"><img src='${selected ? '/images/markers/s-pharmacy.png' : '/images/markers/pharmacy.png'}' alt='약국' style='width:36px; height:36px;'/></div>`,
-          size: new window.naver.maps.Size(36, 36),
-          anchor: new window.naver.maps.Point(18, 36),
-        }
-      };
-    } else if (zoomLevel >= 10) {
-      markerOptions = {
-        ...markerOptions,
-        icon: {
-          content: `<div style=\"background: white; padding: 3px; border-radius: 3px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);\"><div style=\"color: #00FF00; font-weight: bold;\">${pharmacy.name}</div></div>`,
-          size: new window.naver.maps.Size(38, 38),
-          anchor: new window.naver.maps.Point(19, 38),
-        }
-      };
-    } else {
-      markerOptions = {
-        ...markerOptions,
-        icon: {
-          content: '<div style=\"background: #00FF00; width: 10px; height: 10px; border-radius: 50%;\"></div>',
-          size: new window.naver.maps.Size(10, 10),
-          anchor: new window.naver.maps.Point(5, 5),
-        }
-      };
+    const lat = getLat(pharmacy);
+    const lng = getLng(pharmacy);
+    if (isNaN(lat) || isNaN(lng)) {
+      console.warn('Invalid coords for pharmacy:', pharmacy);
+      return;
     }
 
-    markerRef.current = new window.naver.maps.Marker(markerOptions);
+    const position = new window.naver.maps.LatLng(lat, lng);
+    const size = selected ? 24 : 20;
 
-    // 마커 클릭 이벤트
-    window.naver.maps.Event.addListener(markerRef.current, 'click', () => {
-      if (onClick) onClick(pharmacy);
+    const markerHtml = `
+      <div style="display: flex; align-items: center; justify-content: center; font-size: ${size}px;">
+        💊
+      </div>
+    `;
+
+    markerRef.current = new window.naver.maps.Marker({
+      position,
+      map,
+      title: pharmacy.name,
+      icon: {
+        content: markerHtml,
+        size: new window.naver.maps.Size(size, size),
+        anchor: new window.naver.maps.Point(size / 2, size),
+        origin: new window.naver.maps.Point(0, 0)
+      }
     });
+
+    window.naver.maps.Event.addListener(markerRef.current, 'click', onClick);
 
     return () => {
       if (markerRef.current) {
         markerRef.current.setMap(null);
+        markerRef.current = null;
       }
     };
-  }, [map, pharmacy, zoomLevel, onClick, selected]);
+  }, [map, pharmacy, selected, onClick]);
 
   return null;
 };

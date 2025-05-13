@@ -18,16 +18,22 @@ const OrientalHospitalMarker = ({ map, hospital, onClick, selected }) => {
     }
 
     const position = new window.naver.maps.LatLng(lat, lng);
-    const size = selected ? 32 : 24;
+    const size = selected ? 24 : 20;
+
+    const markerHtml = `
+      <div style="display: flex; align-items: center; justify-content: center; font-size: ${size}px;">
+        🌿
+      </div>
+    `;
 
     markerRef.current = new window.naver.maps.Marker({
       position,
       map,
       title: hospital.yadmNm || hospital.name,
       icon: {
-        content: `<img src="/images/markers/${selected ? 's-herbalClinic.png' : 'herbalClinic.png'}" width="${size}" height="${size}" />`,
+        content: markerHtml,
         size: new window.naver.maps.Size(size, size),
-        anchor: new window.naver.maps.Point(size / 2, size / 2),
+        anchor: new window.naver.maps.Point(size / 2, size),
         origin: new window.naver.maps.Point(0, 0)
       }
     });

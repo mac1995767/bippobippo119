@@ -13,89 +13,63 @@ const InfoRow = ({ label, value, icon }) => (
 const InfoSidebar = ({ info, onClose }) => {
   if (!info) return null;
 
-  // 아이콘 매핑
-  const iconMap = {
-    이름: '🏥',
-    주소: '📍',
-    전화번호: '☎️',
-    분류: '🏷️',
-    개설일: '📆',
-    시도: '📌',
-    시군구: '📍',
-    읍면동: '🗺️',
-    우편번호: '🏣',
-    기관코드: '🔢',
-    홈페이지: '🌐',
-    X좌표: '❌',
-    Y좌표: '🔺',
-    의사수: '🧑‍⚕️',
-    전문의수: '👨‍⚕️',
-    인턴수: '🧑‍🎓',
-    레지던트수: '👨‍🎓',
-    전공의수: '📚',
-    진료과목: '🩺',
-    간호사수: '👩‍⚕️',
-    업데이트: '⏱️',
+  const renderGroupInfo = () => {
+    return (
+      <div className="p-4">
+        <h2 className="text-xl font-bold mb-4">같은 위치의 시설 ({info.markers.length}개)</h2>
+        <div className="space-y-4">
+          {info.markers.map((marker, index) => (
+            <div key={index} className="border-b pb-4">
+              <h3 className="font-semibold">{marker.yadmNm || marker.name}</h3>
+              <p className="text-sm text-gray-600">
+                {marker.clCdNm || '약국'}
+              </p>
+              {marker.addr && (
+                <p className="text-sm text-gray-500 mt-1">{marker.addr}</p>
+              )}
+              {marker.telno && (
+                <p className="text-sm text-gray-500">{marker.telno}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
-  const fields = [
-    { label: '이름', value: info.yadmNm || info.name },
-    { label: '주소', value: info.addr || info.address },
-    { label: '전화번호', value: info.telno },
-    { label: '홈페이지', value: info.hospUrl },
-    { label: '분류', value: info.clCdNm },
-    { label: '개설일', value: info.estbDd },
-    { label: '시도', value: info.sidoCdNm },
-    { label: '시군구', value: info.sgguCdNm },
-    { label: '읍면동', value: info.emdongNm },
-    { label: '우편번호', value: info.postNo },
-    { label: '기관코드', value: info.ykiho },
-    { label: 'X좌표', value: info.Xpos || info.XPos },
-    { label: 'Y좌표', value: info.Ypos || info.YPos },
-    { label: '의사수', value: info.drTotCnt },
-    { label: '전문의수', value: info.cmdcGdrCnt },
-    { label: '인턴수', value: info.cmdcIntnCnt },
-    { label: '레지던트수', value: info.cmdcResdntCnt },
-    { label: '전공의수', value: info.cmdcSdrCnt },
-    { label: '진료과목', value: info.mdeptGdrCnt },
-    { label: '간호사수', value: info.pnursCnt },
-    { label: '업데이트', value: info.updatedAt },
-  ];
-
-  // 중요 정보 우선 필터링
-  const importantKeys = ['이름', '주소', '전화번호', '홈페이지'];
-  const important = fields.filter(f => importantKeys.includes(f.label) && f.value);
-  const others = fields.filter(f => !importantKeys.includes(f.label) && f.value);
+  const renderSingleInfo = () => {
+    const isHospital = 'yadmNm' in info;
+    
+    return (
+      <div className="p-4">
+        <h2 className="text-xl font-bold mb-4">{info.yadmNm || info.name}</h2>
+        <div className="space-y-2">
+          {isHospital && info.clCdNm && (
+            <p className="text-gray-600">{info.clCdNm}</p>
+          )}
+          {info.addr && (
+            <p className="text-gray-500">{info.addr}</p>
+          )}
+          {info.telno && (
+            <p className="text-gray-500">{info.telno}</p>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="h-full w-80 bg-white shadow-lg z-40 p-6 flex flex-col border-r min-w-[320px] max-w-[400px] overflow-y-auto">
-      <button className="self-end mb-4 text-xl" onClick={onClose}>✕</button>
-
-      {/* 상단 병원 이름 및 분류 뱃지 */}
-      <div className="mb-4">
-        {info.clCdNm && (
-          <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-semibold mb-2">
-            {info.clCdNm}
-          </span>
-        )}
-        <h2 className="text-2xl font-bold text-blue-900">{info.yadmNm || info.name}</h2>
+    <div className="w-80 bg-white shadow-lg h-full overflow-y-auto">
+      <div className="flex justify-between items-center p-4 border-b">
+        <h2 className="text-lg font-semibold">상세 정보</h2>
+        <button
+          onClick={onClose}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          ✕
+        </button>
       </div>
-
-      {/* 중요 정보 카드 */}
-      <div className="grid grid-cols-1 gap-4 mb-6">
-        {important.map((f, i) => (
-          <InfoRow key={i} label={f.label} value={f.value} icon={iconMap[f.label] || 'ℹ️'} />
-        ))}
-      </div>
-
-      <hr className="my-2 border-gray-300" />
-
-      {/* 일반 정보 카드 */}
-      <div className="grid grid-cols-1 gap-4">
-        {others.map((f, i) => (
-          <InfoRow key={i} label={f.label} value={f.value} icon={iconMap[f.label] || '📄'} />
-        ))}
-      </div>
+      {info.type === 'group' ? renderGroupInfo() : renderSingleInfo()}
     </div>
   );
 };
