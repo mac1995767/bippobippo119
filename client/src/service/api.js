@@ -491,4 +491,23 @@ export const cacheBoundariesBatch = async (boundaryIds) => {
     }
 };
 
+// 클러스터 데이터 조회
+export const fetchClusterData = async (bounds) => {
+  try {
+    const { sw, ne } = bounds;
+    const response = await axios.get(`${baseUrl}/api/map-summary/clusters`, {
+      params: {
+        swLat: sw.lat,
+        swLng: sw.lng,
+        neLat: ne.lat,
+        neLng: ne.lng
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('클러스터 데이터 조회 실패:', error);
+    return [];
+  }
+};
+
 //console.log(`🔗 API Base URL: ${baseURL}`);

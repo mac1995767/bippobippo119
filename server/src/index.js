@@ -125,7 +125,6 @@ addDefaultOrigins();
 //    console.error("Stack trace:", err.stack);
 //  });
 
-
 //reindexPharmacies()
 //.then(() => {
 //    console.log("✅ Elasticsearch Reindexing Complete!");

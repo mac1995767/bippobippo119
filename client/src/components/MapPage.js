@@ -1,24 +1,18 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { fetchMapTypeData, fetchCtpBoundary, fetchSigBoundary, fetchEmdBoundary, fetchLiBoundary } from '../service/api';
+import { fetchMapTypeData, fetchCtpBoundary, fetchSigBoundary, fetchEmdBoundary, fetchLiBoundary, fetchClusterData } from '../service/api';
 import MapCategoryTabs from './MapCategoryTabs';
 import MapFilterBar from './MapFilterBar';
-import HospitalMarker from './markers/HospitalMarker';
-import PharmacyMarker from './markers/PharmacyMarker';
 import DetailedHospitalMarker from './markers/DetailedHospitalMarker';
 import DetailedPharmacyMarker from './markers/DetailedPharmacyMarker';
 import debounce from 'lodash.debounce';
 import MapToolbar from './map/MapToolbar';
 import InfoSidebar from './InfoSidebar';
 import MapSearchBar from './MapSearchBar';
-import ClinicMarker from './markers/ClinicMarker';
-import OrientalHospitalMarker from './markers/OrientalHospitalMarker';
-import DentalClinicMarker from './markers/DentalClinicMarker';
-import NursingHospitalMarker from './markers/NursingHospitalMarker';
-import SuperGeneralHospitalMarker from './markers/SuperGeneralHospitalMarker';
-import GeneralHospitalMarker from './markers/GeneralHospitalMarker';
-import MentalHospitalMarker from './markers/MentalHospitalMarker';
-import DentalHospitalMarker from './markers/DentalHospitalMarker';
 import AreaSummaryPolygon from './AreaSummaryPolygon';
+import ClusterMarker from './markers/ClusterMarker';
+import HospitalMarker from './markers/HospitalMarker';
+import PharmacyMarker from './markers/PharmacyMarker';
+import ClusterInfoWindow from './markers/ClusterInfoWindow';
 
 const MapPage = () => {
   const mapRef = useRef(null);
@@ -54,6 +48,10 @@ const MapPage = () => {
     li: new Map()
   });
 
+  const [clusters, setClusters] = useState([]);
+  const [selectedCluster, setSelectedCluster] = useState(null);
+  const [infoWindowPosition, setInfoWindowPosition] = useState(null);
+
   // 요약 데이터
   const getPharmacyUniqueId = (pharmacy) =>
     pharmacy.ykiho || `${pharmacy.name}_${pharmacy.lat}_${pharmacy.lng}`;
@@ -68,7 +66,7 @@ const MapPage = () => {
     const sw = bounds.getSW();
     const ne = bounds.getNE();
     try {
-      const [hospRes, pharmRes] = await Promise.all([
+      const [hospRes, pharmRes, clusterRes] = await Promise.all([
         fetchMapTypeData('hospital', {
           swLat: sw.lat(), 
           swLng: sw.lng(), 
@@ -80,6 +78,10 @@ const MapPage = () => {
           swLng: sw.lng(), 
           neLat: ne.lat(), 
           neLng: ne.lng()
+        }),
+        fetchClusterData({
+          sw: { lat: sw.lat(), lng: sw.lng() },
+          ne: { lat: ne.lat(), lng: ne.lng() }
         })
       ]);
       setHospitals(hospRes);
@@ -90,6 +92,7 @@ const MapPage = () => {
           lng: pharm.lng || (pharm.location && pharm.location.lon),
         }))
       );
+      setClusters(clusterRes);
     } catch (err) {
       console.error('지도 데이터 불러오기 오류:', err);
     }
@@ -226,42 +229,7 @@ const MapPage = () => {
     // 병원과 약국 데이터 로깅 제거
   }, [hospitals, pharmacies]);
 
-  // 병원 유형별 마커 컴포넌트 매핑
-  const getMarkerComponent = (hospital, selected) => {
-    const commonProps = {
-      map: map,
-      hospital: hospital,
-      onClick: () => handleHospitalClick(hospital),
-      zoomLevel: zoomLevel,
-      selected: selected
-    };
-
-    switch (hospital.clCdNm) {
-      case '한의원':
-        return <OrientalHospitalMarker {...commonProps} />;
-      case '치과의원':
-        return <DentalClinicMarker {...commonProps} />;
-      case '요양병원':
-        return <NursingHospitalMarker {...commonProps} />;
-      case '의원':
-        return <ClinicMarker {...commonProps} />;
-      case '병원':
-        return <HospitalMarker {...commonProps} />;
-      case '종합병원':
-        return <GeneralHospitalMarker {...commonProps} />;
-      case '상급종합':
-        return <SuperGeneralHospitalMarker {...commonProps} />;
-      case '정신병원':
-        return <MentalHospitalMarker {...commonProps} />;
-      case '치과병원':
-        return <DentalHospitalMarker {...commonProps} />;
-      default:
-        return selected ? 
-          <DetailedHospitalMarker {...commonProps} /> : 
-          <HospitalMarker {...commonProps} />;
-    }
-  };
-
+  
   // 클러스터 초기화
   useEffect(() => {
     if (!map || !window.naver.maps.MarkerClustering) return;
@@ -493,6 +461,12 @@ const MapPage = () => {
     };
   }, [map]);
 
+  // 클러스터 클릭 핸들러 추가
+  const handleClusterClick = (cluster, position) => {
+    setSelectedCluster(cluster);
+    setInfoWindowPosition(position);
+  };
+
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
@@ -533,41 +507,50 @@ const MapPage = () => {
               {/* 줌 16~18: 간단 마커(병원/약국) */}
               {(zoomLevel >= 16 && zoomLevel < 19) && (
                 <>
-                  {hospitals.map(hospital => (
-                    selectedHospitalId === getHospitalUniqueId(hospital)
-                      ? <DetailedHospitalMarker
-                          key={getHospitalUniqueId(hospital)}
-                          map={map}
-                          hospital={hospital}
-                          onClick={() => handleHospitalClick(hospital)}
-                          selected
-                        />
-                      : <HospitalMarker
-                          key={getHospitalUniqueId(hospital)}
-                          map={map}
-                          hospital={hospital}
-                          zoomLevel={zoomLevel}
-                          onClick={() => handleHospitalClick(hospital)}
-                        />
-                  ))}
-                  {pharmacies.map(pharmacy => (
-                    selectedPharmacyId === getPharmacyUniqueId(pharmacy)
-                      ? <DetailedPharmacyMarker
-                          key={getPharmacyUniqueId(pharmacy)}
-                          map={map}
-                          pharmacy={pharmacy}
-                          onClick={() => handlePharmacyClick(pharmacy)}
-                          selected
-                        />
-                      : <PharmacyMarker
-                          key={getPharmacyUniqueId(pharmacy)}
-                          map={map}
-                          pharmacy={pharmacy}
-                          zoomLevel={handleReset}
-                          onClick={() => handlePharmacyClick(pharmacy)}
-                        />
+                  {clusters.map(cluster => (
+                    <ClusterMarker
+                      key={cluster.clusterId}
+                      map={map}
+                      position={new window.naver.maps.LatLng(
+                        cluster.location.lat,
+                        cluster.location.lon
+                      )}
+                      cluster={cluster}
+                      onHospitalClick={handleHospitalClick}
+                      onPharmacyClick={handlePharmacyClick}
+                      onClusterClick={handleClusterClick}
+                      selectedHospitalId={selectedHospitalId}
+                      selectedPharmacyId={selectedPharmacyId}
+                      getHospitalUniqueId={getHospitalUniqueId}
+                      getPharmacyUniqueId={getPharmacyUniqueId}
+                      zoomLevel={zoomLevel}
+                    />
                   ))}
                 </>
+              )}
+
+              {/* 클러스터 정보창 */}
+              {selectedCluster && infoWindowPosition && (
+                <div
+                  className="absolute z-50"
+                  style={{
+                    left: infoWindowPosition.x,
+                    top: infoWindowPosition.y,
+                    transform: 'translate(-50%, -100%)'
+                  }}
+                >
+                  <ClusterInfoWindow
+                    cluster={selectedCluster}
+                    onHospitalClick={(hospital) => {
+                      handleHospitalClick(hospital);
+                      setSelectedCluster(null);
+                    }}
+                    onPharmacyClick={(pharmacy) => {
+                      handlePharmacyClick(pharmacy);
+                      setSelectedCluster(null);
+                    }}
+                  />
+                </div>
               )}
 
               {/* 줌 19+: 상세 마커 */}

@@ -361,4 +361,64 @@ router.get('/cached', async (req, res) => {
   }
 });
 
+// 클러스터 데이터 조회
+router.get('/clusters', async (req, res) => {
+  try {
+    const { swLat, swLng, neLat, neLng } = req.query;
+    const swLatNum = parseFloat(swLat);
+    const swLngNum = parseFloat(swLng);
+    const neLatNum = parseFloat(neLat);
+    const neLngNum = parseFloat(neLng);
+
+    // 클러스터 데이터 조회
+    const result = await client.search({
+      index: 'map_data',
+      size: 1000,
+      query: {
+        bool: {
+          filter: [
+            { term: { type: 'cluster' } },
+            {
+              geo_bounding_box: {
+                location: {
+                  top_left: {
+                    lat: Math.max(swLatNum, neLatNum),
+                    lon: Math.min(swLngNum, neLngNum)
+                  },
+                  bottom_right: {
+                    lat: Math.min(swLatNum, neLatNum),
+                    lon: Math.max(swLngNum, neLngNum)
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    });
+    const clusters = result.hits.hits.map(hit => {
+      const source = hit._source;
+      return {
+        id: hit._id,
+        type: 'cluster',
+        location: source.location,
+        clusterCount: source.clusterCount || 0,
+        hospitalCount: source.hospitalCount || 0,
+        pharmacyCount: source.pharmacyCount || 0,
+        clusterId: source.clusterId || `${source.location.lat}_${source.location.lon}`,
+        details: {
+          hospitals: source.hospitals || [],
+          pharmacies: source.pharmacies || []
+        }
+      };
+    });
+
+
+    res.json(clusters);
+  } catch (error) {
+    console.error('클러스터 데이터 조회 오류:', error);
+    res.status(500).json({ error: '클러스터 데이터 조회 중 오류가 발생했습니다.' });
+  }
+});
+
 module.exports = router; 
