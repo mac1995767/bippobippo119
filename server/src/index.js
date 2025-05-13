@@ -17,6 +17,7 @@ const healthCenterRoutes = require('./routes/healthCenterRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
 const nursingHospitalSearchRouter = require('./elastic/nursingHospitalSearch');
 const nursingHospitalAutoCompleteRouter = require('./elastic/nursingHospitalAutoComplete');
+const boundaryRoutes = require('./routes/boundary'); // 경계 데이터 라우터 추가
 //const chatRoutes = require('./routes/chatRoutes');
 const { reindex } = require('./elastic/elastics'); // reindex 불러오기
 const { reindexMap } = require('./elastic/elastics'); // reindexMap 불러오기
@@ -37,11 +38,14 @@ const geoRouter = require('./routes/geo');
 const mapSummaryRouter = require('./routes/map-summary');
 const app = express();
 
+connectDB();
+
 // uploads 디렉토리 생성
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
+
 
 // 기본 origin 추가 함수
 const addDefaultOrigins = async () => {
@@ -96,8 +100,6 @@ app.use(cookieParser()); // cookie-parser 미들웨어 추가
 
 // uploads 디렉토리를 정적 파일로 서빙
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-connectDB();
 
 // 기본 origin 추가
 addDefaultOrigins();
@@ -175,6 +177,7 @@ app.use('/api/origins', hospitalOriginRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/autocomplete', autoCompleteRouter);
 app.use('/api/map-summary', mapSummaryRouter);
+app.use('/api/boundary', boundaryRoutes); // 경계 데이터 라우터 등록
 // map 라우터 설정
 console.log('map 라우터 설정');
 app.use('/api/map', mapRouter);
@@ -204,4 +207,6 @@ app.use((err, req, res, next) => {
 
 // 서버 실행
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});

@@ -226,7 +226,7 @@ const processAreaSummary = async (req, res, collectionName) => {
       }, [0, 0]).map(coord => coord / coordinates.length);
 
       return {
-        boundaryId: boundary._id,
+        boundaryId: boundary._id.toString,
         name: boundary.properties?.name || 
               boundary.properties?.CTP_KOR_NM || 
               boundary.properties?.SIG_KOR_NM || 
@@ -238,7 +238,8 @@ const processAreaSummary = async (req, res, collectionName) => {
         center: {
           lng: center[0],
           lat: center[1]
-        }
+        },
+        geometry: boundary.geometry // 폴리곤 정보까지 포함 
       };
     }));
 

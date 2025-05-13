@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { fetchMapTypeData} from '../service/api';
+import { fetchMapTypeData, fetchCtpBoundary, fetchSigBoundary, fetchEmdBoundary, fetchLiBoundary } from '../service/api';
 import MapCategoryTabs from './MapCategoryTabs';
 import MapFilterBar from './MapFilterBar';
 import HospitalMarker from './markers/HospitalMarker';
@@ -53,6 +53,13 @@ const MapPage = () => {
   const [clickedPosition, setClickedPosition] = useState(null);
   const [currentPolygon, setCurrentPolygon] = useState(null);
   const [lastClickedPosition, setLastClickedPosition] = useState(null);
+
+  const [boundaryCache, setBoundaryCache] = useState({
+    ctp: new Map(),
+    sig: new Map(),
+    emd: new Map(),
+    li: new Map()
+  });
 
   // 요약 데이터
   const getPharmacyUniqueId = (pharmacy) =>
@@ -432,7 +439,72 @@ const MapPage = () => {
     setIsSearchBarVisible(prev => !prev);
   }, []);
 
+  // 경계 데이터 미리 로딩
+  const preloadBoundaryData = async () => {
+    try {
+      const bounds = map.getBounds();
+      const sw = bounds.getSW();
+      const ne = bounds.getNE();
+      
+      // 모든 경계 데이터를 병렬로 로딩
+      const [ctpData, sigData, emdData, liData] = await Promise.all([
+        fetchCtpBoundary({ lat: sw.lat(), lng: sw.lng() }),
+        fetchSigBoundary({ lat: sw.lat(), lng: sw.lng() }),
+        fetchEmdBoundary({ lat: sw.lat(), lng: sw.lng() }),
+        fetchLiBoundary({ lat: sw.lat(), lng: sw.lng() })
+      ]);
 
+      // 데이터를 Map에 저장
+      const newCache = { ...boundaryCache };
+      
+      if (ctpData?.features) {
+        ctpData.features.forEach(feature => {
+          newCache.ctp.set(feature.properties._id, feature);
+        });
+      }
+      
+      if (sigData?.features) {
+        sigData.features.forEach(feature => {
+          newCache.sig.set(feature.properties._id, feature);
+        });
+      }
+      
+      if (emdData?.features) {
+        emdData.features.forEach(feature => {
+          newCache.emd.set(feature.properties._id, feature);
+        });
+      }
+      
+      if (liData?.features) {
+        liData.features.forEach(feature => {
+          newCache.li.set(feature.properties._id, feature);
+        });
+      }
+
+      setBoundaryCache(newCache);
+    } catch (error) {
+      console.error('경계 데이터 로딩 실패:', error);
+    }
+  };
+
+  // 지도 이동 시 경계 데이터 로딩
+  useEffect(() => {
+    if (!map) return;
+
+    const handleMapChange = () => {
+      preloadBoundaryData();
+    };
+
+    const idleListener = window.naver.maps.Event.addListener(map, 'idle', handleMapChange);
+    const zoomListener = window.naver.maps.Event.addListener(map, 'zoom_changed', handleMapChange);
+
+    return () => {
+      if (map && window.naver.maps.Event) {
+        window.naver.maps.Event.removeListener(idleListener);
+        window.naver.maps.Event.removeListener(zoomListener);
+      }
+    };
+  }, [map]);
 
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
@@ -468,6 +540,7 @@ const MapPage = () => {
               <AreaSummaryPolygon
                 map={map}
                 zoomLevel={zoomLevel}
+                boundaryCache={boundaryCache}
               />
 
               {/* 줌 16~18: 간단 마커(병원/약국) */}
@@ -502,7 +575,7 @@ const MapPage = () => {
               )}
 
               {/* 줌 19+: 상세 마커 */}
-              {handleReset >= 19 && (
+              {zoomLevel >= 19 && (
                 <>
                   {hospitals.map(hospital => (
                     <DetailedHospitalMarker

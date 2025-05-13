@@ -416,4 +416,40 @@ export const fetchAreaSummary = async (bounds, zoom) => {
   }
 };
 
+
+// 경계 데이터 캐시 상태 확인
+export const checkBoundaryCacheStatus = async (boundaryId) => {
+    try {
+        const response = await axios.get(`${baseUrl}/api/boundaries/cache-status/${boundaryId}`);
+        return response.data;
+    } catch (error) {
+        console.error('캐시 상태 확인 실패:', error);
+        throw error;
+    }
+};
+
+// 경계 데이터 조회 (Redis 캐시 활용)
+export const fetchBoundaryWithCache = async (boundaryId) => {
+    try {
+        const response = await axios.get(`${baseUrl}/api/boundaries/${boundaryId}`);
+        return response.data;
+    } catch (error) {
+        console.error('경계 데이터 조회 실패:', error);
+        throw error;
+    }
+};
+
+// 경계 데이터 일괄 캐싱
+export const cacheBoundariesBatch = async (boundaryIds) => {
+    try {
+        const response = await axios.post(`${baseUrl}/api/boundaries/cache-batch`, {
+            boundaryIds
+        });
+        return response.data;
+    } catch (error) {
+        console.error('일괄 캐싱 실패:', error);
+        throw error;
+    }
+};
+
 //console.log(`🔗 API Base URL: ${baseURL}`);

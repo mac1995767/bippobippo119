@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { fetchAreaSummary } from '../service/api';
-import { fetchCtpBoundary, fetchSigBoundary, fetchEmdBoundary, fetchLiBoundary } from '../service/api';
+import axios from 'axios';
 
 const AreaSummaryPolygon = ({ map, zoomLevel }) => {
   const markersRef = useRef([]);
@@ -8,6 +8,12 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
   const [summaryData, setSummaryData] = useState([]);
   const eventListenersRef = useRef([]);
   const currentPolygonRef = useRef(null);
+  const [boundaryCache, setBoundaryCache] = useState({
+    ctp: new Map(),
+    sig: new Map(),
+    emd: new Map(),
+    li: new Map()
+  });
 
   // 요약 데이터 가져오기
   const fetchSummaryData = async () => {
@@ -65,55 +71,48 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
   }, [map, zoomLevel]);
 
   // 경계 데이터 가져오기
-  const fetchBoundary = async (coordinates) => {
+  const fetchBoundary = async (data) => {
     try {
-      let geoJson = null;
-      // Emd 정보로 지역 유형 판별
-      let emdJsonForType = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-      let emdName = '';
-      if (emdJsonForType?.features?.length) {
-        emdName = emdJsonForType.features[0]?.properties?.EMD_KOR_NM || '';
-      }
-      const isMetropolitanArea = emdName.endsWith('동');
-
-      if (isMetropolitanArea) {
-        if (zoomLevel <= 8) {
-          geoJson = await fetchCtpBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-        } else if (zoomLevel >= 9 && zoomLevel <= 13) {
-          geoJson = await fetchSigBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-        } else if (zoomLevel >= 14) {
-          geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-        }
-      } else {
-        if (zoomLevel === 11) {
-          geoJson = await fetchSigBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-        } else if (zoomLevel === 12) {
-          geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-        } else if (zoomLevel === 13) {
-          geoJson = await fetchLiBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-          if (!geoJson?.features?.length) {
-            geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-          }
-        } else if (zoomLevel >= 14) {
-          geoJson = await fetchLiBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-          if (!geoJson?.features?.length) {
-            geoJson = await fetchEmdBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-          }
-        } else if (zoomLevel <= 10) {
-          geoJson = await fetchCtpBoundary({ lat: coordinates.lat, lng: coordinates.lng });
-        }
-      }
-
-      if (!geoJson?.features?.length) return;
-
-      // 기존 폴리곤 제거
       if (currentPolygonRef.current) {
         currentPolygonRef.current.setMap(null);
       }
 
-      // 새로운 폴리곤 생성
-      const feature = geoJson.features[0];
-      const geom = feature.geometry;
+      const boundaryId = data.boundaryId;
+      let type = '';
+      
+      // 줌 레벨에 따라 적절한 타입 결정
+      if (zoomLevel <= 8) {
+        type = 'ctp';
+      } else if (zoomLevel <= 13) {
+        type = 'sig';
+      } else if (zoomLevel <= 15) {
+        type = 'emd';
+      } else {
+        type = 'li';
+      }
+
+      // 캐시에서 데이터 확인
+      let geoJson = boundaryCache[type].get(boundaryId);
+      
+      // 캐시에 없으면 서버에서 가져오기
+      if (!geoJson) {
+        const response = await axios.get(`/api/boundary/${type}/${boundaryId}`);
+        geoJson = response.data;
+        if (geoJson) {
+          boundaryCache[type].set(boundaryId, geoJson);
+          setBoundaryCache(prev => ({
+            ...prev,
+            [type]: new Map(prev[type]).set(boundaryId, geoJson)
+          }));
+        }
+      }
+
+      if (!geoJson) {
+        console.log('경계 데이터를 찾을 수 없음:', boundaryId);
+        return;
+      }
+
+      const geom = geoJson.geometry;
       const rawArray = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
       const paths = rawArray
         .map(polygon =>
@@ -136,7 +135,7 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
         currentPolygonRef.current = polygon;
       }
     } catch (err) {
-      console.error('경계 데이터 조회 실패:', err);
+      console.error('경계 데이터 조회 실패:', err, data);
     }
   };
 
@@ -203,7 +202,7 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
       // 마우스 이벤트 리스너 추가
       const mouseoverListener = window.naver.maps.Event.addListener(marker, 'mouseover', () => {
         infoWindow.open(map);
-        fetchBoundary(data.center);
+        fetchBoundary(data);
       });
 
       const mouseoutListener = window.naver.maps.Event.addListener(marker, 'mouseout', () => {
