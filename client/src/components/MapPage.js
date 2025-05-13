@@ -534,12 +534,21 @@ const MapPage = () => {
               {(zoomLevel >= 16 && zoomLevel < 19) && (
                 <>
                   {hospitals.map(hospital => (
-                    <React.Fragment key={getHospitalUniqueId(hospital)}>
-                      {getMarkerComponent(
-                        hospital, 
-                        selectedHospitalId === getHospitalUniqueId(hospital)
-                      )}
-                    </React.Fragment>
+                    selectedHospitalId === getHospitalUniqueId(hospital)
+                      ? <DetailedHospitalMarker
+                          key={getHospitalUniqueId(hospital)}
+                          map={map}
+                          hospital={hospital}
+                          onClick={() => handleHospitalClick(hospital)}
+                          selected
+                        />
+                      : <HospitalMarker
+                          key={getHospitalUniqueId(hospital)}
+                          map={map}
+                          hospital={hospital}
+                          zoomLevel={zoomLevel}
+                          onClick={() => handleHospitalClick(hospital)}
+                        />
                   ))}
                   {pharmacies.map(pharmacy => (
                     selectedPharmacyId === getPharmacyUniqueId(pharmacy)
