@@ -10,8 +10,6 @@ import InfoSidebar from './InfoSidebar';
 import MapSearchBar from './MapSearchBar';
 import AreaSummaryPolygon from './AreaSummaryPolygon';
 import ClusterMarker from './markers/ClusterMarker';
-import HospitalMarker from './markers/HospitalMarker';
-import PharmacyMarker from './markers/PharmacyMarker';
 import ClusterInfoWindow from './markers/ClusterInfoWindow';
 
 const MapPage = () => {
@@ -461,10 +459,16 @@ const MapPage = () => {
     };
   }, [map]);
 
-  // 클러스터 클릭 핸들러 추가
+  // 클러스터 클릭 핸들러 수정
   const handleClusterClick = (cluster, position) => {
-    setSelectedCluster(cluster);
-    setInfoWindowPosition(position);
+    // 이전에 선택된 클러스터와 같은 클러스터를 클릭한 경우 정보창을 닫음
+    if (selectedCluster && selectedCluster.clusterId === cluster.clusterId) {
+      setSelectedCluster(null);
+      setInfoWindowPosition(null);
+    } else {
+      setSelectedCluster(cluster);
+      setInfoWindowPosition(position);
+    }
   };
 
   return (
@@ -484,6 +488,20 @@ const MapPage = () => {
 
       <div className="flex flex-row flex-1 h-0">
         <InfoSidebar info={selectedInfo} onClose={handleSidebarClose} />
+        {selectedCluster && (
+          <ClusterInfoWindow
+            cluster={selectedCluster}
+            onHospitalClick={(hospital) => {
+              handleHospitalClick(hospital);
+              setSelectedCluster(null);
+            }}
+            onPharmacyClick={(pharmacy) => {
+              handlePharmacyClick(pharmacy);
+              setSelectedCluster(null);
+            }}
+            onClose={() => setSelectedCluster(null)}
+          />
+        )}
         <div ref={mapRef} className="flex-1 p-0 m-0 relative">
           <MapSearchBar onSearch={handleSearchResult} isVisible={isSearchBarVisible} />
           {isLoading && (
@@ -524,33 +542,11 @@ const MapPage = () => {
                       getHospitalUniqueId={getHospitalUniqueId}
                       getPharmacyUniqueId={getPharmacyUniqueId}
                       zoomLevel={zoomLevel}
+                      isSelected={selectedCluster?.clusterId === cluster.clusterId}
+                      infoWindowPosition={infoWindowPosition}
                     />
                   ))}
                 </>
-              )}
-
-              {/* 클러스터 정보창 */}
-              {selectedCluster && infoWindowPosition && (
-                <div
-                  className="absolute z-50"
-                  style={{
-                    left: infoWindowPosition.x,
-                    top: infoWindowPosition.y,
-                    transform: 'translate(-50%, -100%)'
-                  }}
-                >
-                  <ClusterInfoWindow
-                    cluster={selectedCluster}
-                    onHospitalClick={(hospital) => {
-                      handleHospitalClick(hospital);
-                      setSelectedCluster(null);
-                    }}
-                    onPharmacyClick={(pharmacy) => {
-                      handlePharmacyClick(pharmacy);
-                      setSelectedCluster(null);
-                    }}
-                  />
-                </div>
               )}
 
               {/* 줌 19+: 상세 마커 */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import DetailedHospitalMarker from './DetailedHospitalMarker';
 import HospitalMarker from './HospitalMarker';
 import DetailedPharmacyMarker from './DetailedPharmacyMarker';
@@ -11,7 +11,6 @@ import GeneralHospitalMarker from './GeneralHospitalMarker';
 import SuperGeneralHospitalMarker from './SuperGeneralHospitalMarker';
 import MentalHospitalMarker from './MentalHospitalMarker';
 import DentalHospitalMarker from './DentalHospitalMarker';
-import ClusterInfoWindow from './ClusterInfoWindow';
 
 const ClusterMarker = ({ 
   map, 
@@ -24,9 +23,113 @@ const ClusterMarker = ({
   selectedPharmacyId,
   getHospitalUniqueId = (hospital) => hospital?.ykiho,
   getPharmacyUniqueId = (pharmacy) => pharmacy?.ykiho,
-  zoomLevel
+  zoomLevel,
+  isSelected
 }) => {
-  const [showInfoWindow, setShowInfoWindow] = useState(false);
+  const [marker, setMarker] = React.useState(null);
+
+  useEffect(() => {
+    if (!map || !cluster) return;
+
+    // 클러스터 마커인 경우
+    const { clusterCount } = cluster;
+    const size = Math.min(36 + (clusterCount * 1.5), 48);
+    const fontSize = Math.min(12 + (clusterCount / 10), 16);
+
+    const newMarker = new window.naver.maps.Marker({
+      position: position,
+      map: map,
+      icon: {
+        content: `
+          <div style="
+            cursor: pointer;
+            background-color: #FF5252;
+            color: white;
+            border-radius: 50%;
+            width: ${size}px;
+            height: ${size}px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: ${fontSize}px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: 2px solid #FFFFFF;
+          ">
+            ${clusterCount}
+          </div>
+        `,
+        size: new window.naver.maps.Size(size, size),
+        anchor: new window.naver.maps.Point(size/2, size/2)
+      }
+    });
+
+    // 클릭 이벤트 처리
+    window.naver.maps.Event.addListener(newMarker, 'click', () => {
+      onClusterClick(cluster);
+    });
+
+    // 마우스 이벤트 처리
+    window.naver.maps.Event.addListener(newMarker, 'mouseover', () => {
+      newMarker.setIcon({
+        content: `
+          <div style="
+            cursor: pointer;
+            background-color: #FF5252;
+            color: white;
+            border-radius: 50%;
+            width: ${size}px;
+            height: ${size}px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: ${fontSize}px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            border: 2px solid #FFFFFF;
+          ">
+            ${clusterCount}
+          </div>
+        `,
+        size: new window.naver.maps.Size(size, size),
+        anchor: new window.naver.maps.Point(size/2, size/2)
+      });
+    });
+
+    window.naver.maps.Event.addListener(newMarker, 'mouseout', () => {
+      newMarker.setIcon({
+        content: `
+          <div style="
+            cursor: pointer;
+            background-color: #FF5252;
+            color: white;
+            border-radius: 50%;
+            width: ${size}px;
+            height: ${size}px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: ${fontSize}px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: 2px solid #FFFFFF;
+          ">
+            ${clusterCount}
+          </div>
+        `,
+        size: new window.naver.maps.Size(size, size),
+        anchor: new window.naver.maps.Point(size/2, size/2)
+      });
+    });
+
+    setMarker(newMarker);
+
+    return () => {
+      if (newMarker) {
+        newMarker.setMap(null);
+      }
+    };
+  }, [map, position, cluster, onClusterClick]);
 
   // 병원 유형별 마커 컴포넌트 매핑
   const getMarkerComponent = (hospital, selected) => {
@@ -97,128 +200,7 @@ const ClusterMarker = ({
     }
   }
 
-  // 클러스터 마커인 경우
-  const { clusterCount, hospitals = [], pharmacies = [] } = cluster;
-  console.log('Cluster Data:', { clusterCount, hospitals, pharmacies }); // 디버깅용 로그
-
-  const size = Math.min(36 + (clusterCount * 1.5), 48);
-  const fontSize = Math.min(12 + (clusterCount / 10), 16);
-
-  const marker = new window.naver.maps.Marker({
-    position: position,
-    map: map,
-    icon: {
-      content: `
-        <div style="
-          cursor: pointer;
-          background-color: #FF5252;
-          color: white;
-          border-radius: 50%;
-          width: ${size}px;
-          height: ${size}px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: bold;
-          font-size: ${fontSize}px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-          border: 2px solid #FFFFFF;
-        ">
-          ${clusterCount}
-        </div>
-      `,
-      size: new window.naver.maps.Size(size, size),
-      anchor: new window.naver.maps.Point(size/2, size/2)
-    }
-  });
-
-  // 정보창 생성
-  const infoWindow = new window.naver.maps.InfoWindow({
-    content: '',
-    maxWidth: 300,
-    backgroundColor: "white",
-    borderColor: "#ccc",
-    borderWidth: 1,
-    anchorSize: new window.naver.maps.Size(10, 10),
-    anchorSkew: true,
-    anchorColor: "white",
-    pixelOffset: new window.naver.maps.Point(10, -10)
-  });
-
-  // 클릭 이벤트 처리
-  window.naver.maps.Event.addListener(marker, 'click', (e) => {
-    const point = map.getProjection().fromCoordToOffset(position);
-    onClusterClick(cluster, { x: point.x, y: point.y });
-  });
-
-  // 마우스 이벤트 처리
-  window.naver.maps.Event.addListener(marker, 'mouseover', () => {
-    marker.setIcon({
-      content: `
-        <div style="
-          cursor: pointer;
-          background-color: #FF5252;
-          color: white;
-          border-radius: 50%;
-          width: ${size}px;
-          height: ${size}px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: bold;
-          font-size: ${fontSize}px;
-          box-shadow: 0 3px 6px rgba(0,0,0,0.3);
-          border: 2px solid #FFFFFF;
-        ">
-          ${clusterCount}
-        </div>
-      `,
-      size: new window.naver.maps.Size(size, size),
-      anchor: new window.naver.maps.Point(size/2, size/2)
-    });
-  });
-
-  window.naver.maps.Event.addListener(marker, 'mouseout', () => {
-    marker.setIcon({
-      content: `
-        <div style="
-          cursor: pointer;
-          background-color: #FF5252;
-          color: white;
-          border-radius: 50%;
-          width: ${size}px;
-          height: ${size}px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: bold;
-          font-size: ${fontSize}px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-          border: 2px solid #FFFFFF;
-        ">
-          ${clusterCount}
-        </div>
-      `,
-      size: new window.naver.maps.Size(size, size),
-      anchor: new window.naver.maps.Point(size/2, size/2)
-    });
-  });
-
-  return showInfoWindow ? (
-    <ClusterInfoWindow
-      cluster={cluster}
-      onHospitalClick={(hospital) => {
-        onHospitalClick(hospital);
-        infoWindow.close();
-        setShowInfoWindow(false);
-      }}
-      onPharmacyClick={(pharmacy) => {
-        onPharmacyClick(pharmacy);
-        infoWindow.close();
-        setShowInfoWindow(false);
-      }}
-    />
-  ) : null;
+  return null;
 };
 
 export default ClusterMarker; 

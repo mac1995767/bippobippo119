@@ -1,60 +1,60 @@
 import React from 'react';
 
-const ClusterInfoWindow = ({ cluster, onHospitalClick, onPharmacyClick }) => {
-  console.log('ClusterInfoWindow - cluster data:', cluster); // 디버깅용 로그
+const ClusterInfoWindow = ({ cluster, onHospitalClick, onPharmacyClick, onClose }) => {
+  if (!cluster) return null;
 
-  const { details: { hospitals = [], pharmacies = [] } = {} } = cluster;
-  const totalCount = hospitals.length + pharmacies.length;
+  const { hospitals = [], pharmacies = [] } = cluster.details || {};
 
   return (
-    <div className="p-4 max-h-[300px] overflow-y-auto bg-white rounded-lg shadow-lg">
-      <div className="mb-4">
-        <h3 className="text-lg font-bold mb-2">클러스터 정보</h3>
-        <p className="text-sm text-gray-600">
-          총 {totalCount}개의 시설이 있습니다.
-        </p>
+    <div className="w-80 bg-white shadow-lg h-full overflow-y-auto">
+      <div className="flex justify-between items-center p-4 border-b">
+        <h2 className="text-lg font-semibold">병원 정보</h2>
+        <button
+          onClick={onClose}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          ✕
+        </button>
       </div>
-
-      {hospitals.length > 0 && (
+      
+      <div className="p-4">
         <div className="mb-4">
-          <h4 className="font-semibold mb-2">병원 ({hospitals.length})</h4>
+          <h3 className="text-md font-semibold mb-2">병원 ({hospitals.length}개)</h3>
           <div className="space-y-2">
             {hospitals.map((hospital, index) => (
-              <div
+              <div 
                 key={index}
-                className="p-2 hover:bg-gray-100 rounded cursor-pointer border border-gray-200"
+                className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
                 onClick={() => onHospitalClick(hospital)}
               >
-                <div className="font-medium">{hospital.yadmNm || hospital.name}</div>
+                <div className="font-medium">{hospital.yadmNm}</div>
                 <div className="text-sm text-gray-600">{hospital.clCdNm}</div>
                 {hospital.addr && (
-                  <div className="text-xs text-gray-500">{hospital.addr}</div>
+                  <div className="text-sm text-gray-500 mt-1">{hospital.addr}</div>
                 )}
               </div>
             ))}
           </div>
         </div>
-      )}
 
-      {pharmacies.length > 0 && (
         <div>
-          <h4 className="font-semibold mb-2">약국 ({pharmacies.length})</h4>
+          <h3 className="text-md font-semibold mb-2">약국 ({pharmacies.length}개)</h3>
           <div className="space-y-2">
             {pharmacies.map((pharmacy, index) => (
-              <div
+              <div 
                 key={index}
-                className="p-2 hover:bg-gray-100 rounded cursor-pointer border border-gray-200"
+                className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
                 onClick={() => onPharmacyClick(pharmacy)}
               >
-                <div className="font-medium">{pharmacy.name}</div>
+                <div className="font-medium">{pharmacy.yadmNm}</div>
                 {pharmacy.addr && (
-                  <div className="text-xs text-gray-500">{pharmacy.addr}</div>
+                  <div className="text-sm text-gray-500 mt-1">{pharmacy.addr}</div>
                 )}
               </div>
             ))}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

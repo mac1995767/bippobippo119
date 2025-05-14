@@ -364,38 +364,59 @@ router.get('/cached', async (req, res) => {
 // 클러스터 데이터 조회
 router.get('/clusters', async (req, res) => {
   try {
-    const { swLat, swLng, neLat, neLng } = req.query;
+    const { swLat, swLng, neLat, neLng, centerLat, centerLng, radius = 5 } = req.query;
+    
+    // 위도/경도 값 검증
     const swLatNum = parseFloat(swLat);
     const swLngNum = parseFloat(swLng);
     const neLatNum = parseFloat(neLat);
     const neLngNum = parseFloat(neLng);
+    const centerLatNum = parseFloat(centerLat);
+    const centerLngNum = parseFloat(centerLng);
+    const radiusKm = parseFloat(radius);
+
+    // 유효하지 않은 좌표값 체크
+    if (isNaN(swLatNum) || isNaN(swLngNum) || isNaN(neLatNum) || isNaN(neLngNum) || 
+        isNaN(centerLatNum) || isNaN(centerLngNum) || isNaN(radiusKm)) {
+      console.error('Invalid coordinates:', { swLat, swLng, neLat, neLng, centerLat, centerLng, radius });
+      return res.status(400).json({ error: 'Invalid coordinates' });
+    }
 
     // 클러스터 데이터 조회
     const result = await client.search({
       index: 'map_data',
-      size: 1000,
+      size: 50,
+      _source: ['location', 'clusterCount', 'hospitalCount', 'pharmacyCount', 'clusterId', 'hospitals', 'pharmacies'],
       query: {
         bool: {
           filter: [
             { term: { type: 'cluster' } },
             {
-              geo_bounding_box: {
+              geo_distance: {
+                distance: `${radiusKm}km`,
                 location: {
-                  top_left: {
-                    lat: Math.max(swLatNum, neLatNum),
-                    lon: Math.min(swLngNum, neLngNum)
-                  },
-                  bottom_right: {
-                    lat: Math.min(swLatNum, neLatNum),
-                    lon: Math.max(swLngNum, neLngNum)
-                  }
+                  lat: centerLatNum,
+                  lon: centerLngNum
                 }
               }
             }
           ]
         }
-      }
+      },
+      sort: [
+        {
+          _geo_distance: {
+            location: {
+              lat: centerLatNum,
+              lon: centerLngNum
+            },
+            order: "asc",
+            unit: "km"
+          }
+        }
+      ]
     });
+
     const clusters = result.hits.hits.map(hit => {
       const source = hit._source;
       return {
@@ -412,7 +433,6 @@ router.get('/clusters', async (req, res) => {
         }
       };
     });
-
 
     res.json(clusters);
   } catch (error) {

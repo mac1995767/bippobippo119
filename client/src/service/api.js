@@ -495,12 +495,18 @@ export const cacheBoundariesBatch = async (boundaryIds) => {
 export const fetchClusterData = async (bounds) => {
   try {
     const { sw, ne } = bounds;
+    const centerLat = (sw.lat + ne.lat) / 2;
+    const centerLng = (sw.lng + ne.lng) / 2;
+    
     const response = await axios.get(`${baseUrl}/api/map-summary/clusters`, {
       params: {
         swLat: sw.lat,
         swLng: sw.lng,
         neLat: ne.lat,
-        neLng: ne.lng
+        neLng: ne.lng,
+        centerLat,
+        centerLng,
+        radius: 5
       }
     });
     return response.data;
