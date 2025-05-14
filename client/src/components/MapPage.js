@@ -6,7 +6,7 @@ import debounce from 'lodash.debounce';
 import MapToolbar from './map/MapToolbar';
 import InfoSidebar from './InfoSidebar';
 import MapSearchBar from './MapSearchBar';
-import AreaSummaryPolygon from './AreaSummaryPolygon';
+import MapCluster from './clusters/MapCluster';
 import ClusterMarker from './markers/ClusterMarker';
 import ClusterInfoWindow from './markers/ClusterInfoWindow';
 
@@ -513,11 +513,13 @@ const MapPage = () => {
 
           {map && (
             <>
-              {/* 요약 데이터 폴리곤 */}
-              <AreaSummaryPolygon
+              {/* 요약 데이터 클러스터 */}
+              <MapCluster
                 map={map}
                 zoomLevel={zoomLevel}
-                boundaryCache={boundaryCache}
+                onClusterClick={(cluster, position) => {
+                  // 클러스터 클릭 시 처리할 로직이 필요하다면 여기에 추가
+                }}
               />
 
               {/* 줌 16+: 모든 마커 표시 */}

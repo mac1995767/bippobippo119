@@ -163,9 +163,7 @@ const processAreaSummary = async (req, res, collectionName) => {
     // 두 개의 영역에 대한 캐시 키 생성
     const cacheKey1 = `areaSummary:${collectionName}:${swLat},${swLng},${midLat},${midLng}`;
     const cacheKey2 = `areaSummary:${collectionName}:${midLat},${midLng},${neLat},${neLng}`;
-    
-    console.log('생성된 캐시 키:', { cacheKey1, cacheKey2 });
-    
+        
     // 두 영역의 캐시된 데이터 확인
     const [cached1, cached2] = await Promise.all([
       redis.get(cacheKey1),
@@ -433,6 +431,80 @@ router.get('/clusters', async (req, res) => {
         }
       };
     });
+
+    res.json(clusters);
+  } catch (error) {
+    console.error('클러스터 데이터 조회 오류:', error);
+    res.status(500).json({ error: '클러스터 데이터 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// 클러스터 데이터 조회
+router.get('/mapCluster', async (req, res) => {
+  try {
+    const { swLat, swLng, neLat, neLng, zoomLevel } = req.query;
+    
+    // 위도/경도 값 검증
+    const swLatNum = parseFloat(swLat);
+    const swLngNum = parseFloat(swLng);
+    const neLatNum = parseFloat(neLat);
+    const neLngNum = parseFloat(neLng);
+    const zoomLevelNum = parseInt(zoomLevel);
+
+    // 유효하지 않은 좌표값 체크
+    if (isNaN(swLatNum) || isNaN(swLngNum) || isNaN(neLatNum) || isNaN(neLngNum) || isNaN(zoomLevelNum)) {
+      console.error('유효하지 않은 좌표값:', { swLat, swLng, neLat, neLng, zoomLevel });
+      return res.status(400).json({ error: '유효하지 않은 좌표값' });
+    }
+
+    // 줌 레벨에 따른 경계 타입 결정
+    let boundaryType;
+    if (zoomLevelNum >= 15) boundaryType = 'li';
+    else if (zoomLevelNum >= 13) boundaryType = 'emd';
+    else if (zoomLevelNum >= 11) boundaryType = 'sig';
+    else boundaryType = 'ctprvn';
+
+    // Elasticsearch에서 클러스터 데이터 조회
+    const result = await client.search({
+      index: 'map_data_cluster',
+      size: 100,
+      body: {
+        query: {
+          bool: {
+            must: [
+              { term: { boundaryType } }
+            ],
+            filter: [
+              {
+                geo_bounding_box: {
+                  location: {
+                    top_left: {
+                      lat: Math.max(swLatNum, neLatNum),
+                      lon: Math.min(swLngNum, neLngNum)
+                    },
+                    bottom_right: {
+                      lat: Math.min(swLatNum, neLatNum),
+                      lon: Math.max(swLngNum, neLngNum)
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    });
+
+    const clusters = result.hits.hits.map(hit => ({
+      id: hit._id,
+      name: hit._source.name,
+      boundaryType: hit._source.boundaryType,
+      boundaryId: hit._source.boundaryId,
+      location: hit._source.location,
+      hospitalCount: hit._source.hospitalCount || 0,
+      pharmacyCount: hit._source.pharmacyCount || 0,
+      isClustered: hit._source.isClustered || false
+    }));
 
     res.json(clusters);
   } catch (error) {

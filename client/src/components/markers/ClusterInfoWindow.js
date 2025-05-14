@@ -18,42 +18,46 @@ const ClusterInfoWindow = ({ cluster, onHospitalClick, onPharmacyClick, onClose 
       </div>
       
       <div className="p-4">
-        <div className="mb-4">
-          <h3 className="text-md font-semibold mb-2">병원 ({hospitals.length}개)</h3>
-          <div className="space-y-2">
-            {hospitals.map((hospital, index) => (
-              <div 
-                key={index}
-                className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
-                onClick={() => onHospitalClick(hospital)}
-              >
-                <div className="font-medium">{hospital.yadmNm}</div>
-                <div className="text-sm text-gray-600">{hospital.clCdNm}</div>
-                {hospital.addr && (
-                  <div className="text-sm text-gray-500 mt-1">{hospital.addr}</div>
-                )}
-              </div>
-            ))}
+        {hospitals.length > 0 && (
+          <div className="mb-4">
+            <h3 className="text-md font-semibold mb-2">병원 ({hospitals.length}개)</h3>
+            <div className="space-y-2">
+              {hospitals.map((hospital, index) => (
+                <div 
+                  key={index}
+                  className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+                  onClick={() => onHospitalClick(hospital)}
+                >
+                  <div className="font-medium">{hospital.yadmNm}</div>
+                  <div className="text-sm text-gray-600">{hospital.clCdNm}</div>
+                  {hospital.addr && (
+                    <div className="text-sm text-gray-500 mt-1">{hospital.addr}</div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div>
-          <h3 className="text-md font-semibold mb-2">약국 ({pharmacies.length}개)</h3>
-          <div className="space-y-2">
-            {pharmacies.map((pharmacy, index) => (
-              <div 
-                key={index}
-                className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
-                onClick={() => onPharmacyClick(pharmacy)}
-              >
-                <div className="font-medium">{pharmacy.yadmNm}</div>
-                {pharmacy.addr && (
-                  <div className="text-sm text-gray-500 mt-1">{pharmacy.addr}</div>
-                )}
-              </div>
-            ))}
+        {pharmacies.length > 0 && (
+          <div>
+            <h3 className="text-md font-semibold mb-2">약국 ({pharmacies.length}개)</h3>
+            <div className="space-y-2">
+              {pharmacies.map((pharmacy, index) => (
+                <div 
+                  key={index}
+                  className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+                  onClick={() => onPharmacyClick(pharmacy)}
+                >
+                  <div className="font-medium">{pharmacy.yadmNm}</div>
+                  {pharmacy.addr && (
+                    <div className="text-sm text-gray-500 mt-1">{pharmacy.addr}</div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

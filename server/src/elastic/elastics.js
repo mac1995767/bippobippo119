@@ -21,6 +21,9 @@ const {
   bulkEmdBoundariesIndex,
   bulkLiBoundariesIndex
 } = require('./bulkBoundariesIndex');
+const { deleteMapClusterIndex } = require('./deleteMapClusterIndex');
+const { createMapClusterIndex } = require('./createMapClusterIndex');
+const { bulkMapClusterIndex } = require('./bulkMapClusterIndex');
 
 async function reindex() {
   try {
@@ -177,10 +180,33 @@ async function reindexBoundaries() {
   }
 }
 
+async function reindexMapCluster() {
+  try {
+    console.log("🔄 클러스터 데이터 재색인 프로세스 시작...");
+    
+    console.log("Step 1: 기존 클러스터 인덱스 삭제...");
+    await deleteMapClusterIndex();
+    
+    console.log("Step 2: 새로운 클러스터 인덱스 생성...");
+    await createMapClusterIndex();
+    
+    console.log("Step 3: 클러스터 데이터 색인...");
+    await bulkMapClusterIndex();
+
+    console.log("✅ 클러스터 데이터 재색인 완료!");
+  } catch (error) {
+    console.error("❌ 클러스터 데이터 재색인 중 오류 발생:");
+    console.error("오류 메시지:", error.message);
+    console.error("스택 트레이스:", error.stack);
+    throw error;
+  }
+}
+
 module.exports = { 
   reindex,
   reindexPharmacies,
   reindexMap,
   reindexSgguCoord,
-  reindexBoundaries
+  reindexBoundaries,
+  reindexMapCluster
 };

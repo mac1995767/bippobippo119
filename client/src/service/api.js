@@ -516,4 +516,23 @@ export const fetchClusterData = async (bounds) => {
   }
 };
 
+// 맵 클러스터 데이터 조회
+export const fetchMapClusterData = async (bounds, zoomLevel) => {
+  try {
+    const response = await axios.get(`${baseUrl}/api/map-summary/mapCluster`, {
+      params: {
+        swLat: bounds.sw.lat,
+        swLng: bounds.sw.lng,
+        neLat: bounds.ne.lat,
+        neLng: bounds.ne.lng,
+        zoomLevel
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('맵 클러스터 데이터 조회 실패:', error);
+    throw error;
+  }
+};
+
 //console.log(`🔗 API Base URL: ${baseURL}`);

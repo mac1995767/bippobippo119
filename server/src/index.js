@@ -24,6 +24,7 @@ const { reindexMap } = require('./elastic/elastics'); // reindexMap 불러오기
 const { reindexSgguCoord } = require('./elastic/elastics'); // reindexSgguCoord 불러오기
 //const { reindexPharmacies } = require('./elastic/elastics'); // reindexPharmacies 불러오기
 const { reindexBoundaries } = require('./elastic/elastics'); // reindexBoundaries 불러오기
+const { reindexMapCluster } = require('./elastic/elastics'); // reindexMapCluster 불러오기
 const User = require('./models/User');
 const cors = require('cors');
 const cookieParser = require('cookie-parser'); // cookie-parser 추가
@@ -149,6 +150,15 @@ addDefaultOrigins();
 //.then(() => {
 //  console.log("✅ Elasticsearch Boundaries Reindexing Complete!");
 //})  
+//.catch(err => {
+//  console.error("❌ Error in reindexing:", err);
+//  console.error("Stack trace:", err.stack);
+//});
+
+//reindexMapCluster()
+//.then(() => {
+//  console.log("✅ Elasticsearch Map Cluster Reindexing Complete!");
+//})
 //.catch(err => {
 //  console.error("❌ Error in reindexing:", err);
 //  console.error("Stack trace:", err.stack);
