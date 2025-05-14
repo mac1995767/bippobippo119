@@ -2,8 +2,6 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { fetchMapTypeData, fetchCtpBoundary, fetchSigBoundary, fetchEmdBoundary, fetchLiBoundary, fetchClusterData } from '../service/api';
 import MapCategoryTabs from './MapCategoryTabs';
 import MapFilterBar from './MapFilterBar';
-import DetailedHospitalMarker from './markers/DetailedHospitalMarker';
-import DetailedPharmacyMarker from './markers/DetailedPharmacyMarker';
 import debounce from 'lodash.debounce';
 import MapToolbar from './map/MapToolbar';
 import InfoSidebar from './InfoSidebar';
@@ -522,18 +520,51 @@ const MapPage = () => {
                 boundaryCache={boundaryCache}
               />
 
-              {/* 줌 16~18: 간단 마커(병원/약국) */}
-              {(zoomLevel >= 16 && zoomLevel < 19) && (
+              {/* 줌 16+: 모든 마커 표시 */}
+              {zoomLevel >= 16 && (
                 <>
-                  {clusters.map(cluster => (
-                    <ClusterMarker
-                      key={cluster.clusterId}
-                      map={map}
-                      position={new window.naver.maps.LatLng(
+                  {[
+                    // 클러스터 마커
+                    ...clusters.map(cluster => ({
+                      ...cluster,
+                      key: cluster.clusterId,
+                      position: new window.naver.maps.LatLng(
                         cluster.location.lat,
                         cluster.location.lon
-                      )}
-                      cluster={cluster}
+                      )
+                    })),
+                    // 단일 병원 마커
+                    ...hospitals.map(hospital => ({
+                      type: 'hospital',
+                      clusterId: getHospitalUniqueId(hospital),
+                      details: {
+                        hospitals: [hospital]
+                      },
+                      key: getHospitalUniqueId(hospital),
+                      position: new window.naver.maps.LatLng(
+                        hospital.location?.lat || hospital.lat,
+                        hospital.location?.lon || hospital.lng
+                      )
+                    })),
+                    // 단일 약국 마커
+                    ...pharmacies.map(pharmacy => ({
+                      type: 'pharmacy',
+                      clusterId: getPharmacyUniqueId(pharmacy),
+                      details: {
+                        pharmacies: [pharmacy]
+                      },
+                      key: getPharmacyUniqueId(pharmacy),
+                      position: new window.naver.maps.LatLng(
+                        pharmacy.lat || pharmacy.location?.lat,
+                        pharmacy.lng || pharmacy.location?.lon
+                      )
+                    }))
+                  ].map(item => (
+                    <ClusterMarker
+                      key={item.key}
+                      map={map}
+                      position={item.position}
+                      cluster={item}
                       onHospitalClick={handleHospitalClick}
                       onPharmacyClick={handlePharmacyClick}
                       onClusterClick={handleClusterClick}
@@ -542,32 +573,8 @@ const MapPage = () => {
                       getHospitalUniqueId={getHospitalUniqueId}
                       getPharmacyUniqueId={getPharmacyUniqueId}
                       zoomLevel={zoomLevel}
-                      isSelected={selectedCluster?.clusterId === cluster.clusterId}
+                      isSelected={selectedCluster?.clusterId === item.clusterId}
                       infoWindowPosition={infoWindowPosition}
-                    />
-                  ))}
-                </>
-              )}
-
-              {/* 줌 19+: 상세 마커 */}
-              {zoomLevel >= 19 && (
-                <>
-                  {hospitals.map(hospital => (
-                    <DetailedHospitalMarker
-                      key={getHospitalUniqueId(hospital)}
-                      map={map}
-                      hospital={hospital}
-                      onClick={() => handleHospitalClick(hospital)}
-                      selected={selectedHospitalId === getHospitalUniqueId(hospital)}
-                    />
-                  ))}
-                  {pharmacies.map(pharmacy => (
-                    <DetailedPharmacyMarker
-                      key={getPharmacyUniqueId(pharmacy)}
-                      map={map}
-                      pharmacy={pharmacy}
-                      onClick={() => handlePharmacyClick(pharmacy)}
-                      selected={selectedPharmacyId === getPharmacyUniqueId(pharmacy)}
                     />
                   ))}
                 </>
