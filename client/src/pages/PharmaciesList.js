@@ -399,7 +399,7 @@ const PharmaciesList = () => {
               </button>
               {getPagination(currentPage, totalPages).map((page, idx) =>
                 page === '...'
-                  ? <span key={idx} className="px-3 py-1 text-gray-400">...</span>
+                  ? <span key={`ellipsis-${idx}`} className="px-3 py-1 text-gray-400">...</span>
                   : <button
                       key={page}
                       onClick={() => handlePageChange(page)}
