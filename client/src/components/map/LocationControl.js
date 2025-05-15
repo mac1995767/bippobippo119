@@ -78,7 +78,7 @@ function LocationControl({ map }) {
   }, [map]);
 
   return (
-    <>
+    <div className="location-control-wrapper">
       <button
         onClick={handleLocate}
         disabled={isLocating}
@@ -125,7 +125,7 @@ function LocationControl({ map }) {
           }
         }
       `}</style>
-    </>
+    </div>
   );
 }
 

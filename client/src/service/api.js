@@ -249,37 +249,6 @@ export const fetchMapSummary = async () => {
   }
 };
 
-// 시군구별 병원/약국 요약 데이터 가져오기
-export const fetchMapSummarySggu = async () => {
-  try {
-    const response = await axios.get(`${baseUrl}/api/map/summary-sggu`);
-    return response.data;
-  } catch (error) {
-    console.error('❌ Error fetching map summary sggu:', error);
-    throw error;
-  }
-};
-
-// GeoJSON 경계 데이터 받아오기
-export const fetchGeoBoundary = async (params) => {
-  try {
-    if (!params.lat || !params.lng) {
-      throw new Error('좌표가 필요합니다.');
-    }
-
-    const endpoint = params.endpoint || '/api/geo/ctp/coordinates';
-    const response = await axios.get(`${baseUrl}${endpoint}`, {
-      params: {
-        lat: params.lat,
-        lng: params.lng
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('❌ Error fetching geo boundary:', error);
-    throw error;
-  }
-};
 
 export const fetchMedicalStats = async () => {
   try {

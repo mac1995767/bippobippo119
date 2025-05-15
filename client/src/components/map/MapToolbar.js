@@ -57,7 +57,8 @@ function MapToolbar({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 통계 데이터 가져오기
+  // 통계 데이터 가져오기 (이 부분을 주석 처리)
+  /*
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -70,6 +71,7 @@ function MapToolbar({
     };
     fetchStats();
   }, []);
+  */
 
   const handleTypeToggle = (type) => {
     const next = selectedTypes.includes(type)
@@ -112,13 +114,13 @@ function MapToolbar({
 
   const buttons = [
     { label: '검색',        icon: <FaSearch size={18} />,       onClick: onSearch },
-    { label: '히트맵',      icon: <FaThermometerHalf size={18} />, onClick: onToggleHeatmap },
-    { label: '대중교통',    icon: <FaBus size={18} />,          onClick: onPublicTransport },
-    { label: '북마크',      icon: <FaBookmark size={18} />,     onClick: onBookmark },
-    { label: '공유',        icon: <FaShareAlt size={18} />,     onClick: onCopyLink },
+    // { label: '히트맵',      icon: <FaThermometerHalf size={18} />, onClick: onToggleHeatmap },
+    // { label: '대중교통',    icon: <FaBus size={18} />,          onClick: onPublicTransport },
+    // { label: '북마크',      icon: <FaBookmark size={18} />,     onClick: onBookmark },
+    // { label: '공유',        icon: <FaShareAlt size={18} />,     onClick: onCopyLink },
     { label: '풀스크린',    icon: isFullscreen ? <FaCompress size={18} /> : <FaExpand size={18} />, onClick: toggleFullscreen },
     { label: '도움말',      icon: <FaInfoCircle size={18} />,   onClick: () => setShowHelp(true) },
-    { label: '필터',        icon: <FaSatellite size={18} />,    onClick: () => setShowFilter(v => !v) }
+    // { label: '필터',        icon: <FaSatellite size={18} />,    onClick: () => setShowFilter(v => !v) }
   ];
 
   return (

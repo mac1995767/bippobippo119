@@ -11,16 +11,13 @@ const BoundaryPolygon = ({ map, boundaryType, name, style }) => {
 
     ;(async () => {
       try {
-        console.log(`[BoundaryPolygon] 시작 → type: ${boundaryType}, name: ${name}`)
         const res = await fetchBoundaryGeometry(boundaryType, name)
         if (canceled) {
-          console.warn(`[BoundaryPolygon] 취소됨 → type: ${boundaryType}, name: ${name}`)
           return
         }
 
         const geom = res.geometry
         if (!geom) {
-          console.error(`[BoundaryPolygon] geometry 없음 → type: ${boundaryType}, name: ${name}`, res)
           return
         }
 
@@ -31,17 +28,10 @@ const BoundaryPolygon = ({ map, boundaryType, name, style }) => {
         } else if (geom.type === 'MultiPolygon') {
           rings = geom.coordinates.map(poly => poly[0])
         } else {
-          console.error(
-            `[BoundaryPolygon] 지원 안 되는 geometry.type → ${geom.type}`,
-            geom
-          )
           return
         }
 
         if (!rings.length) {
-          console.error(
-            `[BoundaryPolygon] 추출된 링 없음 → type: ${boundaryType}, name: ${name}`
-          )
           return
         }
 
@@ -60,9 +50,6 @@ const BoundaryPolygon = ({ map, boundaryType, name, style }) => {
           ([lng, lat]) => new window.naver.maps.LatLng(lat, lng)
         )
         if (!latlngs.length) {
-          console.error(
-            `[BoundaryPolygon] latlngs 변환 실패 → type: ${boundaryType}, name: ${name}`
-          )
           return
         }
 
@@ -77,15 +64,10 @@ const BoundaryPolygon = ({ map, boundaryType, name, style }) => {
           zIndex: style?.zIndex ?? 1000
         })
 
-        console.log(
-          `[BoundaryPolygon] 폴리곤 생성 성공 → type: ${boundaryType}, name: ${name}`
-        )
         polygonRef.current.push(polygon)
       } catch (err) {
-        console.error(
-          `[BoundaryPolygon] load failure → type: ${boundaryType}, name: ${name}`,
-          err
-        )
+        // 에러 처리는 필요에 따라 유지하거나 다른 방식으로 변경할 수 있습니다.
+        // 예를 들어, 사용자에게 알림을 표시하거나 로깅 서비스로 에러를 전송할 수 있습니다.
       }
     })()
 
@@ -94,7 +76,7 @@ const BoundaryPolygon = ({ map, boundaryType, name, style }) => {
       polygonRef.current.forEach(p => p.setMap(null))
       polygonRef.current = []
     }
-  }, [map, boundaryType, name])
+  }, [map, boundaryType, name, style]) // style을 의존성 배열에 추가하는 것이 좋습니다.
 
   return null
 }

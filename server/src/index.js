@@ -35,7 +35,6 @@ const hospitalOriginRoutes = require('./routes/hospitalOriginRoutes');
 const path = require('path');
 const fs = require('fs');
 const mapRouter = require('./routes/map');
-const geoRouter = require('./routes/geo');
 const mapSummaryRouter = require('./routes/map-summary');
 const app = express();
 
@@ -166,7 +165,6 @@ addDefaultOrigins();
 
 // API 라우트 설정
 console.log('라우터 설정 시작');
-app.use('/api/geo', geoRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRoutes);
 app.use('/api/email', emailRouter);

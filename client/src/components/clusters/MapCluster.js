@@ -23,7 +23,6 @@ const MapCluster = ({ map, zoomLevel, onClusterClick }) => {
           zoomLevel
         );
         
-        console.log('받아온 클러스터 데이터:', clusterData);
         setClusters(clusterData);
       } catch (error) {
         console.error('클러스터 데이터 로드 실패:', error);

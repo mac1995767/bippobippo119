@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { fetchMapTypeData, fetchCtpBoundary, fetchSigBoundary, fetchEmdBoundary, fetchLiBoundary, fetchClusterData } from '../service/api';
+import { fetchMapTypeData, fetchClusterData } from '../service/api';
 import MapCategoryTabs from './MapCategoryTabs';
 import MapFilterBar from './MapFilterBar';
 import debounce from 'lodash.debounce';
@@ -36,13 +36,6 @@ const MapPage = () => {
 
   const [currentPolygon, setCurrentPolygon] = useState(null);
   const [lastClickedPosition, setLastClickedPosition] = useState(null);
-
-  const [boundaryCache, setBoundaryCache] = useState({
-    ctp: new Map(),
-    sig: new Map(),
-    emd: new Map(),
-    li: new Map()
-  });
 
   const [clusters, setClusters] = useState([]);
   const [selectedCluster, setSelectedCluster] = useState(null);
@@ -389,73 +382,6 @@ const MapPage = () => {
   const handleSearchToggle = useCallback(() => {
     setIsSearchBarVisible(prev => !prev);
   }, []);
-
-  // 경계 데이터 미리 로딩
-  const preloadBoundaryData = async () => {
-    try {
-      const bounds = map.getBounds();
-      const sw = bounds.getSW();
-      const ne = bounds.getNE();
-      
-      // 모든 경계 데이터를 병렬로 로딩
-      const [ctpData, sigData, emdData, liData] = await Promise.all([
-        fetchCtpBoundary({ lat: sw.lat(), lng: sw.lng() }),
-        fetchSigBoundary({ lat: sw.lat(), lng: sw.lng() }),
-        fetchEmdBoundary({ lat: sw.lat(), lng: sw.lng() }),
-        fetchLiBoundary({ lat: sw.lat(), lng: sw.lng() })
-      ]);
-
-      // 데이터를 Map에 저장
-      const newCache = { ...boundaryCache };
-      
-      if (ctpData?.features) {
-        ctpData.features.forEach(feature => {
-          newCache.ctp.set(feature.properties._id, feature);
-        });
-      }
-      
-      if (sigData?.features) {
-        sigData.features.forEach(feature => {
-          newCache.sig.set(feature.properties._id, feature);
-        });
-      }
-      
-      if (emdData?.features) {
-        emdData.features.forEach(feature => {
-          newCache.emd.set(feature.properties._id, feature);
-        });
-      }
-      
-      if (liData?.features) {
-        liData.features.forEach(feature => {
-          newCache.li.set(feature.properties._id, feature);
-        });
-      }
-
-      setBoundaryCache(newCache);
-    } catch (error) {
-      console.error('경계 데이터 로딩 실패:', error);
-    }
-  };
-
-  // 지도 이동 시 경계 데이터 로딩
-  useEffect(() => {
-    if (!map) return;
-
-    const handleMapChange = () => {
-      preloadBoundaryData();
-    };
-
-    const idleListener = window.naver.maps.Event.addListener(map, 'idle', handleMapChange);
-    const zoomListener = window.naver.maps.Event.addListener(map, 'zoom_changed', handleMapChange);
-
-    return () => {
-      if (map && window.naver.maps.Event) {
-        window.naver.maps.Event.removeListener(idleListener);
-        window.naver.maps.Event.removeListener(zoomListener);
-      }
-    };
-  }, [map]);
 
   // 클러스터 클릭 핸들러 수정
   const handleClusterClick = (cluster, position) => {
