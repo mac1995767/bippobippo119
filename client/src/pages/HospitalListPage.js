@@ -457,7 +457,7 @@ const HospitalListPage = () => {
                           <span className="flex-1 truncate">{hospital.addr}</span>
                           <a
                             href={`https://map.naver.com/v5/search/${encodeURIComponent(
-                              hospital.addr
+                              (hospital.addr ? hospital.addr.split(' ')[0] : '') + " " + hospital.yadmNm
                             )}`}
                             target="_blank"
                             rel="noopener noreferrer"

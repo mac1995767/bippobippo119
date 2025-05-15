@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import FilterDropdown from "../components/FilterDropdown";
-import DistanceInfo from "../components/DistanceInfo";
 import { searchPharmacies, fetchAllPharmacies } from "../service/api";
 import PharmacyAutoComplete from "../components/PharmacyAutoComplete";
 
@@ -26,23 +25,13 @@ const filterRegions = [
   { label: "세종시", icon: "🏢" },
 ];
 
-const filterTypes = [
-  { label: "전체", icon: "🏥" },
-  { label: "일반약국", icon: "💊" },
-  { label: "한약국", icon: "🌿" },
-  { label: "기관약국", icon: "🏢" },
-  { label: "기타약국", icon: "📦" },
-];
-
 const PharmaciesList = () => {
   const navigate = useNavigate();
   const [selectedRegion, setSelectedRegion] = useState("전국");
-  const [selectedType, setSelectedType] = useState("전체");
   const [searchQuery, setSearchQuery] = useState("");
   const [locationBased, setLocationBased] = useState(false);
   const [userLocation, setUserLocation] = useState({ x: null, y: null });
   const [selectedDistance, setSelectedDistance] = useState(10000);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [pharmacies, setPharmacies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -50,18 +39,16 @@ const PharmaciesList = () => {
   const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 10;
 
+  const isInitialMount = useRef(true);
+
   // URL에서 쿼리 파라미터 읽어오기
   const location = useLocation();
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const type = params.get("type");
     const query = params.get("query") || "";
     const x = params.get("x");
     const y = params.get("y");
 
-    if (type) {
-      setSelectedType(type);
-    }
     if (query && query !== searchQuery) {
       setSearchQuery(query);
       handleSearch({ preventDefault: () => {} }, query);
@@ -75,15 +62,15 @@ const PharmaciesList = () => {
 
   const filterCategories = [
     { name: "지역", options: filterRegions, state: selectedRegion, setState: setSelectedRegion },
-    { name: "약국유형", options: filterTypes, state: selectedType, setState: setSelectedType }
   ];
 
   const handleFilterChange = (categoryName, option) => {
     if (categoryName === "지역") {
       setSelectedRegion(option);
-    } else if (categoryName === "약국유형") {
-      setSelectedType(option);
-    }
+      // 지역 필터 변경 시 위치 기반 검색 상태 초기화
+      setLocationBased(false);
+      setUserLocation({ x: null, y: null });
+    } 
   };
 
   // 초기 데이터 로드
@@ -115,16 +102,21 @@ const PharmaciesList = () => {
     try {
       setLoading(true);
       setCurrentPage(1); // 검색 시 첫 페이지로 리셋
-      const response = await searchPharmacies({
+      
+      const apiParams = {
         query: customQuery !== undefined ? customQuery : searchQuery,
         region: selectedRegion,
-        type: selectedType,
-        x: userLocation.x,
-        y: userLocation.y,
-        distance: selectedDistance,
         page: 1,
         limit: itemsPerPage
-      });
+      };
+
+      if (locationBased && userLocation.x !== null && userLocation.y !== null) {
+        apiParams.x = userLocation.x;
+        apiParams.y = userLocation.y;
+        apiParams.distance = selectedDistance;
+      }
+
+      const response = await searchPharmacies(apiParams);
       
       if (response && response.data) {
         setPharmacies(response.data);
@@ -138,9 +130,23 @@ const PharmaciesList = () => {
     }
 
     const params = new URLSearchParams();
-    if (customQuery !== undefined ? customQuery : searchQuery) params.append("query", customQuery !== undefined ? customQuery : searchQuery);
-    if (selectedType !== "전체") params.append("type", selectedType);
-    if (selectedRegion !== "전국") params.append("region", selectedRegion);
+    const effectiveQuery = customQuery !== undefined ? customQuery : searchQuery;
+
+    if (effectiveQuery) {
+      params.append("query", effectiveQuery);
+      // 검색어가 있으면 URL에 region을 추가하지 않음
+    } else {
+      // 검색어가 없을 때만 region을 추가
+      if (selectedRegion !== "전국") {
+        params.append("region", selectedRegion);
+      }
+    }
+
+    // locationBased가 true이고 유효한 위치값이 있을 때만 x, y 파라미터를 URL에 추가
+    if (locationBased && userLocation.x !== null && userLocation.y !== null) {
+      params.append("x", userLocation.x.toString());
+      params.append("y", userLocation.y.toString());
+    }
     navigate(`/pharmacies?${params.toString()}`);
   };
 
@@ -149,22 +155,43 @@ const PharmaciesList = () => {
     if (searchQuery) {
       handleSearch({ preventDefault: () => {} }, searchQuery);
     }
+    // 검색어가 비워졌을 때도 handleSearch를 호출하여 전체 목록 또는 현재 지역 필터 기준으로 검색 (선택적)
+    // else if (!searchQuery && !isInitialMount.current) { // 초기 마운트가 아니고 검색어가 비워졌을 때
+    //   handleSearch(null, ""); // 빈 검색어로 검색
+    // }
   }, [searchQuery]);
+
+  // selectedRegion이 변경될 때마다 검색 실행 (수정된 부분)
+  useEffect(() => {
+    if (isInitialMount.current) {
+      // 컴포넌트가 처음 마운트될 때는 이 useEffect가 바로 실행되지 않도록 합니다.
+      // 초기 데이터 로드는 loadInitialData 또는 다른 로직에서 처리합니다.
+      isInitialMount.current = false;
+    } else {
+      // selectedRegion이 사용자에 의해 변경된 경우에만 검색을 실행합니다.
+      handleSearch(null); // 인자 없이 호출하면 내부적으로 현재 searchQuery와 selectedRegion을 사용합니다.
+    }
+  }, [selectedRegion]);
 
   const handlePageChange = async (page) => {
     setCurrentPage(page);
     try {
       setLoading(true);
-      const response = await searchPharmacies({
+
+      const apiParams = {
         query: searchQuery,
         region: selectedRegion,
-        type: selectedType,
-        x: userLocation.x,
-        y: userLocation.y,
-        distance: selectedDistance,
         page: page,
         limit: itemsPerPage
-      });
+      };
+
+      if (locationBased && userLocation.x !== null && userLocation.y !== null) {
+        apiParams.x = userLocation.x;
+        apiParams.y = userLocation.y;
+        apiParams.distance = selectedDistance;
+      }
+
+      const response = await searchPharmacies(apiParams);
       
       if (response && response.data) {
         setPharmacies(response.data);
@@ -313,9 +340,7 @@ const PharmaciesList = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {pharmacies.map((pharmacy) => {
             // 거리 계산
-            const distance = pharmacy.distance;
-            console.log('약국 거리:', pharmacy.yadmNm, distance); // 디버깅용 로그
-            
+            const distance = pharmacy.distance;            
             return (
               <div key={pharmacy.ykiho} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
                 <div className="p-4">
@@ -340,7 +365,7 @@ const PharmaciesList = () => {
                     <div className="mt-2 flex items-center justify-between">
                       <span className="text-sm text-gray-500">{pharmacy.telno}</span>
                       <a
-                        href={`https://map.naver.com/v5/search/${encodeURIComponent(pharmacy.addr)}`}
+                        href={`https://map.naver.com/v5/search/${encodeURIComponent(pharmacy.sidoCdNm + ' ' + pharmacy.yadmNm)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-500 hover:text-blue-700 text-sm px-2 py-1 border border-blue-300 rounded-md flex items-center gap-x-1 hover:bg-blue-100"

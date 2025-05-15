@@ -147,6 +147,7 @@ const NursingHospitalDetailPage = () => {
           {/* 왼쪽 섹션: 기본 정보 */}
           <div className="lg:col-span-2 space-y-6">
             {/* 리뷰 요약 섹션 */}
+            {/*
             <div className="bg-white rounded-2xl shadow-md p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold">후기 ({reviews.length})</h2>
@@ -171,6 +172,7 @@ const NursingHospitalDetailPage = () => {
                 ))}
               </div>
             </div>
+            */}
 
             {/* 핵심 정보 카드 */}
             <div className="bg-white rounded-2xl shadow-md p-6">
