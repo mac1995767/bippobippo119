@@ -520,4 +520,18 @@ export const fetchBoundaryGeometry = async (boundaryType, name) => {
   }
 };
 
+// 활성 공지사항 목록 가져오기
+export const fetchActiveAnnouncements = async () => {
+  try {
+    const response = await axios.get(`${baseUrl}/api/announcements/active`);
+    // 데이터 정렬은 호출하는 쪽에서 필요에 따라 수행하도록 여기서 제거할 수 있습니다.
+    // 또는 여기서 정렬된 데이터를 반환할 수도 있습니다.
+    // 여기서는 정렬 로직을 포함하여 반환하겠습니다.
+    return response.data.sort((a, b) => b.priority - a.priority);
+  } catch (error) {
+    console.error('활성 공지사항 로딩 실패:', error);
+    throw error; // 오류를 다시 throw하여 호출하는 쪽에서 처리할 수 있도록 함
+  }
+};
+
 //console.log(`🔗 API Base URL: ${baseURL}`);

@@ -7,7 +7,7 @@ const pool = require('../config/mysql');
 
 const { authenticateToken, isAdmin } = require('./authRoutes');      
 
-router.use(authenticateToken, isAdmin);
+// router.use(authenticateToken, isAdmin); // 전체 라우터에 대한 인증 미들웨어 제거
 
 // 파일 업로드를 위한 multer 설정
 const storage = multer.diskStorage({
@@ -32,8 +32,8 @@ const upload = multer({
   }
 });
 
-// 공지사항 목록 조회
-router.get('/', async (req, res) => {
+// 공지사항 목록 조회 (관리자용)
+router.get('/', authenticateToken, isAdmin, async (req, res) => { // 인증 미들웨어 추가
   try {
     const [rows] = await pool.query(
       'SELECT * FROM hospital_announcements ORDER BY created_at DESC'
@@ -45,7 +45,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// 활성화된 공지사항만 조회
+// 활성화된 공지사항만 조회 (인증 불필요)
 router.get('/active', async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -58,8 +58,8 @@ router.get('/active', async (req, res) => {
   }
 });
 
-// 공지사항 등록
-router.post('/', upload.single('image'), async (req, res) => {
+// 공지사항 등록 (관리자용)
+router.post('/', authenticateToken, isAdmin, upload.single('image'), async (req, res) => { // 인증 미들웨어 추가
   try {
     const { title, content, link_url, start_date, end_date, priority, is_active } = req.body;
     const image_url = req.file ? `/images/announcements/${req.file.filename}` : null;
@@ -79,8 +79,8 @@ router.post('/', upload.single('image'), async (req, res) => {
   }
 });
 
-// 공지사항 수정
-router.put('/:id', upload.single('image'), async (req, res) => {
+// 공지사항 수정 (관리자용)
+router.put('/:id', authenticateToken, isAdmin, upload.single('image'), async (req, res) => { // 인증 미들웨어 추가
   try {
     const { id } = req.params;
     const { title, content, link_url, start_date, end_date, priority, is_active } = req.body;
@@ -112,8 +112,8 @@ router.put('/:id', upload.single('image'), async (req, res) => {
   }
 });
 
-// 공지사항 삭제
-router.delete('/:id', async (req, res) => {
+// 공지사항 삭제 (관리자용)
+router.delete('/:id', authenticateToken, isAdmin, async (req, res) => { // 인증 미들웨어 추가
   try {
     const { id } = req.params;
     

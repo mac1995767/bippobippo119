@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
-import { getApiUrl } from '../utils/api';
+// import axios from 'axios'; // axios 직접 사용 안하므로 주석 처리 또는 제거 가능
+// import { getApiUrl } from '../utils/api'; // getApiUrl 직접 사용 안하므로 주석 처리 또는 제거 가능
+import { fetchActiveAnnouncements } from '../service/api'; // 새로 추가된 함수 import
 
 const AnnouncementContext = createContext();
 
@@ -18,11 +19,15 @@ export const AnnouncementProvider = ({ children }) => {
 
   const fetchAnnouncements = async () => {
     try {
-      const response = await axios.get(`${getApiUrl()}/api/announcements/active`, { withCredentials: true });
-      const activeAnnouncements = response.data.sort((a, b) => b.priority - a.priority);
+      // const response = await axios.get(`${getApiUrl()}/api/announcements/active`);
+      // const activeAnnouncements = response.data.sort((a, b) => b.priority - a.priority);
+      const activeAnnouncements = await fetchActiveAnnouncements(); // api.js의 함수 호출
       setAnnouncements(activeAnnouncements);
     } catch (error) {
-      console.error('공지사항 로딩 실패:', error);
+      console.error('공지사항 로딩 실패 (Context):', error); // 컨텍스트 레벨에서의 에러 로깅
+      // 여기서 추가적인 에러 처리 (예: 사용자에게 알림)를 할 수 있습니다.
+      // api.js에서 이미 콘솔 로그를 남기므로, 중복을 피하기 위해 여기서는 다른 처리를 하거나 로그를 남기지 않을 수 있습니다.
+      // 우선은 컨텍스트 레벨에서도 로그를 남기도록 유지합니다.
     }
   };
 
@@ -53,6 +58,7 @@ export const AnnouncementProvider = ({ children }) => {
   const value = {
     announcements,
     modalVisible,
+    setModalVisible,
     closeModal,
     closeDayModal,
     fetchAnnouncements

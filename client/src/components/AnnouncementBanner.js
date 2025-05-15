@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import styled from 'styled-components';
@@ -8,7 +8,7 @@ const AnnouncementBanner = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
-  const { announcements, modalVisible, closeModal, closeDayModal } = useAnnouncement();
+  const { announcements, modalVisible, setModalVisible, fetchAnnouncements, closeModal } = useAnnouncement();
 
   const handlePrevious = (e) => {
     e.stopPropagation();
@@ -29,6 +29,22 @@ const AnnouncementBanner = () => {
       navigate(link_url);
     }
   };
+
+  const closeDayModal = () => {
+    setModalVisible(false);
+    const today = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD' 형식
+    localStorage.setItem('AnnouncementCookie', today);
+  };
+
+  useEffect(() => {
+    const VISITED_BEFORE_DATE = localStorage.getItem('AnnouncementCookie');
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (VISITED_BEFORE_DATE === today) {
+      setModalVisible(false);
+    }
+    fetchAnnouncements();
+  }, []);
 
   if (location.pathname !== '/' || announcements.length === 0 || !modalVisible) return null;
 

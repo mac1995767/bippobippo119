@@ -398,7 +398,7 @@ const MapPage = () => {
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
       <MapCategoryTabs />
-      <MapFilterBar />
+        <MapFilterBar />       
       <MapToolbar 
         onZoomIn={handleZoomIn} 
         onZoomOut={handleZoomOut} 
