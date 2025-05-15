@@ -15,6 +15,7 @@ const MapFilterBar = () => (
       </button>
     ))}
     <button className="px-4 py-2 rounded border bg-white text-blue-600 border-blue-200 text-sm font-medium">상세검색 +</button>
+    <button className="px-4 py-2 rounded border bg-white text-purple-600 border-purple-200 text-sm font-medium"> 준비중인 세션 </button>
   </div>
 );
 
