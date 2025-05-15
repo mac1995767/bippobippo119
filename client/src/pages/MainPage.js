@@ -5,7 +5,7 @@ import AppTour from "../components/AppTour";
 import AutoComplete from "../components/AutoComplete";
 import MedicalGuideSlider from "../components/MedicalGuideSlider";
 import NursingHospitalBannerSlider from "../components/NursingHospitalBannerSlider";
-import BigChatModal from "../components/BigChatModal";
+//import BigChatModal from "../components/BigChatModal";
 import MedicalInfoSection from '../components/MedicalInfoSection';
 import Board from '../components/Board';
 // import NavigationBar from '../components/NavigationBar';
@@ -79,7 +79,7 @@ const MainPage = () => {
         </section>
       </main>
 
-      <BigChatModal />
+      {/* <BigChatModal /> */}
     </section>
   );
 };

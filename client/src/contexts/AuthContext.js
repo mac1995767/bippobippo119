@@ -37,15 +37,12 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
       try {
         const response = await api.get('/api/auth/check-auth');
-        // console.log('Auth Response:', response.data);
         if (response.data && response.data.user) {
-          // console.log('User Data:', response.data.user);
           updateAuthState(response.data.user);
         } else {
           updateAuthState(null);
         }
       } catch (error) {
-        console.error('인증 확인 오류:', error);
         updateAuthState(null);
       } finally {
         setIsLoading(false);

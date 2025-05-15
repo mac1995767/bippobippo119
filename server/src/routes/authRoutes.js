@@ -152,7 +152,7 @@ router.get('/check-admin', authenticateToken, (req, res) => {
 });
 
 // 인증 상태 확인
-router.get('/check-auth', authenticateToken, async (req, res) => {
+router.get('/check-auth', async (req, res) => {
   try {
     
     // 사용자 정보 조회 (roles 테이블과 JOIN)

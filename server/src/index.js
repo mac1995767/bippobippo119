@@ -17,7 +17,6 @@ const healthCenterRoutes = require('./routes/healthCenterRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
 const nursingHospitalSearchRouter = require('./elastic/nursingHospitalSearch');
 const nursingHospitalAutoCompleteRouter = require('./elastic/nursingHospitalAutoComplete');
-const boundaryRoutes = require('./routes/boundary'); // 경계 데이터 라우터 추가
 //const chatRoutes = require('./routes/chatRoutes');
 const { reindex } = require('./elastic/elastics'); // reindex 불러오기
 const { reindexMap } = require('./elastic/elastics'); // reindexMap 불러오기
@@ -184,7 +183,6 @@ app.use('/api/origins', hospitalOriginRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/autocomplete', autoCompleteRouter);
 app.use('/api/map-summary', mapSummaryRouter);
-app.use('/api/boundary', boundaryRoutes); // 경계 데이터 라우터 등록
 // map 라우터 설정
 console.log('map 라우터 설정');
 app.use('/api/map', mapRouter);

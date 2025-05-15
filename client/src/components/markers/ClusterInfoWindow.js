@@ -6,7 +6,7 @@ const ClusterInfoWindow = ({ cluster, onHospitalClick, onPharmacyClick, onClose 
   const { hospitals = [], pharmacies = [] } = cluster.details || {};
 
   return (
-    <div className="w-80 bg-white shadow-lg h-full overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-white overflow-y-auto md:relative md:inset-auto md:z-auto md:w-80 md:shadow-lg md:h-full">
       <div className="flex justify-between items-center p-4 border-b">
         <h2 className="text-lg font-semibold">병원 정보</h2>
         <button
