@@ -535,4 +535,20 @@ export const fetchMapClusterData = async (bounds, zoomLevel) => {
   }
 };
 
+// 경계 geometry 데이터 조회
+export const fetchBoundaryGeometry = async (boundaryType, name) => {
+  try {
+    const response = await axios.get(`${baseUrl}/api/map-summary/boundary-geometry`, {
+      params: {
+        boundaryType,
+        name
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('경계 geometry 데이터 조회 실패:', error);
+    throw error;
+  }
+};
+
 //console.log(`🔗 API Base URL: ${baseURL}`);

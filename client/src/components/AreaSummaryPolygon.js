@@ -35,7 +35,6 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
           },
           zoomLevel
         );
-        console.log('Redis 캐시에서 데이터 조회 완료');
       } else {
         // 캐시된 데이터가 없으면 일반 API 호출
         data = await fetchAreaSummary(
@@ -45,7 +44,6 @@ const AreaSummaryPolygon = ({ map, zoomLevel }) => {
           },
           zoomLevel
         );
-        console.log('일반 API에서 데이터 조회 완료');
       }
       
       setSummaryData(data);

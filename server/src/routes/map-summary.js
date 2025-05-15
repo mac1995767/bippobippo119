@@ -216,7 +216,6 @@ const processAreaSummary = async (req, res, collectionName) => {
       // 각 경계별로 병원/약국 개수 집계
       const results = await Promise.all(boundaries.map(async (boundary) => {
         const idStr = boundary._id.toString();
-        console.log('경계 데이터 처리 중:', idStr);
         
         const hospitalCount = await client.count({
           index: 'map_data',
@@ -442,7 +441,7 @@ router.get('/clusters', async (req, res) => {
 // 클러스터 데이터 조회
 router.get('/mapCluster', async (req, res) => {
   try {
-    const { swLat, swLng, neLat, neLng, zoomLevel } = req.query;
+    const { swLat, swLng, neLat, neLng, zoomLevel = '8' } = req.query;
     
     // 위도/경도 값 검증
     const swLatNum = parseFloat(swLat);
@@ -452,14 +451,15 @@ router.get('/mapCluster', async (req, res) => {
     const zoomLevelNum = parseInt(zoomLevel);
 
     // 유효하지 않은 좌표값 체크
-    if (isNaN(swLatNum) || isNaN(swLngNum) || isNaN(neLatNum) || isNaN(neLngNum) || isNaN(zoomLevelNum)) {
-      console.error('유효하지 않은 좌표값:', { swLat, swLng, neLat, neLng, zoomLevel });
+    if (isNaN(swLatNum) || isNaN(swLngNum) || isNaN(neLatNum) || isNaN(neLngNum)) {
       return res.status(400).json({ error: '유효하지 않은 좌표값' });
     }
 
     // 줌 레벨에 따른 경계 타입 결정
     let boundaryType;
-    if (zoomLevelNum >= 15) boundaryType = 'li';
+    if (zoomLevelNum >= 15) {
+      boundaryType = ['emd', 'li'];  // 동과 리 모두 포함
+    }
     else if (zoomLevelNum >= 13) boundaryType = 'emd';
     else if (zoomLevelNum >= 11) boundaryType = 'sig';
     else boundaryType = 'ctprvn';
@@ -472,7 +472,7 @@ router.get('/mapCluster', async (req, res) => {
         query: {
           bool: {
             must: [
-              { term: { boundaryType } }
+              Array.isArray(boundaryType) ? { terms: { boundaryType } } : { term: { boundaryType } }
             ],
             filter: [
               {
@@ -510,6 +510,77 @@ router.get('/mapCluster', async (req, res) => {
   } catch (error) {
     console.error('클러스터 데이터 조회 오류:', error);
     res.status(500).json({ error: '클러스터 데이터 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// 경계 geometry 데이터 조회
+router.get('/boundary-geometry', async (req, res) => {
+  try {
+    const { boundaryType, name } = req.query;
+
+    if (!boundaryType || !name) {
+      return res.status(400).json({ error: '경계 타입과 이름이 필요합니다.' });
+    }
+
+    let collectionName;
+    let queryField;
+    switch(boundaryType) {
+      case 'ctprvn':
+        collectionName = 'sggu_boundaries_ctprvn';
+        queryField = 'properties.CTP_KOR_NM';
+        break;
+      case 'sig':
+        collectionName = 'sggu_boundaries_sig';
+        queryField = 'properties.SIG_KOR_NM';
+        break;
+      case 'emd':
+        collectionName = 'sggu_boundaries_emd';
+        queryField = 'properties.EMD_KOR_NM';
+        break;
+      case 'li':
+        collectionName = 'sggu_boundaries_li';
+        queryField = 'properties.LI_KOR_NM';
+        break;
+      default:
+        return res.status(400).json({ error: '유효하지 않은 경계 타입입니다.' });
+    }
+
+    const collection = mongoose.connection.collection(collectionName);
+
+    // 인덱스 확인 및 생성
+    const indexes = await collection.indexes();
+    const hasGeoIndex = indexes.some(index => index.key && index.key.geometry === '2dsphere');
+    
+    if (!hasGeoIndex) {
+      await collection.createIndex({ geometry: '2dsphere' });
+    }
+
+    // geometry_2dsphere 인덱스를 사용하여 조회
+    const boundary = await collection.findOne({
+      [queryField]: name
+    });
+
+    if (!boundary) {
+      return res.status(404).json({ error: '해당하는 경계를 찾을 수 없습니다.' });
+    }
+
+    if (!boundary.geometry || !['MultiPolygon', 'Polygon'].includes(boundary.geometry.type)) {
+      return res.status(400).json({ error: '유효하지 않은 geometry 타입입니다.' });
+    }
+
+    // 클라이언트에 전송할 데이터 정리
+    const responseData = {
+      type: boundaryType,
+      name: name,
+      geometry: boundary.geometry,
+      geometryType: boundary.geometry.type
+    };
+
+    res.json(responseData);
+
+  } catch (error) {
+    console.error('경계 geometry 데이터 조회 오류:', error);
+    res.status(500).json({ error: '경계 geometry 데이터 조회 중 오류가 발생했습니다.' });
   }
 });
 

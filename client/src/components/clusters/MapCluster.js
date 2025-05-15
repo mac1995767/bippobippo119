@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { fetchMapClusterData } from '../../service/api';
+import BoundaryPolygon from '../map/BoundaryPolygon';
 
 const MapCluster = ({ map, zoomLevel, onClusterClick }) => {
   const [clusters, setClusters] = useState([]);
-  const [selectedCluster, setSelectedCluster] = useState(null);
+  const [hoveredCluster, setHoveredCluster] = useState(null);
 
   useEffect(() => {
     if (!map) return;
@@ -54,8 +55,6 @@ const MapCluster = ({ map, zoomLevel, onClusterClick }) => {
   useEffect(() => {
     if (!map) return;
 
-    console.log('마커 생성할 클러스터 데이터:', clusters);
-
     // 기존 마커 제거
     clusters.forEach(cluster => {
       if (cluster.marker) {
@@ -65,12 +64,6 @@ const MapCluster = ({ map, zoomLevel, onClusterClick }) => {
 
     // 새로운 마커 생성
     clusters.forEach(cluster => {
-      console.log('개별 클러스터 데이터:', {
-        name: cluster.name,
-        hospitalCount: cluster.hospitalCount,
-        pharmacyCount: cluster.pharmacyCount
-      });
-
       const position = new window.naver.maps.LatLng(
         cluster.location.lat,
         cluster.location.lon
@@ -135,8 +128,6 @@ const MapCluster = ({ map, zoomLevel, onClusterClick }) => {
         </style>
       `;
 
-      console.log('생성할 마커 내용:', markerContent);
-
       const marker = new window.naver.maps.Marker({
         position,
         map,
@@ -146,9 +137,20 @@ const MapCluster = ({ map, zoomLevel, onClusterClick }) => {
         }
       });
 
+      // 마우스 이벤트 추가
+      const element = marker.getElement();
+      if (element) {
+        element.addEventListener('mouseenter', () => {
+          setHoveredCluster(cluster);
+        });
+        
+        element.addEventListener('mouseleave', () => {
+          setHoveredCluster(null);
+        });
+      }
+
       // 클릭 이벤트 추가
       window.naver.maps.Event.addListener(marker, 'click', () => {
-        setSelectedCluster(cluster);
         if (onClusterClick) {
           onClusterClick(cluster, position);
         }
@@ -165,9 +167,25 @@ const MapCluster = ({ map, zoomLevel, onClusterClick }) => {
         }
       });
     };
-  }, [clusters, map, selectedCluster, onClusterClick]);
+  }, [clusters, map, onClusterClick]);
 
-  return null; // 렌더링은 지도에 직접 수행됨
+  return (
+    <>
+      {hoveredCluster && (
+        <BoundaryPolygon
+          map={map}
+          boundaryType={hoveredCluster.boundaryType}
+          name={hoveredCluster.name}
+          style={{
+            strokeColor: getClusterColor(hoveredCluster.hospitalCount + hoveredCluster.pharmacyCount),
+            fillColor: getClusterColor(hoveredCluster.hospitalCount + hoveredCluster.pharmacyCount),
+            strokeOpacity: 0.8,
+            fillOpacity: 0.2
+          }}
+        />
+      )}
+    </>
+  );
 };
 
 export default MapCluster; 
