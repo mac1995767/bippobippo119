@@ -74,7 +74,6 @@ router.post('/login', async (req, res) => {
     );
 
     const userRole = roles.length > 0 ? roles[0].role_name : 'user';
-    console.log('User role from database:', userRole); // 디버깅용 로그
 
     // JWT 토큰 생성
     const token = jwt.sign(
@@ -129,11 +128,10 @@ const authenticateToken = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    console.log('Decoded token:', decoded); // 디버깅용 로그
     req.user = decoded;
     next();
   } catch (error) {
-    console.error('토큰 검증 오류:', error); // 디버깅용 로그
+    console.error('토큰 검증 오류:', error);
     res.status(401).json({ message: '유효하지 않은 토큰입니다.' });
   }
 };
@@ -152,7 +150,7 @@ router.get('/check-admin', authenticateToken, (req, res) => {
 });
 
 // 인증 상태 확인
-router.get('/check-auth', async (req, res) => {
+router.get('/check-auth', authenticateToken, async (req, res) => {
   try {
     
     // 사용자 정보 조회 (roles 테이블과 JOIN)
@@ -198,15 +196,15 @@ router.post('/register', async (req, res) => {
   } = req.body;
   
   try {
-    console.log('회원가입 요청 데이터:', {
-      username,
-      email,
-      nickname,
-      interests,
-      social_id,
-      social_provider,
-      is_email_verified
-    });
+    // console.log('회원가입 요청 데이터:', {
+    //   username,
+    //   email,
+    //   nickname,
+    //   interests,
+    //   social_id,
+    //   social_provider,
+    //   is_email_verified
+    // });
 
     // 아이디 중복 체크
     const [existingUsers] = await pool.execute(
@@ -267,7 +265,7 @@ router.post('/register', async (req, res) => {
       ]
     );
 
-    console.log('회원가입 성공:', result);
+    // console.log('회원가입 성공:', result);
 
     // 기본 사용자 역할 부여
     await pool.execute(
@@ -311,10 +309,52 @@ router.get('/check-email', async (req, res) => {
   }
 });
 
+// 네이버 로그인 시작 (state 생성 및 인증 URL 반환)
+router.get('/naver/start', async (req, res) => {
+  try {
+    const [configs] = await pool.query(
+      'SELECT client_id, redirect_uri FROM hospital_social_configs WHERE provider = ? AND is_active = 1',
+      ['naver']
+    );
+
+    if (configs.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '네이버 로그인 설정을 찾을 수 없습니다.'
+      });
+    }
+    const config = configs[0];
+
+    const state = crypto.randomBytes(16).toString('hex');
+    
+    res.cookie('naver_oauth_state', state, {
+      httpOnly: true,
+      secure: false, 
+      sameSite: 'lax', 
+      maxAge: 5 * 60 * 1000 
+    });
+
+    const naverAuthUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${config.client_id}&redirect_uri=${encodeURIComponent(config.redirect_uri)}&state=${state}`;
+    
+    res.json({
+      success: true,
+      naverAuthUrl: naverAuthUrl
+    });
+
+  } catch (error) {
+    console.error('네이버 로그인 시작 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '네이버 로그인 시작 중 서버 오류가 발생했습니다.'
+    });
+  }
+});
+
 // 네이버 로그인 콜백 처리
 router.post('/naver/callback', async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code, state: returnedState } = req.body; 
+    const originalState = req.cookies.naver_oauth_state; 
 
     if (!code) {
       return res.status(400).json({
@@ -323,7 +363,18 @@ router.post('/naver/callback', async (req, res) => {
       });
     }
 
-    // 네이버 설정 가져오기
+    if (!returnedState || !originalState || returnedState !== originalState) {
+      if (originalState) {
+         res.clearCookie('naver_oauth_state', { httpOnly: true, secure: false, sameSite: 'lax' });
+      }
+      return res.status(400).json({
+        success: false,
+        message: '유효하지 않은 요청입니다. (state 불일치 또는 누락)'
+      });
+    }
+
+    res.clearCookie('naver_oauth_state', { httpOnly: true, secure: false, sameSite: 'lax' });
+
     const [configs] = await pool.query(
       'SELECT * FROM hospital_social_configs WHERE provider = ? AND is_active = 1',
       ['naver']
@@ -337,12 +388,8 @@ router.post('/naver/callback', async (req, res) => {
     }
 
     const config = configs[0];
-    console.log('네이버 설정:', config);
-
-    // client_secret에서 줄바꿈 문자 제거
     const clientSecret = config.client_secret.trim();
 
-    // 네이버 액세스 토큰 받기
     const tokenResponse = await axios.post('https://nid.naver.com/oauth2.0/token', null, {
       params: {
         grant_type: 'authorization_code',
@@ -352,10 +399,16 @@ router.post('/naver/callback', async (req, res) => {
         redirect_uri: config.redirect_uri
       }
     });
-
+    
     const { access_token } = tokenResponse.data;
 
-    // 네이버 사용자 정보 가져오기
+    if (!access_token) { 
+        return res.status(400).json({
+            success: false,
+            message: tokenResponse.data.error_description || '네이버 액세스 토큰을 발급받지 못했습니다.'
+        });
+    }
+    
     const userResponse = await axios.get('https://openapi.naver.com/v1/nid/me', {
       headers: {
         Authorization: `Bearer ${access_token}`
@@ -363,24 +416,21 @@ router.post('/naver/callback', async (req, res) => {
     });
 
     const naverUser = userResponse.data.response;
-    console.log('네이버 사용자 정보:', naverUser);
 
     const naverId = naverUser.id;
     const email = naverUser.email;
     const nickname = naverUser.name || `네이버사용자${naverId.slice(-4)}`;
     const profileImage = naverUser.profile_image;
 
-    // 기존 사용자 확인
-    const [existingUser] = await pool.query(
+    const [existingUserRows] = await pool.query(
       'SELECT * FROM hospital_users WHERE social_id = ? AND social_provider = ? OR email = ?',
       [naverId, 'naver', email]
     );
 
-    if (existingUser.length > 0) {
-      // 기존 사용자는 바로 로그인 처리
-      const user = existingUser[0];
+    if (existingUserRows.length > 0) {
+      const user = existingUserRows[0];
       const token = jwt.sign(
-        { id: user.id, role: user.role },
+        { id: user.id, username: user.username, role: user.role || 'user' },
         process.env.JWT_SECRET,
         { expiresIn: '24h' }
       );
@@ -400,11 +450,11 @@ router.post('/naver/callback', async (req, res) => {
           username: user.username,
           email: user.email,
           nickname: user.nickname,
-          role: user.role
+          role: user.role || 'user',
+          profile_image: user.profile_image
         }
       });
     } else {
-      // 새로운 사용자는 회원가입 정보 반환
       return res.status(200).json({
         success: true,
         isNewUser: true,
@@ -416,11 +466,11 @@ router.post('/naver/callback', async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('네이버 로그인 처리 오류:', error);
+    console.error('네이버 로그인 처리 오류:', error.response?.data || error.message || error);
     return res.status(500).json({
       success: false,
       message: '서버 오류가 발생했습니다.',
-      error: error.message
+      error: error.response?.data?.error_description || error.message
     });
   }
 });
@@ -437,7 +487,6 @@ router.post('/kakao/callback', async (req, res) => {
       });
     }
 
-    // 카카오 설정 가져오기
     const [configs] = await pool.query(
       'SELECT * FROM hospital_social_configs WHERE provider = ? AND is_active = 1',
       ['kakao']
@@ -451,9 +500,7 @@ router.post('/kakao/callback', async (req, res) => {
     }
 
     const config = configs[0];
-    console.log('카카오 설정:', config);
 
-    // URL 인코딩된 폼 데이터 생성
     const params = new URLSearchParams();
     params.append('grant_type', 'authorization_code');
     params.append('client_id', config.client_id);
@@ -461,18 +508,14 @@ router.post('/kakao/callback', async (req, res) => {
     params.append('redirect_uri', config.redirect_uri);
 
     try {
-      // 카카오 액세스 토큰 받기
       const tokenResponse = await axios.post('https://kauth.kakao.com/oauth/token', params, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }
       });
 
-      console.log('토큰 응답:', tokenResponse.data);
-
       const { access_token, refresh_token } = tokenResponse.data;
 
-      // 카카오 사용자 정보 가져오기
       const userResponse = await axios.get('https://kapi.kakao.com/v2/user/me', {
         headers: {
           Authorization: `Bearer ${access_token}`,
@@ -480,26 +523,22 @@ router.post('/kakao/callback', async (req, res) => {
         }
       });
 
-      console.log('카카오 사용자 정보:', userResponse.data);
-
       const kakaoUser = userResponse.data;
       const kakaoId = kakaoUser.id.toString();
       const email = kakaoUser.kakao_account.email;
       const nickname = kakaoUser.properties.nickname;
       const profileImage = kakaoUser.properties.profile_image;
 
-      // 기존 사용자 확인
       const [existingUser] = await pool.query(
         'SELECT * FROM hospital_users WHERE social_id = ? AND social_provider = ? OR email = ?',
         [kakaoId, 'kakao', email]
       );
 
       if (existingUser.length > 0) {
-        // 기존 사용자는 바로 로그인 처리
         const user = existingUser[0];
         const token = jwt.sign(
           { id: user.id, role: user.role },
-          process.env._SECRET,
+          process.env.JWT_SECRET,
           { expiresIn: '24h' }
         );
 
@@ -522,7 +561,6 @@ router.post('/kakao/callback', async (req, res) => {
           }
         });
       } else {
-        // 새로운 사용자는 회원가입 정보 반환
         return res.status(200).json({
           success: true,
           isNewUser: true,
@@ -536,7 +574,6 @@ router.post('/kakao/callback', async (req, res) => {
     } catch (error) {
       console.error('카카오 API 호출 오류:', error.response?.data || error.message);
       
-      // 토큰 요청 제한 오류 처리
       if (error.response?.data?.error === 'invalid_request' && 
           error.response?.data?.error_code === 'KOE237') {
         return res.status(429).json({
@@ -546,7 +583,6 @@ router.post('/kakao/callback', async (req, res) => {
         });
       }
 
-      // 인증 코드 만료 오류 처리
       if (error.response?.data?.error === 'invalid_grant') {
         return res.status(400).json({
           success: false,
@@ -583,7 +619,6 @@ router.post('/google/callback', async (req, res) => {
       });
     }
 
-    // 구글 설정 가져오기
     const [configs] = await pool.query(
       'SELECT * FROM hospital_social_configs WHERE provider = ? AND is_active = 1',
       ['google']
@@ -597,12 +632,9 @@ router.post('/google/callback', async (req, res) => {
     }
 
     const config = configs[0];
-    console.log('구글 설정:', config);
 
-    // client_secret에서 줄바꿈 문자 제거
     const clientSecret = config.client_secret.trim();
 
-    // 구글 액세스 토큰 받기
     const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
       code,
       client_id: config.client_id,
@@ -613,7 +645,6 @@ router.post('/google/callback', async (req, res) => {
 
     const { access_token } = tokenResponse.data;
 
-    // 구글 사용자 정보 가져오기
     const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: {
         Authorization: `Bearer ${access_token}`
@@ -621,21 +652,18 @@ router.post('/google/callback', async (req, res) => {
     });
 
     const googleUser = userResponse.data;
-    console.log('구글 사용자 정보:', googleUser);
 
     const googleId = googleUser.id;
     const email = googleUser.email;
     const nickname = googleUser.name;
     const profileImage = googleUser.picture;
 
-    // 기존 사용자 확인
     const [existingUser] = await pool.query(
       'SELECT * FROM hospital_users WHERE social_id = ? AND social_provider = ? OR email = ?',
       [googleId, 'google', email]
     );
 
     if (existingUser.length > 0) {
-      // 기존 사용자는 바로 로그인 처리
       const user = existingUser[0];
       const token = jwt.sign(
         { id: user.id, role: user.role },
@@ -662,7 +690,6 @@ router.post('/google/callback', async (req, res) => {
         }
       });
     } else {
-      // 새로운 사용자는 회원가입 정보 반환
       return res.status(200).json({
         success: true,
         isNewUser: true,

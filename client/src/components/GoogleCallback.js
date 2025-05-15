@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from '../utils/axios';
+import { useAuth } from '../contexts/AuthContext';
 
 const GoogleCallback = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();
   const [error, setError] = useState(null);
   const hasHandledRef = useRef(false);
 
@@ -16,9 +18,9 @@ const GoogleCallback = () => {
       try {
         const searchParams = new URLSearchParams(location.search);
         const code = searchParams.get('code');
-        const error = searchParams.get('error');
+        const errorParam = searchParams.get('error');
 
-        if (error) {
+        if (errorParam) {
           setError('구글 로그인 중 오류가 발생했습니다.');
           return;
         }
@@ -28,11 +30,7 @@ const GoogleCallback = () => {
           return;
         }
 
-        console.log('구글 콜백 코드:', code); // 디버깅용 로그
-
-        const response = await axios.post('/api/auth/google/callback', { code });
-
-        console.log('구글 콜백 응답:', response.data); // 디버깅용 로그
+        const response = await axios.post('/auth/google/callback', { code });
 
         if (response.data.success) {
           if (response.data.isNewUser) {
@@ -51,7 +49,8 @@ const GoogleCallback = () => {
               }
             });
           } else {
-            // 기존 사용자는 메인 페이지로 이동
+            // 기존 사용자는 AuthContext 상태 업데이트 후 메인 페이지로 이동
+            await login(response.data.user);
             navigate('/');
           }
         } else {
@@ -72,7 +71,7 @@ const GoogleCallback = () => {
     };
 
     handleGoogleCallback();
-  }, [navigate, location]);
+  }, [navigate, location, login]);
 
   if (error) {
     return (

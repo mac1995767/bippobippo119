@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, getApiUrl } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
+import axiosInstance from '../utils/axios';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -86,20 +87,16 @@ const LoginPage = () => {
 
   const handleNaverLogin = async () => {
     try {
-      if (!naverSettings.client_id || !naverSettings.redirect_uri) {
-        alert('네이버 로그인 설정이 완료되지 않았습니다.');
-        return;
-      }
+      const response = await axiosInstance.get('/auth/naver/start');
 
-      const state = generateRandomString(16);
-      localStorage.setItem('naverState', state);
-      
-      const naverLoginUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${naverSettings.client_id}&redirect_uri=${encodeURIComponent(naverSettings.redirect_uri)}&state=${state}`;
-      
-      window.location.href = naverLoginUrl;
+      if (response.data && response.data.success) {
+        window.location.href = response.data.naverAuthUrl;
+      } else {
+        alert(response.data.message || '네이버 로그인에 실패했습니다.');
+      }
     } catch (error) {
-      console.error('네이버 로그인 시도 중 오류:', error);
-      alert('네이버 로그인을 시도하는 중 오류가 발생했습니다.');
+      console.error('네이버 로그인 시작 중 오류:', error);
+      alert('네이버 로그인에 실패했습니다.');
     }
   };
 

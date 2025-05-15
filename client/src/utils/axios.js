@@ -2,7 +2,8 @@ import axios from 'axios';
 import { getApiUrl } from './api';
 
 const instance = axios.create({
-  baseURL: `${getApiUrl()}/api`
+  baseURL: `${getApiUrl()}/api`,
+  withCredentials: true
 });
 
 // 요청 인터셉터

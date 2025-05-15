@@ -1,28 +1,38 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from '../utils/axios';
+import { useAuth } from '../contexts/AuthContext';
 
 const NaverCallback = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();
   const [error, setError] = useState(null);
+  const hasCalledApi = useRef(false);
 
   useEffect(() => {
     const handleNaverCallback = async () => {
       try {
         const searchParams = new URLSearchParams(location.search);
         const code = searchParams.get('code');
+        const returnedState = searchParams.get('state');
 
         if (!code) {
           setError('인증 코드가 없습니다.');
           return;
         }
 
-        console.log('네이버 콜백 코드:', code); // 디버깅용 로그
+        if (!returnedState) {
+          setError('State 파라미터가 누락되었습니다.');
+          return;
+        }
 
-        const response = await axios.post('/auth/naver/callback', { code });
+        if (hasCalledApi.current) {
+          return;
+        }
+        hasCalledApi.current = true;
 
-        console.log('네이버 콜백 응답:', response.data); // 디버깅용 로그
+        const response = await axios.post('/auth/naver/callback', { code, state: returnedState });
 
         if (response.data.success) {
           if (response.data.isNewUser) {
@@ -39,7 +49,8 @@ const NaverCallback = () => {
               }
             });
           } else {
-            // 기존 사용자는 메인 페이지로 이동
+            // 기존 사용자는 AuthContext 상태 업데이트 후 메인 페이지로 이동
+            await login(response.data.user);
             navigate('/');
           }
         } else {
@@ -60,7 +71,7 @@ const NaverCallback = () => {
     };
 
     handleNaverCallback();
-  }, [navigate, location]);
+  }, [navigate, location, login]);
 
   if (error) {
     return (

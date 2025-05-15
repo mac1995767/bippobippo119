@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from '../utils/axios';
+import { useAuth } from '../contexts/AuthContext';
 
 const KakaoCallback = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();
   const [error, setError] = useState(null);
+  const hasCalledApi = useRef(false);
 
   useEffect(() => {
     const handleKakaoCallback = async () => {
@@ -18,15 +21,15 @@ const KakaoCallback = () => {
           return;
         }
 
-        console.log('카카오 콜백 코드:', code); // 디버깅용 로그
+        if (hasCalledApi.current) {
+          return;
+        }
+        hasCalledApi.current = true;
 
         const response = await axios.post('/auth/kakao/callback', { code });
 
-        console.log('카카오 콜백 응답:', response.data); // 디버깅용 로그
-
         if (response.data.success) {
           if (response.data.isNewUser) {
-            // 새로운 사용자는 회원가입 페이지로 이동
             navigate('/register', {
               state: {
                 socialLoginData: {
@@ -39,7 +42,7 @@ const KakaoCallback = () => {
               }
             });
           } else {
-            // 기존 사용자는 메인 페이지로 이동
+            await login(response.data.user);
             navigate('/');
           }
         } else {
@@ -60,7 +63,7 @@ const KakaoCallback = () => {
     };
 
     handleKakaoCallback();
-  }, [navigate, location]);
+  }, [navigate, location, login]);
 
   if (error) {
     return (

@@ -51,16 +51,6 @@ const AppContent = () => {
   const [announcement, setAnnouncement] = useState(null);
 
   useScrollToTop();
-
-  useEffect(() => {
-    initializeGA();
-    console.log('Environment Variables:', {
-      API_URL: process.env.REACT_APP_API_URL,
-      GA_ID: process.env.REACT_APP_GA_MEASUREMENT_ID,
-      REACT_APP_NAVER_MAP_CLIENT_ID: process.env.REACT_APP_NAVER_MAP_CLIENT_ID,
-      REACT_APP_NAVER_MAP_CLIENT_SECRET: process.env.REACT_APP_NAVER_MAP_CLIENT_SECRET
-    });
-  }, []);
   
   return (
     <div className="min-h-screen bg-gray-50">

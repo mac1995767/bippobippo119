@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // 환경 변수에서 API URL 가져오기
-const API_URL = process.env.REACT_APP_API_URL ;
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 
 // axios 인스턴스 생성
