@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Provider } from 'react-redux';
 import store from './redux/store';
@@ -8,8 +8,7 @@ import HospitalListPage from "./pages/HospitalListPage";
 import HospitalDetailPage from "./pages/HospitalDetailPage";
 import PharmaciesList from "./pages/PharmaciesList";
 import Footer from "./components/Footer";
-import AdSense from "./components/AdSense";
-import { initializeGA, trackPageView } from "./utils/GoogleAnalytics";
+//import AdSense from "./components/AdSense"; // 광고는 허가 나면 부착 
 import LoginPage from "./pages/LoginPage";
 import LogoutPage from "./pages/LogoutPage";
 import AdminRoute from "./components/AdminRoute";
@@ -22,17 +21,14 @@ import { useAuth } from './contexts/AuthContext';
 import DashboardPage from './pages/admin/DashboardPage';
 import CategoryManagementPage from './pages/admin/CategoryManagementPage';
 import RegisterPage from './pages/RegisterPage';
-import Login from './components/auth/Login';
 import CommunityPage from './pages/CommunityPage';
 import TermsAgreement from './components/auth/TermsAgreement';
 import NavigationBar from './components/NavigationBar';
-import axios from 'axios';
 import CreateBoardPage from './pages/community/CreateBoardPage';
 import BoardDetail from './pages/community/BoardDetail';
 import NaverCallback from './components/NaverCallback';
 import KakaoCallback from "./components/KakaoCallback";
 import GoogleCallback from './components/GoogleCallback';
-import { AuthProvider } from './contexts/AuthContext';
 import ProfilePage from './pages/profile/ProfilePage';
 import EditBoardPage from './pages/community/EditBoardPage';
 import CategoryTypeManagementPage from './pages/admin/CategoryTypeManagementPage';
@@ -48,8 +44,6 @@ import MapPage from './components/MapPage';
 
 const AppContent = () => {
   const { isLoggedIn, userRole, handleLogout } = useAuth();
-  const [announcement, setAnnouncement] = useState(null);
-
   useScrollToTop();
   
   return (

@@ -4,6 +4,10 @@ import './index.css';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import reportWebVitals from './reportWebVitals';
+import { initializeGA } from './utils/GoogleAnalytics';
+
+// Google Analytics 초기화
+initializeGA();
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
