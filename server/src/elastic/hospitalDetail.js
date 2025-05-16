@@ -54,16 +54,11 @@ router.get('/:id', async (req, res) => {
     // 응답 데이터 정리
     const formattedResponse = {
       ...hospitalDetail,
-      // 기존 필드 유지
-      food_treatment_info: hospitalDetail.food_treatment_info || [],
-      intensive_care_info: hospitalDetail.intensive_care_info || [],
-      personnel_info: hospitalDetail.personnel_info || [],
-      speciality_info: hospitalDetail.speciality_info || [],
-      // 새로운 필드 추가
-      food_treatment: hospitalDetail.food_treatment_info || [],
-      intensive_care: hospitalDetail.intensive_care_info || [],
-      personnel: hospitalDetail.personnel_info || [],
-      speciality: hospitalDetail.speciality_info || [],
+
+      food_treatment: hospitalDetail.food_treatment || [],
+      intensive_care: hospitalDetail.intensive_care || [],
+      personnel: hospitalDetail.personnel || [],
+      speciality: hospitalDetail.speciality || [],
       // 기본값 설정
       subjects: hospitalDetail.subjects || [],
       equipment: hospitalDetail.equipment || [],

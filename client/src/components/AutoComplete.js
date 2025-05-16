@@ -5,7 +5,6 @@ import { fetchAutoComplete } from '../service/api';
 const AutoComplete = ({ searchQuery, setSearchQuery }) => {
   const [suggestions, setSuggestions] = useState({ hospital: [] });
   const [searchHistory, setSearchHistory] = useState([]);
-  const [userLocation, setUserLocation] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const suggestionsRef = useRef(null);
   const navigate = useNavigate();
@@ -55,7 +54,6 @@ const AutoComplete = ({ searchQuery, setSearchQuery }) => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          setUserLocation({ latitude, longitude });
           navigate(`/hospitals?x=${longitude}&y=${latitude}`);
         },
         (error) => {
@@ -156,7 +154,6 @@ const AutoComplete = ({ searchQuery, setSearchQuery }) => {
                   navigator.geolocation.getCurrentPosition(
                     (position) => {
                       const { latitude, longitude } = position.coords;
-                      setUserLocation({ latitude, longitude });
                       navigate(`/hospitals?x=${longitude}&y=${latitude}`);
                     },
                     (error) => {

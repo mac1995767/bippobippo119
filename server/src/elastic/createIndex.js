@@ -6,8 +6,9 @@ async function createHospitalIndex() {
     // 인덱스 존재 여부 확인
     const exists = await client.indices.exists({ index: 'hospitals' });
     if (exists.body) {
-      console.log("인덱스 'hospitals' 이미 존재합니다.");
-      return;
+      console.log("기존 인덱스 'hospitals' 삭제 중...");
+      await client.indices.delete({ index: 'hospitals' });
+      console.log("기존 인덱스 'hospitals' 삭제 완료!");
     }
 
     // 인덱스 생성
@@ -21,30 +22,90 @@ async function createHospitalIndex() {
             region: { type: 'keyword' },
             subject: { type: 'text' },
             major: { type: 'keyword' },
-            nightCare: { type: 'boolean' },
-            twentyfourCare: { type: 'boolean' }, // 24시간 운영 여부
-            weekendCare: { type: 'boolean' },
             location: { type: "geo_point" },
             hospUrl: { type: "text" },
             telno: { type: "text" },
-            schedule: {
+            times: {
               type: "object",
+              dynamic: true,
               properties: {
-                Monday: {
-                  type: "object",
-                  properties: {
-                    openTime: { type: "keyword" },
-                    closeTime: { type: "keyword" },
-                    lunchStart: { type: "keyword" },
-                    lunchEnd: { type: "keyword" }
-                  }
-                },
-                Tuesday: { type: "object", properties: { openTime: { type: "keyword" }, closeTime: { type: "keyword" }, lunchStart: { type: "keyword" }, lunchEnd: { type: "keyword" } } },
-                Wednesday: { type: "object", properties: { openTime: { type: "keyword" }, closeTime: { type: "keyword" }, lunchStart: { type: "keyword" }, lunchEnd: { type: "keyword" } } },
-                Thursday: { type: "object", properties: { openTime: { type: "keyword" }, closeTime: { type: "keyword" }, lunchStart: { type: "keyword" }, lunchEnd: { type: "keyword" } } },
-                Friday: { type: "object", properties: { openTime: { type: "keyword" }, closeTime: { type: "keyword" }, lunchStart: { type: "keyword" }, lunchEnd: { type: "keyword" } } },
-                Saturday: { type: "object", properties: { openTime: { type: "keyword" }, closeTime: { type: "keyword" }, lunchStart: { type: "keyword" }, lunchEnd: { type: "keyword" } } },
-                Sunday: { type: "object", properties: { openTime: { type: "keyword" }, closeTime: { type: "keyword" }, lunchStart: { type: "keyword" }, lunchEnd: { type: "keyword" } } }
+                trmtMonStart: { type: "text" },
+                trmtMonEnd: { type: "text" },
+                trmtTueStart: { type: "text" },
+                trmtTueEnd: { type: "text" },
+                trmtWedStart: { type: "text" },
+                trmtWedEnd: { type: "text" },
+                trmtThuStart: { type: "text" },
+                trmtThuEnd: { type: "text" },
+                trmtFriStart: { type: "text" },
+                trmtFriEnd: { type: "text" },
+                trmtSatStart: { type: "text" },
+                trmtSatEnd: { type: "text" },
+                lunchWeek: { type: "text" },
+                rcvWeek: { type: "text" },
+                rcvSat: { type: "text" },
+                emyNgtYn: { type: "text" },
+                noTrmtSat: { type: "text" },
+                noTrmtSun: { type: "text" },
+                emyDayTelNo1: { type: "text" },
+                emyDayTelNo2: { type: "text" },
+                emyDayYn: { type: "text" },
+                emyNgtTelNo1: { type: "text" },
+                emyNgtTelNo2: { type: "text" },
+                noTrmtHoli: { type: "text" },
+                parkEtc: { type: "text" },
+                parkQty: { type: "integer" },
+                parkXpnsYn: { type: "text" },
+                plcDir: { type: "text" },
+                plcDist: { type: "text" },
+                plcNm: { type: "text" }
+              }
+            },
+            equipment: {
+              type: "nested",
+              properties: {
+                typeCd: { type: "text" },
+                typeCdNm: { type: "text" },
+                typeCnt: { type: "text" }
+              }
+            },
+            food_treatment: {
+              type: "nested",
+              properties: {
+                typeCd: { type: "text" },
+                typeCdNm: { type: "text" },
+                genMealAddYn: { type: "text" },
+                psnlCnt: { type: "text" }
+              }
+            },
+            intensive_care: {
+              type: "nested",
+              properties: {
+                typeCd: { type: "text" },
+                typeCdNm: { type: "text" }
+              }
+            },
+            nursing_grade: {
+              type: "nested",
+              properties: {
+                typeCd: { type: "text" },
+                typeCdNm: { type: "text" },
+                nursingRt: { type: "text" }
+              }
+            },
+            personnel: {
+              type: "nested",
+              properties: {
+                pharmCd: { type: "text" },
+                pharmCdNm: { type: "text" },
+                pharmCnt: { type: "text" }
+              }
+            },
+            speciality: {
+              type: "nested",
+              properties: {
+                typeCd: { type: "text" },
+                typeCdNm: { type: "text" }
               }
             }
           }

@@ -44,7 +44,7 @@ const AnnouncementBanner = () => {
       setModalVisible(false);
     }
     fetchAnnouncements();
-  }, []);
+  }, [setModalVisible, fetchAnnouncements]);
 
   if (location.pathname !== '/' || announcements.length === 0 || !modalVisible) return null;
 

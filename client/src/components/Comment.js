@@ -39,9 +39,7 @@ const Comment = ({ onSubmit, boardId }) => {
 
   const fetchHospitalDetails = async (ykiho) => {
     try {
-      console.log('병원 정보 조회 시작:', ykiho); // 디버깅용 로그
       const response = await axios.get(`${getApiUrl()}/api/hospitals/${ykiho}`, { withCredentials: true });
-      console.log('병원 정보 조회 성공:', response.data); // 디버깅용 로그
       return response.data;
     } catch (error) {
       console.error('병원 정보 조회 실패:', error);
@@ -177,35 +175,6 @@ const Comment = ({ onSubmit, boardId }) => {
       console.error('댓글 작성 오류:', error);
       alert('댓글 작성에 실패했습니다.');
     }
-  };
-
-  // 댓글 내용에서 @ 태그를 파싱하는 함수
-  const renderContent = (text) => {
-    const parts = text.split(/(@[^\s]+)/g);
-    return parts.map((part, index) => {
-      if (part.startsWith('@')) {
-        const hospitalName = part.substring(1);
-        const hospital = taggedHospitals.find(h => h.name === hospitalName);
-        
-        if (hospital) {
-          return (
-            <span key={index} className="relative group inline-block">
-              <span className="text-blue-600 font-medium cursor-pointer hover:bg-blue-50">
-                {part}
-              </span>
-              {hospitalDetails[hospital.id] && (
-                <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-lg shadow-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
-                  <h3 className="font-bold text-sm mb-1">{hospitalDetails[hospital.id].name}</h3>
-                  <p className="text-xs text-gray-600 mb-1">{hospitalDetails[hospital.id].address}</p>
-                  <p className="text-xs text-gray-600">전화: {hospitalDetails[hospital.id].phone}</p>
-                </div>
-              )}
-            </span>
-          );
-        }
-      }
-      return <span key={index}>{part}</span>;
-    });
   };
 
   return (

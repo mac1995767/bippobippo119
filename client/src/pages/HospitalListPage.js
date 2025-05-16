@@ -476,7 +476,7 @@ const HospitalListPage = () => {
                         {/* 🕒 영업 여부 */}
                         <div className="mt-2">
                           <p className="font-semibold text-gray-700">🕒 영업 여부:</p>
-                          <OperatingStatus schedule={hospital.times} />
+                          <OperatingStatus times={hospital.times} />
                         </div>
 
                         {/* 📞 전화번호 + 바로 전화 버튼 */}
@@ -498,23 +498,6 @@ const HospitalListPage = () => {
                               전화번호 정보 없음
                             </div>
                           )}
-                        </div>
-                        {/* 진료 여부 (야간/주말) */}
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <span
-                            className={`px-3 py-1 rounded-md text-sm ${
-                              hospital.nightCare ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
-                            }`}
-                          >
-                            응급 야간 진료: {hospital.nightCare ? "가능 ✅" : "불가 ❌"}
-                          </span>
-                          <span
-                            className={`px-3 py-1 rounded-md text-sm ${
-                              hospital.weekendCare ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
-                            }`}
-                          >
-                            응급 주말 진료: {hospital.weekendCare ? "가능 ✅" : "불가 ❌"}
-                          </span>
                         </div>
                       </div>
                     </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchNursingHospitalDetail, fetchHospitalKeywordStats, fetchHospitalReviews } from '../../service/api';
 import { IoMdBed } from 'react-icons/io';
-import { FaUserMd, FaUserNurse, FaPhoneAlt, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaUserMd, FaUserNurse, FaPhoneAlt } from 'react-icons/fa';
 import { MdKeyboardArrowLeft } from 'react-icons/md';
 import { BsImage, BsCheckCircle, BsInfoCircle } from 'react-icons/bs';
 

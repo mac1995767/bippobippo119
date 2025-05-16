@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 
-const OperatingStatus = ({ schedule }) => {
+const OperatingStatus = ({ times }) => {
   const [showDetails, setShowDetails] = useState(false);
 
-  // 디버깅을 위한 콘솔 로그
+  // times가 문자열인 경우 JSON으로 파싱
+  const parsedTimes = typeof times === 'string' ? JSON.parse(times) : times;
 
-  // schedule 정보가 없으면 드롭다운 없이 메시지만 표시
-  if (!schedule) {
+  // times 정보가 없으면 드롭다운 없이 메시지만 표시
+  if (!parsedTimes) {
     return (
       <div className="px-3 py-1 rounded-md text-sm bg-gray-100 text-gray-500">
         영업시간 정보 없음
@@ -14,7 +15,7 @@ const OperatingStatus = ({ schedule }) => {
     );
   }
 
-  // 요일 관련 변수 (날짜는 영어로 관리하고, 표시 시 한글로 변환)
+  // 요일 관련 변수
   const dayOfWeek = [
     "Sunday",
     "Monday",
@@ -79,8 +80,8 @@ const OperatingStatus = ({ schedule }) => {
     if (!daySchedule) return { openTime: null, closeTime: null };
 
     return {
-      openTime: schedule[daySchedule.start],
-      closeTime: schedule[daySchedule.end]
+      openTime: parsedTimes[daySchedule.start],
+      closeTime: parsedTimes[daySchedule.end]
     };
   };
 
@@ -91,8 +92,8 @@ const OperatingStatus = ({ schedule }) => {
   // 브레이크타임 파싱
   let lunchStart = null,
     lunchEnd = null;
-  if (schedule.lunchWeek) {
-    const lunchTimes = schedule.lunchWeek.split("~");
+  if (parsedTimes.lunchWeek) {
+    const lunchTimes = parsedTimes.lunchWeek.split("~");
     lunchStart = timeToMinutes(lunchTimes[0]);
     lunchEnd = timeToMinutes(lunchTimes[1]);
   }
@@ -100,7 +101,13 @@ const OperatingStatus = ({ schedule }) => {
   let status = "";
   let statusClass = "";
 
-  if (openTime !== null && closeTime !== null) {
+  // 일요일인 경우
+  if (today === "Sunday") {
+    status = parsedTimes.noTrmtSun === "휴무" ? "휴무일 ❌" : "영업 중 ✅";
+    statusClass = parsedTimes.noTrmtSun === "휴무" ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600";
+  }
+  // 평일/토요일인 경우
+  else if (openTime !== null && closeTime !== null) {
     if (nowInMinutes >= openTime && nowInMinutes < closeTime) {
       if (
         lunchStart !== null &&
@@ -125,7 +132,6 @@ const OperatingStatus = ({ schedule }) => {
 
   return (
     <div>
-      {/* 클릭 시 showDetails 상태 토글 */}
       <div
         className={`px-3 py-1 rounded-md text-sm inline-block cursor-pointer ${statusClass} flex items-center`}
         onClick={() => setShowDetails((prev) => !prev)}
@@ -138,7 +144,6 @@ const OperatingStatus = ({ schedule }) => {
           ▼
         </span>
       </div>
-      {/* 드롭다운: 요일별 영업시간 */}
       {showDetails && (
         <div className="mt-2 p-2 border border-gray-200 rounded-md">
           {dayOfWeek.map((day) => {
@@ -149,17 +154,19 @@ const OperatingStatus = ({ schedule }) => {
               Thursday: { start: "trmtThuStart", end: "trmtThuEnd" },
               Friday: { start: "trmtFriStart", end: "trmtFriEnd" },
               Saturday: { start: "trmtSatStart", end: "trmtSatEnd" },
-              Sunday: { start: "trmtSatStart", end: "trmtSatEnd" } // TODO: 일요일 영업 시간 데이터가 아직 없으므로, 현재는 토요일 영업 시간을 기준으로 처리
+              Sunday: { start: null, end: null }
             };
 
             const daySchedule = dayMap[day];
-            const startTime = daySchedule ? schedule[daySchedule.start] : null;
-            const endTime = daySchedule ? schedule[daySchedule.end] : null;
+            const startTime = daySchedule ? parsedTimes[daySchedule.start] : null;
+            const endTime = daySchedule ? parsedTimes[daySchedule.end] : null;
 
             return (
               <div key={day} className="flex justify-between text-sm py-1">
                 <span>{dayKoreanMap[day]}</span>
-                {startTime && endTime ? (
+                {day === "Sunday" ? (
+                  <span>{parsedTimes.noTrmtSun || "휴무"}</span>
+                ) : startTime && endTime ? (
                   <span>
                     {formatTime(startTime)} ~ {formatTime(endTime)}
                   </span>
@@ -169,11 +176,11 @@ const OperatingStatus = ({ schedule }) => {
               </div>
             );
           })}
-          {schedule.lunchWeek && (
+          {parsedTimes.lunchWeek && (
             <div className="mt-2 pt-2 border-t border-gray-200">
               <div className="flex justify-between text-sm">
                 <span>점심시간</span>
-                <span>{schedule.lunchWeek}</span>
+                <span>{parsedTimes.lunchWeek}</span>
               </div>
             </div>
           )}

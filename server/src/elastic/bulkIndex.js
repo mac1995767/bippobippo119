@@ -67,22 +67,6 @@ function calculateMovingAverage(times, windowSize) {
   return recentTimes.reduce((a, b) => a + b, 0) / windowSize;
 }
 
-function parseTimeToMinutes(timeStr) {
-  if (!timeStr) return null;
-  
-  // 휴진, 마감 등의 특수 케이스 처리
-  if (timeStr.includes('휴진') || timeStr.includes('마감')) return null;
-  
-  // 시간 범위에서 시작 시간만 추출
-  const timeMatch = timeStr.match(/(\d{1,2})[시:](\d{1,2})?/);
-  if (!timeMatch) return null;
-  
-  const hours = parseInt(timeMatch[1]);
-  const minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
-  
-  return hours * 60 + minutes;
-}
-
 async function fetchAdditionalInfo(hospital) {
   try {
     const [
@@ -124,22 +108,6 @@ async function fetchAdditionalInfo(hospital) {
       speciality_info: []
     };
   }
-}
-
-function convertTimesToSchedule(times) {
-  if (!times) return null;
-
-  const schedule = {
-    Monday: { openTime: times.rcvWeek || null, closeTime: null, lunchStart: null, lunchEnd: null },
-    Tuesday: { openTime: times.rcvWeek || null, closeTime: null, lunchStart: null, lunchEnd: null },
-    Wednesday: { openTime: times.rcvWeek || null, closeTime: null, lunchStart: null, lunchEnd: null },
-    Thursday: { openTime: times.rcvWeek || null, closeTime: null, lunchStart: null, lunchEnd: null },
-    Friday: { openTime: times.rcvWeek || null, closeTime: null, lunchStart: null, lunchEnd: null },
-    Saturday: { openTime: times.rcvSat || null, closeTime: null, lunchStart: null, lunchEnd: null },
-    Sunday: { openTime: times.rcvSun || null, closeTime: null, lunchStart: null, lunchEnd: null }
-  };
-
-  return schedule;
 }
 
 async function processHospitalBatch(hospitals, batchNumber) {
@@ -236,15 +204,43 @@ async function processHospitalBatch(hospitals, batchNumber) {
       hospUrl: h.hospUrl || "-",
       telno: h.telno || "-",
       veteran_hospital: h.veteran_hospital,
-      nightCare: times?.emyNgtYn === "Y",
-      weekendCare: times?.noTrmtSat !== "휴무" || times?.noTrmtSun !== "휴무",
-      schedule: convertTimesToSchedule(times),
-      ...additionalInfo,
+      times: {
+        trmtMonStart: times?.trmtMonStart,
+        trmtMonEnd: times?.trmtMonEnd,
+        trmtTueStart: times?.trmtTueStart,
+        trmtTueEnd: times?.trmtTueEnd,
+        trmtWedStart: times?.trmtWedStart,
+        trmtWedEnd: times?.trmtWedEnd,
+        trmtThuStart: times?.trmtThuStart,
+        trmtThuEnd: times?.trmtThuEnd,
+        trmtFriStart: times?.trmtFriStart,
+        trmtFriEnd: times?.trmtFriEnd,
+        trmtSatStart: times?.trmtSatStart,
+        trmtSatEnd: times?.trmtSatEnd,
+        lunchWeek: times?.lunchWeek,
+        rcvWeek: times?.rcvWeek,
+        rcvSat: times?.rcvSat,
+        emyNgtYn: times?.emyNgtYn,
+        noTrmtSat: times?.noTrmtSat,
+        noTrmtSun: times?.noTrmtSun,
+        emyDayTelNo1: times?.emyDayTelNo1,
+        emyDayTelNo2: times?.emyDayTelNo2,
+        emyDayYn: times?.emyDayYn,
+        emyNgtTelNo1: times?.emyNgtTelNo1,
+        emyNgtTelNo2: times?.emyNgtTelNo2,
+        noTrmtHoli: times?.noTrmtHoli,
+        parkEtc: times?.parkEtc,
+        parkQty: times?.parkQty,
+        parkXpnsYn: times?.parkXpnsYn,
+        plcDir: times?.plcDir,
+        plcDist: times?.plcDist,
+        plcNm: times?.plcNm
+      },
       nearby_pharmacies: nearbyPharmaciesMap.get(h.ykiho) || []
     };
 
     // 과목 정보
-    const subjects = h.subjects || [];
+    const subjects = additionalInfo.subjects || [];
     hospitalData.subject = subjects.length > 0 
       ? subjects.map(s => s.dgsbjtCdNm).join(", ")
       : "-";
@@ -253,14 +249,14 @@ async function processHospitalBatch(hospitals, batchNumber) {
       : ["-"];
 
     // 장비 정보
-    hospitalData.equipment = (h.equipment || []).map(({ typeCd, typeCdNm, typeCnt }) => ({
+    hospitalData.equipment = (additionalInfo.equipment || []).map(({ typeCd, typeCdNm, typeCnt }) => ({
       typeCd,
       typeCdNm,
       typeCnt
     }));
 
     // 식이치료 정보
-    hospitalData.food_treatment = (h.food_treatment_info || []).map(({ typeCd, typeCdNm, genMealAddYn, psnlCnt }) => ({
+    hospitalData.food_treatment = (additionalInfo.food_treatment_info || []).map(({ typeCd, typeCdNm, genMealAddYn, psnlCnt }) => ({
       typeCd,
       typeCdNm,
       genMealAddYn,
@@ -268,27 +264,27 @@ async function processHospitalBatch(hospitals, batchNumber) {
     }));
 
     // 중환자실 정보
-    hospitalData.intensive_care = (h.intensive_care_info || []).map(({ typeCd, typeCdNm }) => ({
+    hospitalData.intensive_care = (additionalInfo.intensive_care_info || []).map(({ typeCd, typeCdNm }) => ({
       typeCd,
       typeCdNm
     }));
 
     // 간호등급 정보
-    hospitalData.nursing_grade = (h.nursing_grade || []).map(({ typeCd, typeCdNm, nursingRt }) => ({
+    hospitalData.nursing_grade = (additionalInfo.nursing_grade || []).map(({ typeCd, typeCdNm, nursingRt }) => ({
       typeCd,
       typeCdNm,
       nursingRt
     }));
 
     // 인력 정보
-    hospitalData.personnel = (h.personnel_info || []).map(({ pharmCd, pharmCdNm, pharmCnt }) => ({
+    hospitalData.personnel = (additionalInfo.personnel_info || []).map(({ pharmCd, pharmCdNm, pharmCnt }) => ({
       pharmCd,
       pharmCdNm,
       pharmCnt
     }));
 
     // 전문과목 정보
-    hospitalData.speciality = (h.speciality_info || []).map(({ typeCd, typeCdNm }) => ({
+    hospitalData.speciality = (additionalInfo.speciality_info || []).map(({ typeCd, typeCdNm }) => ({
       typeCd,
       typeCdNm
     }));
@@ -407,7 +403,6 @@ async function bulkIndex() {
         lastSuccessfulBatch = Date.now();
 
         const progress = (processedCount / totalHospitals) * 100;
-        const elapsedTime = (Date.now() - startTime) / 1000;
         
         const avgProcessingTime = calculateMovingAverage(processingTimes, TIME_WINDOW);
         const remainingBatches = Math.ceil((totalHospitals - processedCount) / (BATCH_SIZE * PARALLEL_BATCHES));

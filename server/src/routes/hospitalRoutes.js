@@ -270,8 +270,11 @@ router.get('/:id', async (req, res) => {
       subjects: hospital.subjects || [],
       times: hospital.times || {},
       nearby_pharmacies: hospital.nearby_pharmacies || [],
-      intensive_care_info: hospital.intensive_care_info || [],
-      food_treatment_info: hospital.food_treatment_info || []
+      intensive_care: hospital.intensive_care || [],
+      food_treatment: hospital.food_treatment || [],
+      personnel: hospital.personnel || [],
+      speciality: hospital.speciality || [],
+      nursing_grade: hospital.nursing_grade || [],
     };
 
     res.json(hospitalDetail);

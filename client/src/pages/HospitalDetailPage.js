@@ -14,24 +14,31 @@ const HospitalDetailPage = () => {
   const mapRef = useRef(null);
 
 
-  // 시간 포맷팅 함수 추가
+  // 시간 포맷팅 함수 수정 (08시30분 등도 그대로 반환)
   const formatTime = (time) => {
-    if (!time) return "정보 없음";
+    if (!time || time === 'null') return "정보 없음";
+    // 이미 한글(08시30분 등)로 되어 있으면 그대로 반환
+    if (/[시분]/.test(time)) return time;
+    // 4자리 숫자(0900 등)만 변환
     const timeStr = time.toString().padStart(4, '0');
     return `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
   };
 
-  // 점심시간 포맷팅 함수 추가
-  const formatLunchTime = (lunchTime) => {
-    if (!lunchTime) return "정보 없음";
-    const [start, end] = lunchTime.split('~').map(time => time.trim());
-    return `${formatTime(start)} ~ ${formatTime(end)}`;
+  // 점심시간 포맷팅 함수 (lunchStart, lunchEnd)
+  const formatLunchTime = (lunchStart, lunchEnd) => {
+    if (!lunchStart && !lunchEnd) return "정보 없음";
+    if (lunchStart && lunchEnd) return `${formatTime(lunchStart)} ~ ${formatTime(lunchEnd)}`;
+    if (lunchStart) return `${formatTime(lunchStart)} ~`;
+    if (lunchEnd) return `~ ${formatTime(lunchEnd)}`;
+    return "정보 없음";
   };
 
-  // 운영 시간 표시 함수 추가
-  const displayOperatingTime = (startTime, endTime) => {
-    if (!startTime || !endTime) return "정보 없음";
-    return `${formatTime(startTime)} ~ ${formatTime(endTime)}`;
+  // 운영 시간 표시 함수 (openTime, closeTime)
+  const displayOperatingTime = (openTime, closeTime) => {
+    if (!openTime) return "휴무";
+    if (openTime === "휴무") return "휴무";
+    if (!closeTime) return `${formatTime(openTime)} ~`;
+    return `${formatTime(openTime)} ~ ${formatTime(closeTime)}`;
   };
 
   useEffect(() => {
@@ -327,9 +334,9 @@ const HospitalDetailPage = () => {
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold mb-4">진료과 정보</h2>
               <div className="flex flex-wrap gap-2">
-                {hospital.subjects?.map((subject, index) => (
+                {hospital.major?.map((subject, index) => (
                   <span key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
-                    {subject.dgsbjtCdNm}
+                    {subject}
                   </span>
                 ))}
               </div>
@@ -339,6 +346,7 @@ const HospitalDetailPage = () => {
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold mb-4">운영 정보</h2>
               <div className="space-y-4">
+                {/* 운영 시간 */}
                 <div>
                   <p className="text-gray-600 mb-2">운영 시간</p>
                   <div className="grid grid-cols-1 gap-2">
@@ -368,24 +376,73 @@ const HospitalDetailPage = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <p className="font-medium">일요일</p>
-                      <p>{displayOperatingTime(hospital.times?.trmtSunStart, hospital.times?.trmtSunEnd)}</p>
+                      <p>{hospital.times?.noTrmtSun || "휴무"}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">공휴일</p>
+                      <p>{hospital.times?.noTrmtHoli || "휴무"}</p>
                     </div>
                     <div className="flex justify-between items-center">
                       <p className="font-medium">점심시간</p>
-                      <p>{formatLunchTime(hospital.times?.lunchWeek)}</p>
+                      <p>{hospital.times?.lunchWeek || "정보 없음"}</p>
                     </div>
                   </div>
                 </div>
+
+                {/* 주차 정보 */}
+                {hospital.times?.parkQty && (
+                  <div>
+                    <p className="text-gray-600 mb-2">주차 정보</p>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="font-medium">주차 가능 대수</p>
+                        <p>{hospital.times.parkQty}대</p>
+                      </div>
+                      {hospital.times.parkEtc && (
+                        <div className="mt-2">
+                          <p className="font-medium mb-1">주차 요금 안내</p>
+                          <p className="text-sm text-gray-600">{hospital.times.parkEtc}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 위치 안내 */}
+                {hospital.times?.plcNm && (
+                  <div>
+                    <p className="text-gray-600 mb-2">위치 안내</p>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <p className="font-medium">가까운 지하철역</p>
+                        <p>{hospital.times.plcNm}</p>
+                      </div>
+                      {hospital.times.plcDir && (
+                        <div className="mt-2">
+                          <p className="font-medium mb-1">출구 안내</p>
+                          <p className="text-sm text-gray-600">{hospital.times.plcDir}</p>
+                        </div>
+                      )}
+                      {hospital.times.plcDist && (
+                        <div className="mt-2">
+                          <p className="font-medium mb-1">도보 거리</p>
+                          <p className="text-sm text-gray-600">{hospital.times.plcDist}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-4">
                   <span className={`px-3 py-1 rounded-full text-sm ${
-                    hospital.nightCare ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                    hospital.times?.emyNgtYn === "Y" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                   }`}>
-                    야간진료: {hospital.nightCare ? "가능" : "불가능"}
+                    야간진료: {hospital.times?.emyNgtYn === "Y" ? "가능" : "불가능"}
                   </span>
                   <span className={`px-3 py-1 rounded-full text-sm ${
-                    hospital.weekendCare ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                    hospital.times?.trmtSatStart ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                   }`}>
-                    주말진료: {hospital.weekendCare ? "가능" : "불가능"}
+                    주말진료: {hospital.times?.trmtSatStart ? "가능" : "불가능"}
                   </span>
                 </div>
               </div>
@@ -471,31 +528,26 @@ const HospitalDetailPage = () => {
             {hospital.food_treatment && hospital.food_treatment.length > 0 && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-semibold mb-4">식이치료 정보</h2>
-                <div className="space-y-3">
-                  {hospital.food_treatment.map((food) => (
-                    <div key={food.typeCd} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {hospital.food_treatment.map((food, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                       <div>
-                        <span className="font-medium">{food.typeCdNm}</span>
-                        <p className="text-sm text-gray-600">인원: {food.psnlCnt}명</p>
+                        <span className="font-medium text-lg">{food.typeCdNm}</span>
+                        <p className="text-gray-600 mt-1">인원: {food.psnlCnt}명</p>
                       </div>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        food.genMealAddYn === "Y" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                      }`}>
-                        {food.genMealAddYn === "Y" ? "일반식 추가" : "일반식 없음"}
-                      </span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* 병원 정보 */}
+            {/* 중환자실 정보 */}
             {hospital.intensive_care && hospital.intensive_care.length > 0 && (
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold mb-4">병원 정보</h2>
+                <h2 className="text-xl font-semibold mb-4">중환자실 및 특수치료 정보</h2>
                 <div className="flex flex-wrap gap-2">
-                  {hospital.intensive_care.map((care) => (
-                    <span key={care.typeCd} className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">
+                  {hospital.intensive_care.map((care, index) => (
+                    <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
                       {care.typeCdNm}
                     </span>
                   ))}

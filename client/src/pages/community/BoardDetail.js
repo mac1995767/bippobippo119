@@ -18,14 +18,10 @@ const BoardDetail = () => {
   const [editContent, setEditContent] = useState('');
   const [replyContent, setReplyContent] = useState('');
   const [replyingTo, setReplyingTo] = useState(null);
-  const [newComment, setNewComment] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [taggedHospitals, setTaggedHospitals] = useState([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showEntityTagModal, setShowEntityTagModal] = useState(false);
-  const [entityTags, setEntityTags] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryBoards, setCategoryBoards] = useState([]);
   const [replyTaggedHospitals, setReplyTaggedHospitals] = useState([]);
@@ -92,12 +88,16 @@ const BoardDetail = () => {
       // 각 댓글의 @ 태그된 병원 정보 가져오기
       const commentsWithHospitals = await Promise.all(
         commentsData.map(async (comment) => {
-          // @ 태그와 그 뒤의 모든 문자를 포함하는 정규식으로 수정
-          const matches = comment.comment.match(/@[^@\n]+/g);
+          // @ 뒤에 한글, 영문, 숫자, (), [], ·, -, _ 등 병원 이름에 자주 쓰이는 문자만 매칭, 공백/구두점/줄끝에서 끊음
+          const matches = comment.comment.match(/@([가-힣a-zA-Z0-9()[\]·_-]+)/g);
+          let hospitalNames = [];
           if (matches) {
-            const hospitals = await Promise.all(
-              matches.map(async (match) => {
-                const hospitalName = match.substring(1).trim(); // 앞뒤 공백 제거
+            hospitalNames = matches.map(m => m.substring(1));
+          }
+          let hospitals = [];
+          if (hospitalNames.length > 0) {
+            hospitals = await Promise.all(
+              hospitalNames.map(async (hospitalName) => {
                 try {
                   const response = await axios.get(`${getApiUrl()}/api/hospitals/autocomplete?query=${encodeURIComponent(hospitalName)}`, { withCredentials: true });
                   return response.data.hospital[0]; // 첫 번째 검색 결과 사용
@@ -107,9 +107,9 @@ const BoardDetail = () => {
                 }
               })
             );
-            return { ...comment, hospitals: hospitals.filter(Boolean) };
+            hospitals = hospitals.filter(Boolean); // null 제거
           }
-          return comment;
+          return { ...comment, hospitals };
         })
       );
 
@@ -123,7 +123,6 @@ const BoardDetail = () => {
   // 초기 데이터 로딩
   useEffect(() => {
     let isMounted = true;
-
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -132,14 +131,11 @@ const BoardDetail = () => {
           axios.get(`${getApiUrl()}/api/boards/${id}`, { withCredentials: true }),
           axios.get(`${getApiUrl()}/api/boards/related/${id}?page=${currentPage}`, { withCredentials: true })
         ]);
-
         if (isMounted) {
           setBoard(boardResponse.data);
           setRelatedBoards(relatedBoardsResponse.data.boards);
           setTotalPages(relatedBoardsResponse.data.totalPages);
           setCurrentPage(relatedBoardsResponse.data.currentPage);
-          
-          // 조회수 증가 API 호출 (처음 로드할 때만)
           if (!viewIncremented) {
             try {
               await axios.post(`${getApiUrl()}/api/boards/${id}/increment-view`, {}, { withCredentials: true });
@@ -148,8 +144,6 @@ const BoardDetail = () => {
               console.error('조회수 증가 실패:', error);
             }
           }
-          
-          // 댓글 목록 가져오기
           await fetchComments();
         }
       } catch (error) {
@@ -164,13 +158,11 @@ const BoardDetail = () => {
         }
       }
     };
-
     fetchData();
-
     return () => {
       isMounted = false;
     };
-  }, [id, navigate, currentPage, viewIncremented]);
+  }, [id, navigate, currentPage, viewIncremented, fetchComments]);
 
   const handleEditBoard = () => {
     navigate(`/community/boards/edit/${id}`);
@@ -312,7 +304,6 @@ const BoardDetail = () => {
 
   const renderCommentTree = (comment, depth = 0) => {
     const hasReplies = comment.replies && comment.replies.length > 0;
-    const isDeleted = comment.is_deleted;
     
     return (
       <div key={comment.id} className="relative">
@@ -335,40 +326,49 @@ const BoardDetail = () => {
   const renderCommentContent = (comment) => {
     if (!comment.comment) return '';
 
-    // @ 태그와 그 뒤의 모든 문자를 포함하는 정규식으로 수정
-    const parts = comment.comment.split(/(@[^@\n]+)/g);
-    return parts.map((part, index) => {
-      if (part.startsWith('@')) {
-        const hospitalName = part.substring(1).trim(); // 앞뒤 공백 제거
-        // hospitals 배열에서 병원 정보 찾기 (정확한 일치가 아닌 포함 여부로 검사)
-        const hospital = comment.hospitals?.find(h => hospitalName.includes(h.name) || h.name.includes(hospitalName));
-        
-        if (hospital) {
-          return (
-            <span key={`${comment.id}-${index}-${hospital.id}`} className="relative group inline-block">
-              <span 
-                className="text-blue-600 font-medium cursor-pointer hover:bg-blue-50"
-                onClick={() => navigate(`/hospitals?query=${encodeURIComponent(hospitalName)}`)}
-              >
-                {part}
-              </span>
-              <span className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-lg shadow-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
-                <span className="font-bold text-sm mb-1 block">{hospital.name}</span>
-                <span className="text-xs text-gray-600 mb-1 block">{hospital.address}</span>
-              </span>
-            </span>
-          );
-        } else {
-          // 병원 정보가 없는 경우에도 @ 태그를 파란색으로 표시
-          return (
-            <span key={`${comment.id}-${index}`} className="text-blue-600 font-medium">
-              {part}
-            </span>
-          );
-        }
+    // hospitals 배열에서 병원 이름만 추출
+    const hospitalNames = (comment.hospitals || []).map(h => h.name);
+    if (hospitalNames.length === 0) return comment.comment;
+
+    // 병원 이름 escape
+    const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = `@(${hospitalNames.map(escapeRegExp).join('|')})`;
+    const regex = new RegExp(pattern, 'g');
+
+    let lastIndex = 0;
+    let match;
+    const resultParts = [];
+    while ((match = regex.exec(comment.comment)) !== null) {
+      if (match.index > lastIndex) {
+        resultParts.push(<span key={lastIndex}>{comment.comment.slice(lastIndex, match.index)}</span>);
       }
-      return <span key={`${comment.id}-${index}`}>{part}</span>;
-    });
+      // 병원 정보 찾기
+      const matchedName = match[1];
+      const matchedIndex = match.index;
+      const hospital = (comment.hospitals || []).find(h => h.name === matchedName);
+      resultParts.push(
+        <span
+          key={matchedIndex}
+          className="text-blue-600 font-medium cursor-pointer relative group"
+          onClick={() => navigate(`/hospitals?query=${encodeURIComponent(matchedName)}`)}
+        >
+          @{matchedName}
+          {/* 툴팁 */}
+          {hospital && (
+            <span className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-lg shadow-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
+              <span className="font-bold text-sm mb-1 block">{hospital.name}</span>
+              <span className="text-xs text-gray-600 mb-1 block">{hospital.address}</span>
+              <span className="text-xs text-gray-600 block">{hospital.phone}</span>
+            </span>
+          )}
+        </span>
+      );
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < comment.comment.length) {
+      resultParts.push(<span key={lastIndex}>{comment.comment.slice(lastIndex)}</span>);
+    }
+    return resultParts;
   };
 
   // 검색어 변경 시 자동 검색
@@ -456,7 +456,7 @@ const BoardDetail = () => {
     }
 
     try {
-      const response = await axios.post(`${getApiUrl()}/api/boards/${id}/comments`, {
+      await axios.post(`${getApiUrl()}/api/boards/${id}/comments`, {
         comment: replyContent,
         parent_id: parentId,
         entityTags: replyTaggedHospitals.map(hospital => ({
@@ -811,12 +811,8 @@ const BoardDetail = () => {
     }
 
     try {
-      setIsSubmitting(true);
       // 댓글 목록 새로고침만 수행
       await fetchComments();
-      setNewComment('');
-      setEntityTags([]);
-      setShowEntityTagModal(false);
     } catch (error) {
       console.error('댓글 목록 새로고침 실패:', error);
       if (error.response?.status === 401) {
@@ -826,7 +822,6 @@ const BoardDetail = () => {
         alert('댓글 목록 새로고침에 실패했습니다.');
       }
     } finally {
-      setIsSubmitting(false);
     }
   };
 
