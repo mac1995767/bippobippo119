@@ -67,6 +67,22 @@ function calculateMovingAverage(times, windowSize) {
   return recentTimes.reduce((a, b) => a + b, 0) / windowSize;
 }
 
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return null;
+  
+  // 휴진, 마감 등의 특수 케이스 처리
+  if (timeStr.includes('휴진') || timeStr.includes('마감')) return null;
+  
+  // 시간 범위에서 시작 시간만 추출
+  const timeMatch = timeStr.match(/(\d{1,2})[시:](\d{1,2})?/);
+  if (!timeMatch) return null;
+  
+  const hours = parseInt(timeMatch[1]);
+  const minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+  
+  return hours * 60 + minutes;
+}
+
 async function fetchAdditionalInfo(hospital) {
   try {
     const [
@@ -108,6 +124,22 @@ async function fetchAdditionalInfo(hospital) {
       speciality_info: []
     };
   }
+}
+
+function convertTimesToSchedule(times) {
+  if (!times) return null;
+
+  const schedule = {
+    Monday: { openTime: times.rcvWeek || null, closeTime: null, lunchStart: null, lunchEnd: null },
+    Tuesday: { openTime: times.rcvWeek || null, closeTime: null, lunchStart: null, lunchEnd: null },
+    Wednesday: { openTime: times.rcvWeek || null, closeTime: null, lunchStart: null, lunchEnd: null },
+    Thursday: { openTime: times.rcvWeek || null, closeTime: null, lunchStart: null, lunchEnd: null },
+    Friday: { openTime: times.rcvWeek || null, closeTime: null, lunchStart: null, lunchEnd: null },
+    Saturday: { openTime: times.rcvSat || null, closeTime: null, lunchStart: null, lunchEnd: null },
+    Sunday: { openTime: times.rcvSun || null, closeTime: null, lunchStart: null, lunchEnd: null }
+  };
+
+  return schedule;
 }
 
 async function processHospitalBatch(hospitals, batchNumber) {
@@ -206,7 +238,7 @@ async function processHospitalBatch(hospitals, batchNumber) {
       veteran_hospital: h.veteran_hospital,
       nightCare: times?.emyNgtYn === "Y",
       weekendCare: times?.noTrmtSat !== "휴무" || times?.noTrmtSun !== "휴무",
-      times: times || null,
+      schedule: convertTimesToSchedule(times),
       ...additionalInfo,
       nearby_pharmacies: nearbyPharmaciesMap.get(h.ykiho) || []
     };
@@ -276,8 +308,8 @@ async function processHospitalBatch(hospitals, batchNumber) {
 
   try {
     const resp = await client.bulk({ refresh: false, body });
-    if (resp.body.errors) {
-      const erroredDocuments = resp.body.items.filter(item => item.update && item.update.error);
+    if (resp.errors) {
+      const erroredDocuments = resp.items.filter(item => item.update && item.update.error);
       erroredDocuments.forEach(doc => {
         console.error(`❌ 색인 오류 (ID: ${doc.update._id}):`, doc.update.error);
       });

@@ -9,6 +9,7 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - ES_JAVA_OPTS=-Xms512m -Xmx512m  # JVM 힙 메모리 최소·최대 512MB로 제한
+      - path.repo=/usr/share/elasticsearch/snapshots
 
     ports:
       - "9200:9200"
@@ -16,6 +17,7 @@ services:
       - esnet
     volumes:
       - ./elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml  # 설정 파일 직접 마운트
+      - /Users/kwanhyunkim/Desktop/DB_20250515:/usr/share/elasticsearch/snapshots  # 스냅샷 저장 경로
     mem_limit : 2g
     deploy:
       resources:

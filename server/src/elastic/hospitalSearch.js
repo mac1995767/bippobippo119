@@ -186,28 +186,44 @@ router.get('/', async (req, res) => {
                 source: `
                   int currentTime = params.currentTime;
                   String currentDay = params.currentDay;
+                  
+                  // schedule 필드 존재 여부 확인
+                  if (!doc.containsKey("schedule." + currentDay + ".openTime") || 
+                      !doc.containsKey("schedule." + currentDay + ".closeTime")) {
+                    return 0;
+                  }
+                  
+                  // size 체크
                   if (doc["schedule." + currentDay + ".openTime"].size() == 0 ||
                       doc["schedule." + currentDay + ".closeTime"].size() == 0) {
                     return 0;
                   }
+                  
+                  // value null 체크
                   if (doc["schedule." + currentDay + ".openTime"].value == null ||
                       doc["schedule." + currentDay + ".closeTime"].value == null) {
                     return 0;
                   }
+                  
                   String openTimeStr = doc["schedule." + currentDay + ".openTime"].value.toString();
                   String closeTimeStr = doc["schedule." + currentDay + ".closeTime"].value.toString();
+                  
                   if (openTimeStr.equals("-") || closeTimeStr.equals("-")) {
                     return 0;
                   }
+                  
                   if (openTimeStr.length() < 4 || closeTimeStr.length() < 4) {
                     return 0;
                   }
+                  
                   int openHour = Integer.parseInt(openTimeStr.substring(0,2));
                   int openMin = Integer.parseInt(openTimeStr.substring(2,4));
                   int closeHour = Integer.parseInt(closeTimeStr.substring(0,2));
                   int closeMin = Integer.parseInt(closeTimeStr.substring(2,4));
+                  
                   int openTime = openHour * 60 + openMin;
                   int closeTime = closeHour * 60 + closeMin;
+                  
                   if (currentTime >= openTime && currentTime < closeTime) {
                     return 10.0;
                   } else {

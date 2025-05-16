@@ -338,7 +338,7 @@ router.get('/boundary-geometry', async (req, res) => {
 
     // 인덱스 확인 및 생성
     const indexes = await collection.indexes();
-    const hasGeoIndex = indexes.some(index => index.key && index.key.geometry === '2dsphere');
+    const hasGeoIndex = indexes.some(index => index.key && index.key.geometry === 'geometry_2dsphere');
     
     if (!hasGeoIndex) {
       await collection.createIndex({ geometry: '2dsphere' });

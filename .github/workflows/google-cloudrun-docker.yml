@@ -78,27 +78,27 @@ jobs:
           docker build -t asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-server/client:latest -f Dockerfile .
           docker push asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-server/client:latest
 
-      # (추가) gke-gcloud-auth-plugin 설치
-      #- name: Install gke-gcloud-auth-plugin
-      #  run: gcloud components install gke-gcloud-auth-plugin --quiet
+      (추가) gke-gcloud-auth-plugin 설치
+      - name: Install gke-gcloud-auth-plugin
+        run: gcloud components install gke-gcloud-auth-plugin --quiet
 
       # 7) GKE 클러스터 자격 증명 가져오기 (MongoDB 배포 및 데이터 복원용)
       #- name: 🔧 Get GKE Cluster Credentials
       #  run: |
-      #    gcloud container clusters get-credentials hospital-cluster --region asia-northeast3
+          gcloud container clusters get-credentials hospital-cluster --region asia-northeast3
 
       # 8) Kubernetes 매니페스트 (MongoDB) 적용
       #- name: 🚀 Deploy MongoDB to GKE
       #  run: |
-      #    cd k8s
-      #    kubectl apply -f mongodb.yaml
+      #   cd k8s
+      #   kubectl apply -f mongodb.yaml
 
       # 9) 데이터 복원 Job 실행
       #- name: 🚀 Run MongoDB Restore Job
       #  run: |
       #    cd k8s
       #    kubectl apply -f mongo-restore-job.yaml
-          # Job 완료까지 잠시 대기 (예시로 300초)
+         # Job 완료까지 잠시 대기 (예시로 300초)
       #    sleep 300
 
       # 11) 서버 이미지 Cloud Run에 배포 (최종 단계)
