@@ -5,29 +5,7 @@ import HospitalMajorList from "./HospitalMajorList";
 import DistanceInfo from "./DistanceInfo";
 import HealthCenterBanner from './HealthCenterBanner';
 import OperatingStatus from "../components/OperatingStatus";
-import { encryptId } from '../utils/encryption';
 import NursingHospitalFilter from './NursingHospitalFilter';
-
-const filterRegions = [
-  { label: "전국", icon: "🌍" },
-  { label: "서울", icon: "🏙️" },
-  { label: "경기", icon: "🏞️" },
-  { label: "부산", icon: "🌊" },
-  { label: "경남", icon: "🌾" },
-  { label: "대구", icon: "🏞️" },
-  { label: "인천", icon: "✈️" },
-  { label: "경북", icon: "🌾" },
-  { label: "전북", icon: "🌻" },
-  { label: "충남", icon: "🌳" },
-  { label: "전남", icon: "🌻" },
-  { label: "대전", icon: "🌳" },
-  { label: "광주", icon: "🌻" },
-  { label: "충북", icon: "🌳" },
-  { label: "강원", icon: "⛰️" },
-  { label: "울산", icon: "🌾" },
-  { label: "제주", icon: "🏝️" },
-  { label: "세종시", icon: "🏢" },
-];
 
 const NursingHospitalList = () => {
   const navigate = useNavigate();
@@ -239,16 +217,16 @@ const NursingHospitalList = () => {
                     <p className="text-gray-600 text-sm mb-2">{hospital.addr}</p>
 
                     {/* 진료과 정보 */}
-                    <HospitalMajorList majors={hospital.subjects?.map(subject => subject.dgsbjtCdNm) || []} />
+                    <HospitalMajorList majors={hospital.major || []} />
 
                     {/* 거리 정보 */}
                     <DistanceInfo hospitalLocation={hospital.location} />
 
                     {/* 운영 정보 */}
                      <div className="mt-2">
-                          <p className="font-semibold text-gray-700">🕒 영업 여부:</p>
-                          <OperatingStatus schedule={hospital.times} />
-                        </div>  
+                        <p className="font-semibold text-gray-700">🕒 영업 여부:</p>
+                        <OperatingStatus times={hospital.times} />
+                    </div>  
 
                     {/* 전화번호 */}
                     <div className="mt-2">
@@ -269,20 +247,6 @@ const NursingHospitalList = () => {
                       ) : (
                         <p className="text-gray-500">전화번호 정보 없음</p>
                       )}
-                    </div>
-
-                    {/* 진료 여부 */}
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <span className={`px-3 py-1 rounded-md text-sm ${
-                        hospital.nightCare ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
-                      }`}>
-                        응급 야간 진료: {hospital.nightCare ? "가능 ✅" : "불가 ❌"}
-                      </span>
-                      <span className={`px-3 py-1 rounded-md text-sm ${
-                        hospital.weekendCare ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
-                      }`}>
-                        응급 주말 진료: {hospital.weekendCare ? "가능 ✅" : "불가 ❌"}
-                      </span>
                     </div>
                   </div>
                 </div>

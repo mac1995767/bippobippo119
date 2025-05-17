@@ -291,11 +291,6 @@ const HospitalListPage = () => {
     setCurrentPage(1);
   };
 
-  const handleMajorClick = (majorLabel) => { // Major 필터 핸들러 추가
-    setSelectedMajor(majorLabel);
-    setCurrentPage(1);
-  };
-
   // 페이지네이션 버튼
   const handlePrevPage = () => {
     if (currentPage > 1) {
@@ -344,19 +339,19 @@ const HospitalListPage = () => {
       <div className="top-0 z-50 bg-white shadow-md py-4">
         {/* 자주 찾는 진료과목 */}
         <section className="container mx-auto mt-6 p-2 px-4 md:px-40">
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4">
             {popularMajor.map((major) => (
               <button
                 key={major.label}
                 onClick={() => handleFilterChange('전공', major.label)}
-                className={`px-3 py-1 rounded-full text-sm flex items-center gap-1 transition-colors ${
+                className={`px-4 py-3 rounded-xl text-sm flex items-center gap-2 transition-all duration-200 transform hover:scale-105 ${
                   selectedMajor === major.label
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                    ? 'bg-blue-500 text-white shadow-md'
+                    : 'bg-white border border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-700'
                 }`}
               >
-                <span>{major.icon}</span>
-                <span>{major.label}</span>
+                <span className="text-xl">{major.icon}</span>
+                <span className="font-medium">{major.label}</span>
               </button>
             ))}
           </div>
