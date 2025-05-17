@@ -315,13 +315,13 @@ const BoardDetail = () => {
         comment.hospitals.forEach(hospital => {
           const regex = new RegExp(`@${hospital.name}`, 'g');
           content = content.replace(regex, 
-            `<span class="text-blue-600 font-medium cursor-pointer hover:underline relative group" 
+            `<span class="text-blue-600 font-medium cursor-pointer hover:underline inline-block relative" 
               onclick="window.location.href='/hospitals?query=${encodeURIComponent(hospital.name)}'">
               @${hospital.name}
-              <span class="absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-lg shadow-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
-                <span class="font-bold text-sm mb-1 block">${hospital.name}</span>
-                <span class="text-xs text-gray-600 mb-1 block">${hospital.address || '주소 정보 없음'}</span>
-              </span>
+              <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-white border border-gray-300 rounded-lg shadow-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                <div class="font-bold text-sm mb-1">${hospital.name}</div>
+                <div class="text-xs text-gray-600">${hospital.address || '주소 정보 없음'}</div>
+              </div>
             </span>`
           );
         });
@@ -357,7 +357,7 @@ const BoardDetail = () => {
                     </div>
                   </div>
                   <div 
-                    className="mt-2 text-gray-700 text-sm"
+                    className="mt-2 text-gray-700 text-sm break-words"
                     dangerouslySetInnerHTML={{ __html: renderCommentContent(comment) }}
                   />
                 </div>
@@ -405,7 +405,7 @@ const BoardDetail = () => {
           onClick={() => navigate(`/hospitals?query=${encodeURIComponent(matchedName)}`)}
         >
           @{matchedName}
-          {/* 툴팁 */}
+          {/* 툴크 */}
           {hospital && (
             <span className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-lg shadow-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
               <span className="font-bold text-sm mb-1 block">{hospital.name}</span>
