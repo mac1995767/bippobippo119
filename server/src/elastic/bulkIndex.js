@@ -241,9 +241,6 @@ async function processHospitalBatch(hospitals, batchNumber) {
 
     // 과목 정보
     const subjects = additionalInfo.subjects || [];
-    hospitalData.subject = subjects.length > 0 
-      ? subjects.map(s => s.dgsbjtCdNm).join(", ")
-      : "-";
     hospitalData.major = subjects.length > 0
       ? subjects.map(s => s.dgsbjtCdNm)
       : ["-"];

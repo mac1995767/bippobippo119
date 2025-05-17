@@ -101,27 +101,11 @@ const filterMajor = [
 
 const filterAdditionFilters = [
   { label: "전체", icon: "📌" },
-  { label: "응급야간진료", icon: "🌙" },
-  { label: "응급주말진료", icon: "📅" },
   { label: "영업중", icon: "🏥" },
-];
-
-const Major = [
-  { label: "전체", icon: "📋" },
-  { label: "내과", icon: "💊" },
-  { label: "외과", icon: "🔪" },
-  { label: "소아청소년과", icon: "🧒" },
-  { label: "산부인과", icon: "🤰" },
-  { label: "정신건강의학과", icon: "🧠" },
-  { label: "정형외과", icon: "🦴" },
-  { label: "이비인후과", icon: "👂" },
-  { label: "가정의학과", icon: "🏡" },
 ];
 
 const additionalFilters = [
   { label: "전체", icon: "📌" },
-  { label: "응급야간진료", icon: "🌙" },
-  { label: "응급주말진료", icon: "📅" },
   { label: "영업중", icon: "🏥" },
 ];
 
@@ -256,17 +240,18 @@ const HospitalListPage = () => {
       }
 
       if (selectedMajor !== "전체") {
-        params.major = selectedMajor; // Major 필터 추가
+        params.major = selectedMajor;
       }
 
       if (selectedAdditionalFilter === "응급야간진료") {
         params.category = "응급야간진료";
-      }else if (selectedAdditionalFilter === "응급주말진료") {
+      } else if (selectedAdditionalFilter === "응급주말진료") {
         params.category = "응급주말진료";
-      }else if (selectedAdditionalFilter === "영업중") {
+      } else if (selectedAdditionalFilter === "영업중") {
         params.category = "영업중";
       }
     
+      console.log("API 요청 파라미터:", params); // 디버깅을 위한 로그 추가
       const response = await fetchHospitals(params);
       // 구조분해: { data, totalCount, currentPage, totalPages }
       const {
@@ -356,7 +341,7 @@ const HospitalListPage = () => {
         {/* Major 선택 */}
         <section className="container mx-auto mt-6 p-2 px-4 md:px-40">
           <div className="flex flex-wrap justify-center gap-2">
-            {Major.map((m) => (
+            {filterMajor.map((m) => (
               <button
                 key={m.label}
                 onClick={() => handleMajorClick(m.label)}
@@ -471,7 +456,7 @@ const HospitalListPage = () => {
                         <DistanceInfo hospitalLocation={hospital.location} />
 
                         {/* 진료과 정보 (컴포넌트 사용) */}
-                        <HospitalMajorList majors={hospital.subjects?.map(subject => subject.dgsbjtCdNm) || []} />
+                        <HospitalMajorList majors={hospital.major || []} />
 
                         {/* 🕒 영업 여부 */}
                         <div className="mt-2">

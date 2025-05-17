@@ -11,7 +11,7 @@ const { HospitalTime } = require('../models/hospitalTime');
 
 router.get('/filter', async (req, res) => {
   try {
-    const { region, subject, category, page = 1, limit = 10 } = req.query;
+    const { region, category, major, page = 1, limit = 10 } = req.query;
 
     // 숫자로 변환
     const pageNum = parseInt(page, 10) || 1;
@@ -25,8 +25,8 @@ router.get('/filter', async (req, res) => {
     if (region && region !== '전국') {
       matchConditions.sidoCdNm = region;
     }
-    if (subject && subject !== '전체') {
-      matchConditions.clCdNm = subject;
+    if (major && major !== '전체') {
+      matchConditions.major = major;
     }
 
     // 기본 파이프라인
@@ -55,8 +55,64 @@ router.get('/filter', async (req, res) => {
             ]
           }
         });
+      } else if (category === '영업중') {
+        const now = new Date();
+        const currentDay = now.getDay(); // 0: 일요일, 1: 월요일, ...
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const currentTime = currentHour * 60 + currentMinute;
+
+        const dayMap = {
+          0: 'Sun',
+          1: 'Mon',
+          2: 'Tue',
+          3: 'Wed',
+          4: 'Thu',
+          5: 'Fri',
+          6: 'Sat'
+        };
+
+        const currentDayKey = dayMap[currentDay];
+        
+        pipeline.push({
+          $match: {
+            $expr: {
+              $and: [
+                { $ne: [`$times.trmt${currentDayKey}Start`, "휴무"] },
+                { $ne: [`$times.trmt${currentDayKey}End`, "휴무"] },
+                {
+                  $let: {
+                    vars: {
+                      startTime: {
+                        $toInt: {
+                          $concat: [
+                            { $substr: [`$times.trmt${currentDayKey}Start`, 0, 2] },
+                            { $substr: [`$times.trmt${currentDayKey}Start`, 2, 2] }
+                          ]
+                        }
+                      },
+                      endTime: {
+                        $toInt: {
+                          $concat: [
+                            { $substr: [`$times.trmt${currentDayKey}End`, 0, 2] },
+                            { $substr: [`$times.trmt${currentDayKey}End`, 2, 2] }
+                          ]
+                        }
+                      }
+                    },
+                    in: {
+                      $and: [
+                        { $lte: [{ $multiply: [{ $floor: { $divide: ["$$startTime", 100] } }, 60] }, currentTime] },
+                        { $gte: [{ $multiply: [{ $floor: { $divide: ["$$endTime", 100] } }, 60] }, currentTime] }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        });
       }
-      // 필요 시, "일반 진료" 등 다른 조건 추가
     }
 
     // 2) totalCount를 구하기 위한 별도 파이프라인

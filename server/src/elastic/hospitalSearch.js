@@ -42,6 +42,14 @@ router.get('/', async (req, res) => {
       filter.push({ term: { region: region } });
     }
 
+    if (major && major !== "전체") {
+      must.push({
+        terms: {
+          "major": [major]
+        }
+      });
+    }
+
     // 1. 현재 시간 및 요일 계산 (타임존을 고려하여 계산)
     const now = moment().tz(TIMEZONE);
     const currentTime = now.hours() * 60 + now.minutes();
@@ -91,43 +99,33 @@ router.get('/', async (req, res) => {
         console.log('현재 분:', currentTime);
 
         filter.push({
-          script: {
-            script: {
-              lang: "painless",
-              source: `
-                int currentTime = params.currentTime;
-                String dayKey = params.dayKey;
-                String startField = "times.trmt" + dayKey + "Start";
-                String endField = "times.trmt" + dayKey + "End";
-                
-                if (doc[startField].size() == 0 || doc[endField].size() == 0) {
-                  return false;
+          bool: {
+            must: [
+              {
+                exists: {
+                  field: `times.trmt${dayKey}Start`
                 }
-                
-                long openHHmm = doc[startField].value;
-                long closeHHmm = doc[endField].value;
-                
-                if (openHHmm <= 0 || closeHHmm <= 0) {
-                  return false;
+              },
+              {
+                exists: {
+                  field: `times.trmt${dayKey}End`
                 }
-                
-                int openMin = (int)((openHHmm / 100) * 60 + (openHHmm % 100));
-                int closeMin = (int)((closeHHmm / 100) * 60 + (closeHHmm % 100));
-                
-                if (closeMin < openMin) {
-                  closeMin += 24 * 60;
-                  if (currentTime < openMin) {
-                    currentTime += 24 * 60;
+              },
+              {
+                range: {
+                  [`times.trmt${dayKey}Start`]: {
+                    lte: now.format('HHmm')
                   }
                 }
-                
-                return currentTime >= openMin && currentTime < closeMin;
-              `,
-              params: {
-                currentTime: currentTime,
-                dayKey: dayKey
+              },
+              {
+                range: {
+                  [`times.trmt${dayKey}End`]: {
+                    gt: now.format('HHmm')
+                  }
+                }
               }
-            }
+            ]
           }
         });
       } else {
@@ -135,10 +133,10 @@ router.get('/', async (req, res) => {
       }
     }
     
-    if (major && major !== "전체") {
+    if (subject && subject !== "전체") {
       filter.push({
         match: {
-          "subjects.dgsbjtCdNm": major
+          "subjects.dgsbjtCdNm": subject
         }
       });
     }
@@ -301,3 +299,5 @@ router.get('/', async (req, res) => {
 });
 
 module.exports = router;
+
+
