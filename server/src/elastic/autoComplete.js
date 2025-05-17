@@ -21,7 +21,7 @@ router.get("/", async (req, res) => {
 
     const query = rawQuery?.trim();
     // 이중 인코딩된 쿼리 디코딩
-    
+
     if (!query || query.trim() === "") {
       return res.json({ hospital: [] });
     }
@@ -128,16 +128,9 @@ router.get("/", async (req, res) => {
       }
     };
 
-    console.log("검색 파라미터:", JSON.stringify(searchParams, null, 2));
-
     const response = await client.search(searchParams);
     const hits = response.hits?.hits || [];
-    
-    console.log("검색 결과 수:", hits.length);
-    if (hits.length > 0) {
-      console.log("첫 번째 결과 거리:", hasValidLocation ? hits[0].sort[1] : "위치 정보 없음");
-    }
-    
+        
     const suggestions = {
       hospital: hits.map(hit => {
         const source = hit._source;
@@ -181,8 +174,8 @@ router.get("/", async (req, res) => {
 // 전체 검색 결과 API
 router.get("/search", async (req, res) => {
   try {
-    const { query, page = 1, size = 20, latitude, longitude } = req.query;
-    console.log("검색어:", query, "페이지:", page, "크기:", size, "위치:", latitude, longitude);
+    const { query, page = 1, size = 20 } = req.query;
+    console.log("검색어:", query, "페이지:", page, "크기:", size);
 
     if (!query || query.trim() === "") {
       return res.json({ 
@@ -193,9 +186,6 @@ router.get("/search", async (req, res) => {
       });
     }
 
-    const region = extractRegion(query);
-    const searchQuery = query.replace(region || '', '').trim();
-
     const searchParams = {
       index: "hospitals",
       size: parseInt(size),
@@ -204,96 +194,52 @@ router.get("/search", async (req, res) => {
         query: {
           bool: {
             should: [
-              // 정확한 병원명 매칭 (가중치 10)
+              // 병원명 검색 (부분 매칭)
               {
-                match_phrase: {
+                match_phrase_prefix: {
                   "yadmNm": {
-                    query: searchQuery,
-                    boost: 10
+                    query: query,
+                    boost: 2
                   }
                 }
               },
-              // 병원명 부분 매칭 (가중치 5)
+              // 주소 검색 (부분 매칭)
+              {
+                match_phrase_prefix: {
+                  "addr": {
+                    query: query,
+                    boost: 1
+                  }
+                }
+              },
+              // 병원명 검색 (유사도 매칭)
               {
                 match: {
                   "yadmNm": {
-                    query: searchQuery,
-                    boost: 5,
-                    fuzziness: "AUTO"
+                    query: query,
+                    fuzziness: "AUTO",
+                    boost: 1.5
                   }
                 }
               },
-              // 정확한 진료과목 매칭 (가중치 3)
-              {
-                match_phrase: {
-                  "major": {
-                    query: searchQuery,
-                    boost: 3
-                  }
-                }
-              },
-              // 진료과목 부분 매칭 (가중치 2)
-              {
-                match: {
-                  "major": {
-                    query: searchQuery,
-                    boost: 2,
-                    fuzziness: "AUTO"
-                  }
-                }
-              },
-              // 주소 검색 (가중치 1)
+              // 주소 검색 (유사도 매칭)
               {
                 match: {
                   "addr": {
-                    query: searchQuery,
-                    boost: 1,
-                    fuzziness: "AUTO"
+                    query: query,
+                    fuzziness: "AUTO",
+                    boost: 1
                   }
                 }
               }
             ],
-            filter: [
-              ...(region ? [{
-                match: {
-                  "region": {
-                    query: region,
-                    boost: 5
-                  }
-                }
-              }] : []),
-              ...(latitude && longitude ? [{
-                geo_distance: {
-                  distance: "10km",
-                  location: {
-                    lat: parseFloat(latitude),
-                    lon: parseFloat(longitude)
-                  }
-                }
-              }] : [])
-            ],
             minimum_should_match: 1
           }
         },
-        sort: [
-          { _score: "desc" },
-          ...(latitude && longitude ? [{
-            _geo_distance: {
-              location: {
-                lat: parseFloat(latitude),
-                lon: parseFloat(longitude)
-              },
-              order: "asc",
-              unit: "km"
-            }
-          }] : [])
-        ],
         highlight: {
           fields: {
             "yadmNm": {},
-            "addr": {},
-            "major": {},
-            "region": {}
+            "addr": {}
           },
           pre_tags: ["<em>"],
           post_tags: ["</em>"]
@@ -306,25 +252,6 @@ router.get("/search", async (req, res) => {
     
     const hospitals = hits.map(hit => {
       const source = hit._source;
-      let score = hit._score;
-      
-      // 추가 점수 계산
-      if (source.yadmNm && source.yadmNm.includes(searchQuery)) {
-        score += 5; // 정확한 병원명 매칭
-      }
-      if (region && source.region === region) {
-        score += 3; // 지역 정확히 일치
-      }
-      if (source.major && source.major.includes(searchQuery)) {
-        score += 2; // 진료과목 매칭
-      }
-      if (source.yadmNm && source.yadmNm.includes("의원") && searchQuery.includes("의원")) {
-        score += 1;
-      }
-      if (source.yadmNm && source.yadmNm.includes("전문") && searchQuery.includes("전문")) {
-        score += 1;
-      }
-
       return {
         id: hit._id,
         name: source.yadmNm,
@@ -333,11 +260,7 @@ router.get("/search", async (req, res) => {
         category: source.category,
         major: source.major || [],
         speciality: source.speciality || [],
-        score: score,
-        highlight: hit.highlight || {},
-        ...(latitude && longitude && {
-          distance: hit.sort[1]
-        })
+        highlight: hit.highlight || {}
       };
     });
 
@@ -352,63 +275,6 @@ router.get("/search", async (req, res) => {
   } catch (error) {
     console.error("❌ 검색 라우트 오류:", error);
     res.status(500).json({ message: "검색 중 오류가 발생했습니다." });
-  }
-});
-
-// 위치 기반 검색
-router.post("/nearby", async (req, res) => {
-  try {
-    const { latitude, longitude, radius = 1000 } = req.body;
-
-    const searchParams = {
-      index: "hospitals",
-      size: 5,
-      body: {
-        query: {
-          bool: {
-            filter: {
-              geo_distance: {
-                distance: `${radius}m`,
-                location: {
-                  lat: latitude,
-                  lon: longitude
-                }
-              }
-            }
-          }
-        },
-        sort: [
-          {
-            _geo_distance: {
-              location: {
-                lat: latitude,
-                lon: longitude
-              },
-              order: "asc",
-              unit: "m",
-              distance_type: "arc"
-            }
-          }
-        ]
-      }
-    };
-
-    const response = await client.search(searchParams);
-    const hits = response.hits?.hits || [];
-
-    const suggestions = {
-      hospital: hits.map(hit => ({
-        name: hit._source.yadmNm,
-        address: hit._source.addr,
-        subject: hit._source.subject,
-        distance: hit.sort[0]
-      }))
-    };
-
-    res.json(suggestions);
-  } catch (error) {
-    console.error("❌ 위치 기반 검색 오류:", error);
-    res.status(500).json({ message: "위치 기반 검색 중 오류가 발생했습니다." });
   }
 });
 

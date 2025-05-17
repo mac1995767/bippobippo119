@@ -27,9 +27,9 @@ const Comment = ({ onSubmit, boardId, comment }) => {
     }
 
     const timer = setTimeout(() => {
-      api.get(`/api/autocomplete?query=${encodeURIComponent(searchTerm)}`)
+      api.get(`/api/autoComplete/search?query=${encodeURIComponent(searchTerm)}`)
         .then((response) => {
-          setSuggestions(response.data.hospital || []);
+          setSuggestions(response.data.hospitals || []);
         })
         .catch(() => {
           setSuggestions([]);

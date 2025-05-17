@@ -918,7 +918,9 @@ const BoardDetail = () => {
 
                   {/* 댓글 목록 */}
                   <div className="space-y-4">
-                    {comments.map(comment => renderComment(comment))}
+                    {comments
+                      .filter(comment => !comment.parent_id)
+                      .map(comment => renderComment(comment))}
                   </div>
                 </div>
 
