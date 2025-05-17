@@ -316,6 +316,7 @@ router.get('/:id', async (req, res) => {
       SELECT 
         b.*, 
         u.username as author_name,
+        u.profile_image,
         c.category_name
       FROM hospital_board b
       LEFT JOIN hospital_users u ON b.user_id = u.id
@@ -461,6 +462,7 @@ router.get('/', async (req, res) => {
         c.parent_id,
         u.username as author_name,
         u.nickname,
+        u.profile_image,
         (SELECT COUNT(*) FROM hospital_board_comments WHERE board_id = b.id) as comment_count
       FROM hospital_board b
       JOIN hospital_board_categories c ON b.category_id = c.id

@@ -169,26 +169,50 @@ const Comment = ({ onSubmit, boardId, comment }) => {
     }
   };
 
+  const getProfileImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+    return `${getApiUrl()}${imagePath}`;
+  };
   return (
     <div className="relative">
       {isDeleted ? (
         <div className="text-gray-500 italic text-sm">삭제됨</div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-2">
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={handleInput}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                e.target.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-              }
-            }}
-            placeholder="댓글을 입력하세요..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            rows={3}
-          />
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0">
+              {user?.profile_image ? (
+                <img
+                  src={getProfileImageUrl(user.profile_image)}
+                  alt={user.username || '사용자'}
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span className="text-blue-600 font-semibold text-sm">
+                    {user?.username?.charAt(0).toUpperCase() || '?'}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="flex-grow">
+              <textarea
+                ref={textareaRef}
+                value={content}
+                onChange={handleInput}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    e.target.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                  }
+                }}
+                placeholder="댓글을 입력하세요..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                rows={3}
+              />
+            </div>
+          </div>
           
           {/* 태그된 병원 미리보기 */}
           {taggedHospitals.length > 0 && (

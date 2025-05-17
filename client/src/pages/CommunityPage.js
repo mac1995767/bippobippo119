@@ -60,6 +60,30 @@ const CommunityPage = () => {
     navigate(`/community/boards/${postId}`);
   };
 
+  // 프로필 이미지 URL 생성 함수
+  const getProfileImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+    if (imagePath.startsWith('/uploads/')) return `${getApiUrl()}${imagePath}`;
+    return `${getApiUrl()}/uploads/${imagePath}`;
+  };
+
+  // 랜덤 색상 생성 함수
+  const getRandomColor = (username) => {
+    const colors = [
+      'bg-red-500', 'bg-pink-500', 'bg-purple-500', 'bg-indigo-500', 
+      'bg-blue-500', 'bg-cyan-500', 'bg-teal-500', 'bg-green-500',
+      'bg-yellow-500', 'bg-orange-500'
+    ];
+    const index = username.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+    return colors[index];
+  };
+
+  // 사용자 이니셜 가져오기
+  const getInitials = (username) => {
+    return username ? username.charAt(0).toUpperCase() : '?';
+  };
+
   return (
     <div className="min-h-screen bg-[#f5f5f5]">
       <div className="max-w-full mx-auto p-4 sm:p-6">
@@ -112,7 +136,25 @@ const CommunityPage = () => {
                       className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <h3 className="text-sm font-medium text-gray-900 line-clamp-2">{post.title}</h3>
+                        <div className="flex items-center space-x-3">
+                          <div className="flex-shrink-0">
+                            {post.profile_image ? (
+                              <img
+                                src={getProfileImageUrl(post.profile_image)}
+                                alt={post.author_name || '작성자'}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold ${getRandomColor(post.author_name)}`}>
+                                {getInitials(post.author_name)}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-medium text-gray-900 line-clamp-2">{post.title}</h3>
+                            <p className="text-xs text-gray-500">{post.author_name || '익명'}</p>
+                          </div>
+                        </div>
                         <span className="flex-shrink-0 text-xs text-gray-500 ml-2">
                           {new Date(post.created_at).toLocaleDateString()}
                         </span>
@@ -180,7 +222,25 @@ const CommunityPage = () => {
                       className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <h3 className="text-sm font-medium text-gray-900 line-clamp-2">{post.title}</h3>
+                        <div className="flex items-center space-x-3">
+                          <div className="flex-shrink-0">
+                            {post.profile_image ? (
+                              <img
+                                src={getProfileImageUrl(post.profile_image)}
+                                alt={post.author_name || '작성자'}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold ${getRandomColor(post.author_name)}`}>
+                                {getInitials(post.author_name)}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-medium text-gray-900 line-clamp-2">{post.title}</h3>
+                            <p className="text-xs text-gray-500">{post.author_name || '익명'}</p>
+                          </div>
+                        </div>
                         <span className="flex-shrink-0 text-xs text-gray-500 ml-2">
                           {new Date(post.created_at).toLocaleDateString()}
                         </span>
@@ -241,7 +301,25 @@ const CommunityPage = () => {
                     className="border-b pb-4 last:border-b-0 hover:bg-gray-50 p-2 rounded-lg"
                   >
                     <div className="flex items-start justify-between mb-2" onClick={() => handlePostClick(post.id)}>
-                      <h3 className="text-base font-medium text-gray-900 cursor-pointer">{post.title}</h3>
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-shrink-0">
+                          {post.profile_image ? (
+                            <img
+                              src={getProfileImageUrl(post.profile_image)}
+                              alt={post.author_name || '작성자'}
+                              className="w-8 h-8 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold ${getRandomColor(post.author_name)}`}>
+                              {getInitials(post.author_name)}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="text-base font-medium text-gray-900 cursor-pointer">{post.title}</h3>
+                          <p className="text-sm text-gray-500">{post.author_name || '익명'}</p>
+                        </div>
+                      </div>
                       <span className="flex-shrink-0 text-xs text-gray-500 ml-2">
                         {new Date(post.created_at).toLocaleDateString()}
                       </span>

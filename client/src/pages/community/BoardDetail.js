@@ -260,120 +260,6 @@ const BoardDetail = () => {
     setSuggestions([]);
   };
 
-  // 댓글 트리 구조 생성 함수 개선
-  const buildCommentTree = (comments) => {
-    const commentMap = new Map();
-    const rootComments = [];
-    
-    // 모든 댓글을 Map에 저장하고 replies 배열 초기화
-    comments.forEach(comment => {
-      commentMap.set(comment.id, { ...comment, replies: [] });
-    });
-
-    // 댓글 트리 구성
-    comments.forEach(comment => {
-      const commentWithReplies = commentMap.get(comment.id);
-      
-      if (comment.parent_id) {
-        const parentComment = commentMap.get(comment.parent_id);
-        if (parentComment) {
-          parentComment.replies.push(commentWithReplies);
-        } else {
-          // 부모 댓글이 삭제된 경우 최상위 댓글로 처리
-          rootComments.push(commentWithReplies);
-        }
-      } else {
-        rootComments.push(commentWithReplies);
-      }
-    });
-
-    // 각 레벨별로 시간순 정렬을 위한 재귀 함수
-    const sortCommentsByDate = (comments) => {
-      comments.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-      comments.forEach(comment => {
-        if (comment.replies.length > 0) {
-          sortCommentsByDate(comment.replies);
-        }
-      });
-    };
-
-    // 전체 트리 정렬
-    sortCommentsByDate(rootComments);
-    return rootComments;
-  };
-
-  const renderCommentTree = (comment, depth = 0) => {
-    const hasReplies = comment.replies && comment.replies.length > 0;
-    const isDeleted = comment.status === 'deleted';
-    
-    // 댓글 내용과 태그를 함께 표시하는 함수
-    const renderCommentContent = (comment) => {
-      if (isDeleted) return '삭제된 댓글입니다.';
-      
-      let content = comment.comment;
-      if (comment.hospitals && comment.hospitals.length > 0) {
-        comment.hospitals.forEach(hospital => {
-          const regex = new RegExp(`@${hospital.name}`, 'g');
-          content = content.replace(regex, 
-            `<span class="text-blue-600 font-medium cursor-pointer hover:underline inline-block relative" 
-              onclick="window.location.href='/hospitals?query=${encodeURIComponent(hospital.name)}'">
-              @${hospital.name}
-              <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-white border border-gray-300 rounded-lg shadow-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
-                <div class="font-bold text-sm mb-1">${hospital.name}</div>
-                <div class="text-xs text-gray-600">${hospital.address || '주소 정보 없음'}</div>
-              </div>
-            </span>`
-          );
-        });
-      }
-      return content;
-    };
-    
-    return (
-      <div key={comment.id} className="relative">
-        {depth > 0 && (
-          <div className="absolute left-0 top-0 bottom-0 w-8 border-l-2 border-gray-200"></div>
-        )}
-        <div className={`${depth > 0 ? 'ml-8' : ''}`}>
-          <div className="mb-4">
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                  <span className="text-blue-600 font-semibold text-sm">
-                    {isDeleted ? 'X' : (comment.username?.charAt(0).toUpperCase() || '?')}
-                  </span>
-                </div>
-              </div>
-              <div className="flex-grow">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="font-semibold text-gray-800 text-sm">
-                        {isDeleted ? '삭제됨' : comment.username}
-                      </span>
-                      <span className="text-xs text-gray-500 ml-2">
-                        {new Date(comment.created_at).toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                  <div 
-                    className="mt-2 text-gray-700 text-sm break-words"
-                    dangerouslySetInnerHTML={{ __html: renderCommentContent(comment) }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-          {hasReplies && (
-            <div className="mt-2 space-y-4">
-              {comment.replies.map(reply => renderCommentTree(reply, depth + 1))}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   // 댓글 내용에서 @ 태그를 파싱하는 함수
   const renderCommentContent = (comment) => {
     if (!comment.comment) return '';
@@ -631,17 +517,30 @@ const BoardDetail = () => {
     const isAuthor = isLoggedIn && (comment.user_id === userId || userRole === 'admin');
     const isEditing = editingComment === comment.id;
     const isReplying = replyingTo === comment.id;
-    const isDeleted = comment.is_deleted;
+    const isDeleted = comment.status === 'deleted';
+    const hasReplies = comments.some(c => c.parent_id === comment.id);
 
     return (
-      <div className={`mb-4 ${isDeleted ? 'opacity-50' : ''}`}>
+      <div key={comment.id} className={`mb-4 ${isDeleted ? 'opacity-50' : ''}`}>
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0">
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-              <span className="text-blue-600 font-semibold text-sm">
-                {isDeleted ? 'X' : (comment.username?.charAt(0).toUpperCase() || '?')}
-              </span>
-            </div>
+            {isDeleted ? (
+              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <span className="text-gray-600 font-semibold text-sm">X</span>
+              </div>
+            ) : comment.author_profile_image ? (
+              <img
+                src={getProfileImageUrl(comment.author_profile_image)}
+                alt={comment.username || '사용자'}
+                className="w-8 h-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                <span className="text-blue-600 font-semibold text-sm">
+                  {comment.username?.charAt(0).toUpperCase() || '?'}
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex-grow">
             <div className="bg-gray-50 rounded-lg p-4">
@@ -822,6 +721,14 @@ const BoardDetail = () => {
             {isReplying && renderReplyForm(comment)}
           </div>
         </div>
+        {/* 대댓글 표시 */}
+        {hasReplies && (
+          <div className="ml-8 mt-2 space-y-4">
+            {comments
+              .filter(reply => reply.parent_id === comment.id)
+              .map(reply => renderComment(reply))}
+          </div>
+        )}
       </div>
     );
   };
@@ -840,7 +747,7 @@ const BoardDetail = () => {
       setComments(prevComments => {
         return prevComments.map(comment => {
           if (comment.id === commentId) {
-            return { ...comment, is_deleted: true, comment: '삭제된 댓글입니다.' };
+            return { ...comment, status: 'deleted' };
           }
           return comment;
         });
@@ -875,6 +782,27 @@ const BoardDetail = () => {
       }
     } finally {
     }
+  };
+
+  const getProfileImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+    if (imagePath.startsWith('/uploads/')) return `${getApiUrl()}${imagePath}`;
+    return `${getApiUrl()}/uploads/${imagePath}`;
+  };
+
+  const getRandomColor = (username) => {
+    const colors = [
+      'bg-red-500', 'bg-pink-500', 'bg-purple-500', 'bg-indigo-500', 
+      'bg-blue-500', 'bg-cyan-500', 'bg-teal-500', 'bg-green-500',
+      'bg-yellow-500', 'bg-orange-500'
+    ];
+    const index = username.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+    return colors[index];
+  };
+
+  const getInitials = (username) => {
+    return username ? username.charAt(0).toUpperCase() : '?';
   };
 
   if (loading) {
@@ -913,7 +841,22 @@ const BoardDetail = () => {
                     <div className="w-full">
                       <h1 className="text-xl lg:text-2xl font-bold text-gray-800 font-['Pretendard'] mb-2">{board.title}</h1>
                       <div className="flex flex-wrap items-center text-gray-600 text-xs gap-2">
-                        <span>작성자: {board.author_name}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-shrink-0">
+                            {board.profile_image ? (
+                              <img
+                                src={getProfileImageUrl(board.profile_image)}
+                                alt={board.author_name || '작성자'}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold ${getRandomColor(board.author_name)}`}>
+                                {getInitials(board.author_name)}
+                              </div>
+                            )}
+                          </div>
+                          <span>작성자: {board.author_name}</span>
+                        </div>
                         <span>작성일: {new Date(board.created_at).toLocaleString()}</span>
                         <span>조회: {board.view_count}</span>
                       </div>
@@ -975,7 +918,7 @@ const BoardDetail = () => {
 
                   {/* 댓글 목록 */}
                   <div className="space-y-4">
-                    {buildCommentTree(comments).map(comment => renderCommentTree(comment))}
+                    {comments.map(comment => renderComment(comment))}
                   </div>
                 </div>
 
