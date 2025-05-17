@@ -18,7 +18,6 @@ export const AnnouncementProvider = ({ children }) => {
   const [modalVisible, setModalVisible] = useState(true);
 
   const fetchAnnouncements = useCallback(async () => {
-    console.log('fetchAnnouncements called');
     try {
       // const response = await axios.get(`${getApiUrl()}/api/announcements/active`);
       // const activeAnnouncements = response.data.sort((a, b) => b.priority - a.priority);
@@ -44,7 +43,6 @@ export const AnnouncementProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    console.log('AnnouncementProvider useEffect triggered');
     const VISITED_BEFORE_DATE = localStorage.getItem('AnnouncementCookie');
     const VISITED_NOW_DATE = Math.floor(new Date().getDate());
 

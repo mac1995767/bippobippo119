@@ -136,7 +136,6 @@ const NursingHospitalList = () => {
   };
 
   const handleHospitalClick = (hospitalId) => {
-    console.log('Hospital clicked:', hospitalId);
     navigate(`/nursing-hospitals/${hospitalId}`);
   };
 

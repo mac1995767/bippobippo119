@@ -49,11 +49,14 @@ export const fetchHospitalDetail = async (id) => {
 };
 
 // 자동완성 API
-export const fetchAutoComplete = async (query) => {
+export const fetchAutoComplete = async ({ query, latitude, longitude }) => {
   try {
-    const response = await axios.get(`${baseUrl}/api/autocomplete`, {
-      params: { query }
-    });
+    // params 객체 조립
+    const params = { query };
+    if (latitude != null)  params.latitude  = latitude;
+    if (longitude != null) params.longitude = longitude;
+
+    const response = await axios.get(`${baseUrl}/api/autocomplete`, { params });
     return response.data;
   } catch (error) {
     console.error("❌ Error fetching autocomplete suggestions:", error);
