@@ -49,19 +49,26 @@ const filterSubjects = [
   { label: "조산원", icon: "🤱" }         
 ];
 
-const filterMajor = [
+// 자주 찾는 진료과목
+const popularMajor = [
   { label: "전체", icon: "📋" },
   { label: "내과", icon: "💊" },
   { label: "외과", icon: "🔪" },
   { label: "소아청소년과", icon: "🧒" },
   { label: "치과", icon: "🦷" },
   { label: "산부인과", icon: "🤰" },
-  { label: "정신건강의학과", icon: "🧠" },
   { label: "정형외과", icon: "🦴" },
   { label: "피부과", icon: "🧴" },
   { label: "이비인후과", icon: "👂" },
+  { label: "안과", icon: "👁️" },
+  { label: "가정의학과", icon: "🏡" }
+];
+
+// 전체 진료과목
+const filterMajor = [
+  ...popularMajor,
+  { label: "정신건강의학과", icon: "🧠" },
   { label: "한의원", icon: "🌿" },
-  { label: "가정의학과", icon: "🏡" },
   { label: "결핵과", icon: "🫁" },
   { label: "구강내과", icon: "👄" },
   { label: "구강악안면외과", icon: "🦷🔪" },
@@ -75,7 +82,6 @@ const filterMajor = [
   { label: "신경과", icon: "⚡" },
   { label: "신경외과", icon: "🧠🔪" },
   { label: "심장혈관흉부외과", icon: "❤️" },
-  { label: "안과", icon: "👁️" },
   { label: "영상의학과", icon: "📸" },
   { label: "영상치의학과", icon: "🦷📸" },
   { label: "예방의학과", icon: "🛡️" },
@@ -145,7 +151,6 @@ const HospitalListPage = () => {
   ];
   
   const handleFilterChange = (categoryName, option) => {
-    console.log(`필터 변경 - ${categoryName}:`, option);
 
     if (categoryName === "지역") {
       setSelectedRegion(option);
@@ -337,21 +342,21 @@ const HospitalListPage = () => {
       
       {/* 필터 컨테이너 (고정형) */}
       <div className="top-0 z-50 bg-white shadow-md py-4">
-        {/* Major 선택 */}
+        {/* 자주 찾는 진료과목 */}
         <section className="container mx-auto mt-6 p-2 px-4 md:px-40">
-          <div className="flex flex-wrap justify-center gap-2">
-            {filterMajor.map((m) => (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {popularMajor.map((major) => (
               <button
-                key={m.label}
-                onClick={() => handleMajorClick(m.label)}
-                className={`px-3 py-1 rounded-full transition border flex items-center gap-2 ${
-                  selectedMajor === m.label
-                    ? "bg-purple-500 text-white border-purple-500"
-                    : "bg-gray-200 text-gray-700 border-gray-300 hover:bg-purple-100"
+                key={major.label}
+                onClick={() => handleFilterChange('전공', major.label)}
+                className={`px-3 py-1 rounded-full text-sm flex items-center gap-1 transition-colors ${
+                  selectedMajor === major.label
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                 }`}
               >
-                <span>{m.icon}</span>
-                <span>{m.label}</span>
+                <span>{major.icon}</span>
+                <span>{major.label}</span>
               </button>
             ))}
           </div>
