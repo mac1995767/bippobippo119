@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { fetchHospitalDetail } from '../service/api';
-import { getApiUrl } from '../utils/api';
 import { MdKeyboardArrowLeft } from 'react-icons/md';
 
 const HospitalDetailPage = () => {
   const { id } = useParams();
-  const location = useLocation();
   const navigate = useNavigate();
   const [hospital, setHospital] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -22,15 +20,6 @@ const HospitalDetailPage = () => {
     // 4자리 숫자(0900 등)만 변환
     const timeStr = time.toString().padStart(4, '0');
     return `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
-  };
-
-  // 점심시간 포맷팅 함수 (lunchStart, lunchEnd)
-  const formatLunchTime = (lunchStart, lunchEnd) => {
-    if (!lunchStart && !lunchEnd) return "정보 없음";
-    if (lunchStart && lunchEnd) return `${formatTime(lunchStart)} ~ ${formatTime(lunchEnd)}`;
-    if (lunchStart) return `${formatTime(lunchStart)} ~`;
-    if (lunchEnd) return `~ ${formatTime(lunchEnd)}`;
-    return "정보 없음";
   };
 
   // 운영 시간 표시 함수 (openTime, closeTime)
