@@ -5,7 +5,7 @@ import { getApiUrl } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-const Comment = ({ onSubmit, boardId }) => {
+const Comment = ({ onSubmit, boardId, comment }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [content, setContent] = useState('');
@@ -17,6 +17,8 @@ const Comment = ({ onSubmit, boardId }) => {
   const [hospitalDetails, setHospitalDetails] = useState({});
   const [showLoginAlert, setShowLoginAlert] = useState(false);
   const textareaRef = useRef(null);
+
+  const isDeleted = comment?.status === 'deleted';
 
   useEffect(() => {
     if (!searchTerm) {
@@ -115,11 +117,11 @@ const Comment = ({ onSubmit, boardId }) => {
       setShowMention(false);
       
       // 태그된 병원 목록에 추가 (중복 체크)
-      if (!taggedHospitals.some(h => h.id === hospital.dbId)) {
+      if (!taggedHospitals.some(h => h.id === hospital.id)) {
         setTaggedHospitals(prev => [...prev, {
-          id: hospital.dbId,        // 실제 데이터베이스 ID
-          name: hospital.name,      // 병원 이름
-          typeId: 1                 // 병원 태그 타입 ID
+          id: hospital.id,        // id를 ID로 사용
+          name: hospital.name,    // 병원 이름
+          typeId: 1              // 병원 태그 타입 ID
         }]);
       }
     }
@@ -142,86 +144,79 @@ const Comment = ({ onSubmit, boardId }) => {
     }
 
     try {
-      // 태그된 병원 정보가 있는지 확인
-      if (taggedHospitals.length === 0) {
-        // 태그된 병원이 없는 경우 일반 댓글 작성
-        const response = await api.post(`/api/boards/${boardId}/comments`, {
-          comment: trimmedContent
-        });
-
-        if (response.data.success) {
-          onSubmit(response.data.comment);
-          setContent('');
-          setTaggedHospitals([]);
+      const hospitalTags = taggedHospitals.map(hospital => {
+        if (!hospital.id) {
+          return null;
         }
-      } else {
-        // 태그된 병원이 있는 경우 태그 정보와 함께 댓글 작성
-        const response = await api.post(`/api/boards/${boardId}/comments`, {
-          comment: trimmedContent,
-          entityTags: taggedHospitals.map(hospital => ({
-            typeId: hospital.typeId,
-            entityId: hospital.id,    // 실제 데이터베이스 ID
-            entityName: hospital.name
-          }))
-        });
+        return {
+          id: hospital.id,
+          name: hospital.name
+        };
+      }).filter(Boolean);
+      
+      const response = await api.post(`/api/boards/${boardId}/comments`, {
+        comment: trimmedContent,
+        hospitalTags: hospitalTags
+      });
 
-        if (response.data.success) {
-          onSubmit(response.data.comment);
-          setContent('');
-          setTaggedHospitals([]);
-        }
+      if (response.data.success) {
+        onSubmit(response.data.comment);
+        setContent('');
+        setTaggedHospitals([]);
       }
     } catch (error) {
-      console.error('댓글 작성 오류:', error);
       alert('댓글 작성에 실패했습니다.');
     }
   };
 
   return (
     <div className="relative">
-      <form onSubmit={handleSubmit} className="space-y-2">
-        <textarea
-          ref={textareaRef}
-          value={content}
-          onChange={handleInput}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              // 폼 제출 이벤트를 직접 발생시킴
-              e.target.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-            }
-          }}
-          placeholder="댓글을 입력하세요..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          rows={3}
-        />
-        
-        {/* 태그된 병원 미리보기 */}
-        {taggedHospitals.length > 0 && (
-          <div className="mt-2">
-            <div className="text-sm text-gray-500 mb-1">태그된 병원:</div>
-            <div className="flex flex-wrap gap-2">
-              {taggedHospitals.map(hospital => (
-                <span
-                  key={hospital.id}
-                  className="px-2 py-1 bg-blue-50 text-blue-600 text-sm rounded-full"
-                >
-                  @{hospital.name}
-                </span>
-              ))}
+      {isDeleted ? (
+        <div className="text-gray-500 italic text-sm">삭제됨</div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-2">
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={handleInput}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                e.target.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+              }
+            }}
+            placeholder="댓글을 입력하세요..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            rows={3}
+          />
+          
+          {/* 태그된 병원 미리보기 */}
+          {taggedHospitals.length > 0 && (
+            <div className="mt-2">
+              <div className="text-sm text-gray-500 mb-1">태그된 병원:</div>
+              <div className="flex flex-wrap gap-2">
+                {taggedHospitals.map(hospital => (
+                  <span
+                    key={hospital.id}
+                    className="px-2 py-1 bg-blue-50 text-blue-600 text-sm rounded-full"
+                  >
+                    @{hospital.name}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            댓글 작성
-          </button>
-        </div>
-      </form>
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              댓글 작성
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* 로그인 알림 모달 */}
       {showLoginAlert && (

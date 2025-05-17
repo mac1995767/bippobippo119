@@ -304,6 +304,30 @@ const BoardDetail = () => {
 
   const renderCommentTree = (comment, depth = 0) => {
     const hasReplies = comment.replies && comment.replies.length > 0;
+    const isDeleted = comment.status === 'deleted';
+    
+    // 댓글 내용과 태그를 함께 표시하는 함수
+    const renderCommentContent = (comment) => {
+      if (isDeleted) return '삭제된 댓글입니다.';
+      
+      let content = comment.comment;
+      if (comment.hospitals && comment.hospitals.length > 0) {
+        comment.hospitals.forEach(hospital => {
+          const regex = new RegExp(`@${hospital.name}`, 'g');
+          content = content.replace(regex, 
+            `<span class="text-blue-600 font-medium cursor-pointer hover:underline relative group" 
+              onclick="window.location.href='/hospitals?query=${encodeURIComponent(hospital.name)}'">
+              @${hospital.name}
+              <span class="absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-lg shadow-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
+                <span class="font-bold text-sm mb-1 block">${hospital.name}</span>
+                <span class="text-xs text-gray-600 mb-1 block">${hospital.address || '주소 정보 없음'}</span>
+              </span>
+            </span>`
+          );
+        });
+      }
+      return content;
+    };
     
     return (
       <div key={comment.id} className="relative">
@@ -311,7 +335,35 @@ const BoardDetail = () => {
           <div className="absolute left-0 top-0 bottom-0 w-8 border-l-2 border-gray-200"></div>
         )}
         <div className={`${depth > 0 ? 'ml-8' : ''}`}>
-          {renderComment(comment)}
+          <div className="mb-4">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span className="text-blue-600 font-semibold text-sm">
+                    {isDeleted ? 'X' : (comment.username?.charAt(0).toUpperCase() || '?')}
+                  </span>
+                </div>
+              </div>
+              <div className="flex-grow">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="font-semibold text-gray-800 text-sm">
+                        {isDeleted ? '삭제됨' : comment.username}
+                      </span>
+                      <span className="text-xs text-gray-500 ml-2">
+                        {new Date(comment.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                  <div 
+                    className="mt-2 text-gray-700 text-sm"
+                    dangerouslySetInnerHTML={{ __html: renderCommentContent(comment) }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
           {hasReplies && (
             <div className="mt-2 space-y-4">
               {comment.replies.map(reply => renderCommentTree(reply, depth + 1))}

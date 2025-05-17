@@ -680,7 +680,7 @@ router.get('/:boardId/comments', async (req, res) => {
         LEFT JOIN hospital_comment_entity_tags cet ON c.id = cet.comment_id
         LEFT JOIN hospital_entity_tags et ON cet.entity_tag_id = et.id
         LEFT JOIN hospital_tag_types tt ON et.tag_type_id = tt.id
-        WHERE c.board_id = ?
+        WHERE c.board_id = ? AND (c.status = 'published' OR c.status = 'deleted')
         GROUP BY c.id
         ORDER BY c.created_at DESC
         LIMIT ? OFFSET ?
@@ -766,6 +766,7 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
     const boardId = req.params.id;
     const userId = req.user.id;
     let commentText = req.body.comment;
+    const hospitalTags = req.body.hospitalTags || [];
 
     // 댓글이 객체로 전달된 경우 comment 필드 추출
     if (typeof commentText === 'object' && commentText !== null) {
@@ -795,16 +796,67 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
       [boardId, userId, commentText, req.body.parent_id || null]
     );
 
+    const commentId = result.insertId;
+
+    // 병원 태그 처리
+    if (hospitalTags && hospitalTags.length > 0) {
+      console.log('병원 태그 처리 시작. 태그 수:', hospitalTags.length);
+      console.log('태그 정보:', hospitalTags);
+      
+      const tagResults = [];
+      for (const tag of hospitalTags) {
+        if (!tag.id) {
+          console.error('병원 ID 누락:', tag);
+          continue;
+        }
+        
+        try {
+          const [result] = await conn.query(
+            'INSERT INTO hospital_board_comment_hospital_tags (comment_id, hospital_id) VALUES (?, ?)',
+            [commentId, tag.id]
+          );
+          tagResults.push({
+            hospitalId: tag.id,
+            hospitalName: tag.name,
+            insertId: result.insertId
+          });
+          console.log('태그 저장 성공:', { 
+            commentId, 
+            hospitalId: tag.id,
+            hospitalName: tag.name,
+            insertId: result.insertId 
+          });
+        } catch (error) {
+          console.error('태그 저장 실패:', {
+            error,
+            tag,
+            commentId
+          });
+          throw error;
+        }
+      }
+      
+      console.log('모든 태그 저장 완료:', {
+        commentId,
+        totalTags: hospitalTags.length,
+        savedTags: tagResults.length,
+        results: tagResults
+      });
+    }
+
     // 작성된 댓글 정보 조회
     const [newComment] = await conn.query(`
       SELECT 
         c.*,
         u.username,
-        u.nickname
+        u.nickname,
+        GROUP_CONCAT(DISTINCT hct.hospital_id) as hospital_ids
       FROM hospital_board_comments c
       JOIN hospital_users u ON c.user_id = u.id
-      WHERE c.id = ?`,
-      [result.insertId]
+      LEFT JOIN hospital_board_comment_hospital_tags hct ON c.id = hct.comment_id
+      WHERE c.id = ?
+      GROUP BY c.id`,
+      [commentId]
     );
 
     await conn.commit();
@@ -838,7 +890,7 @@ router.delete('/:id/comments/:commentId', authenticateToken, async (req, res) =>
     }
 
     await pool.query(
-      'DELETE FROM hospital_board_comments WHERE id = ?',
+      'UPDATE hospital_board_comments SET status = "deleted" WHERE id = ?',
       [req.params.commentId]
     );
     res.json({ message: '댓글이 삭제되었습니다.' });
@@ -916,8 +968,7 @@ router.get('/category/:categoryId', async (req, res) => {
         ct.type_name as category_type_name,
         u.nickname as author_nickname,
         u.profile_image as author_profile_image,
-        (SELECT COUNT(*) FROM hospital_board_comments WHERE board_id = b.id) as comment_count,
-        (SELECT COUNT(*) FROM hospital_board_views WHERE board_id = b.id) as view_count
+        (SELECT COUNT(*) FROM hospital_board_comments WHERE board_id = b.id) as comment_count
       FROM hospital_board b
       JOIN hospital_board_categories c ON b.category_id = c.id
       JOIN hospital_board_category_types ct ON c.category_type_id = ct.id
@@ -1202,13 +1253,12 @@ router.get('/autocomplete', async (req, res) => {
 
     res.json({
       hospital: hospitals.map(hospital => ({
-        dbId: hospital._id.toString(),  // 몽고DB ObjectId를 문자열로 변환
+        dbId: hospital._id.toString(),
         name: hospital.name,
         address: hospital.address
       }))
     });
   } catch (error) {
-    console.error('병원 검색 오류:', error);
     res.status(500).json({ error: '병원 검색에 실패했습니다.' });
   }
 });

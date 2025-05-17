@@ -6,8 +6,16 @@ const { authenticateToken } = require('../middleware/auth');
 // 댓글 작성
 router.post('/boards/:boardId/comments', authenticateToken, async (req, res) => {
   const { boardId } = req.params;
-  const { content, entityTags } = req.body;
+  const { comment, hospitalTags = [] } = req.body;
   const userId = req.user.id;
+
+  // 필수 필드 검증
+  if (!comment || !comment.trim()) {
+    return res.status(400).json({ 
+      success: false, 
+      message: '댓글 내용을 입력해주세요.' 
+    });
+  }
 
   const connection = await pool.getConnection();
   try {
@@ -16,34 +24,19 @@ router.post('/boards/:boardId/comments', authenticateToken, async (req, res) => 
     // 댓글 작성
     const [commentResult] = await connection.query(
       'INSERT INTO hospital_board_comments (board_id, user_id, comment) VALUES (?, ?, ?)',
-      [boardId, userId, content]
+      [boardId, userId, comment.trim()]
     );
     const commentId = commentResult.insertId;
 
-    // 엔티티 태그 처리 (@ 태그)
-    if (entityTags && entityTags.length > 0) {
-      for (const tag of entityTags) {
-        // 엔티티 태그 생성 또는 조회
-        const [existingTag] = await connection.query(
-          'SELECT id FROM hospital_entity_tags WHERE tag_type_id = ? AND entity_id = ?',
-          [tag.typeId, tag.entityId]
-        );
-
-        let entityTagId;
-        if (existingTag.length === 0) {
-          const [newTag] = await connection.query(
-            'INSERT INTO hospital_entity_tags (tag_type_id, entity_id) VALUES (?, ?)',
-            [tag.typeId, tag.entityId]
-          );
-          entityTagId = newTag.insertId;
-        } else {
-          entityTagId = existingTag[0].id;
+    // 병원 태그가 있는 경우에만 처리
+    if (hospitalTags && hospitalTags.length > 0) {
+      for (const tag of hospitalTags) {
+        if (!tag.hospitalId) {
+          throw new Error('병원 ID가 유효하지 않습니다.');
         }
-
-        // 댓글-엔티티 태그 매핑
         await connection.query(
-          'INSERT INTO hospital_comment_entity_tags (comment_id, entity_tag_id) VALUES (?, ?)',
-          [commentId, entityTagId]
+          'INSERT INTO hospital_board_comment_hospital_tags (comment_id, hospital_id) VALUES (?, ?)',
+          [commentId, tag.hospitalId]
         );
       }
     }
@@ -53,13 +46,9 @@ router.post('/boards/:boardId/comments', authenticateToken, async (req, res) => 
     // 작성된 댓글과 태그 정보 조회
     const [comment] = await connection.query(
       `SELECT c.*,
-        GROUP_CONCAT(DISTINCT et.id) as entity_tag_ids,
-        GROUP_CONCAT(DISTINCT tt.type_name) as entity_tag_types,
-        GROUP_CONCAT(DISTINCT et.entity_id) as entity_ids
+        GROUP_CONCAT(DISTINCT hct.hospital_id) as hospital_ids
        FROM hospital_board_comments c
-       LEFT JOIN hospital_comment_entity_tags cet ON c.id = cet.comment_id
-       LEFT JOIN hospital_entity_tags et ON cet.entity_tag_id = et.id
-       LEFT JOIN hospital_tag_types tt ON et.tag_type_id = tt.id
+       LEFT JOIN hospital_board_comment_hospital_tags hct ON c.id = hct.comment_id
        WHERE c.id = ?
        GROUP BY c.id`,
       [commentId]
@@ -67,19 +56,15 @@ router.post('/boards/:boardId/comments', authenticateToken, async (req, res) => 
 
     res.json({
       success: true,
-      comment: {
-        ...comment[0],
-        entityTags: comment[0].entity_tag_ids ? comment[0].entity_tag_ids.split(',').map((id, index) => ({
-          id: parseInt(id),
-          type: comment[0].entity_tag_types.split(',')[index],
-          entityId: parseInt(comment[0].entity_ids.split(',')[index])
-        })) : []
-      }
+      comment: comment[0]
     });
   } catch (error) {
     await connection.rollback();
     console.error('댓글 작성 오류:', error);
-    res.status(500).json({ success: false, message: '댓글 작성에 실패했습니다.' });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || '댓글 작성에 실패했습니다.' 
+    });
   } finally {
     connection.release();
   }
