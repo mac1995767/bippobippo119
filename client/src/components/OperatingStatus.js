@@ -134,7 +134,10 @@ const OperatingStatus = ({ times }) => {
     <div>
       <div
         className={`px-3 py-1 rounded-md text-sm inline-block cursor-pointer ${statusClass} flex items-center`}
-        onClick={() => setShowDetails((prev) => !prev)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowDetails((prev) => !prev);
+        }}
       >
         <span>{status}</span>
         <span
@@ -145,7 +148,10 @@ const OperatingStatus = ({ times }) => {
         </span>
       </div>
       {showDetails && (
-        <div className="mt-2 p-2 border border-gray-200 rounded-md">
+        <div 
+          className="mt-2 p-2 border border-gray-200 rounded-md"
+          onClick={(e) => e.stopPropagation()}
+        >
           {dayOfWeek.map((day) => {
             const dayMap = {
               Monday: { start: "trmtMonStart", end: "trmtMonEnd" },

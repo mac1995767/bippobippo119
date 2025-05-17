@@ -251,7 +251,6 @@ const HospitalListPage = () => {
         params.category = "영업중";
       }
     
-      console.log("API 요청 파라미터:", params); // 디버깅을 위한 로그 추가
       const response = await fetchHospitals(params);
       // 구조분해: { data, totalCount, currentPage, totalPages }
       const {
