@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
-import HospitalCard from "./HospitalCard";
 
 const HospitalList = ({ hospitals, filters, userLocation }) => {
   const navigate = useNavigate();

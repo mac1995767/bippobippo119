@@ -358,20 +358,20 @@ const HospitalListPage = () => {
         </section>
 
         {/* 근무 시간 */}
-        <section className="container mx-auto mt-6 p-2 px-4 md:px-40">
-          <div className="flex flex-wrap justify-center gap-2">
+        <section className="container mx-auto mt-8 p-4 px-4 md:px-40">
+          <div className="flex flex-wrap justify-center gap-3">
             {additionalFilters.map((filter) => (
               <button
                 key={filter.label}
                 onClick={() => handleAdditionalFilterClick(filter.label)}
-                className={`px-3 py-1 rounded-full transition border flex items-center gap-2 ${
+                className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm ${
                   selectedAdditionalFilter === filter.label
-                    ? "bg-yellow-500 text-white border-yellow-500"
-                    : "bg-gray-200 text-gray-700 border-gray-300 hover:bg-yellow-100"
-                }`}
+                    ? "bg-gradient-to-r from-yellow-400 to-yellow-500 text-white border-yellow-500 transform scale-105"
+                    : "bg-white text-gray-700 border-gray-200 hover:bg-yellow-50 hover:border-yellow-200 hover:shadow-md"
+                } border`}
               >
-                <span>{filter.icon}</span>
-                <span>{filter.label}</span>
+                <span className="text-lg">{filter.icon}</span>
+                <span className="font-medium">{filter.label}</span>
               </button>
             ))}
           </div>
