@@ -4,7 +4,6 @@ const connectDB = require('./config/mongoose'); // MongoDB 연결
 const hospitalRoutes = require('./routes/hospitalRoutes');
 const hospitalSearchRouter = require('./elastic/hospitalSearch');
 const hospitalSubjectRoutes = require('./routes/hospitalSubjectRoutes'); // 새로운 라우터 추가
-const hospitalDetailSearchRoutes = require('./elastic/hospitalDetailSearch');
 const autoCompleteRouter = require('./elastic/autoComplete');
 const chatRouter = require('./routes/chat'); // 채팅 라우터 추가
 const adminRoutes = require('./routes/adminRoutes'); // adminRoutes로 이름 변경
@@ -20,11 +19,8 @@ const nursingHospitalAutoCompleteRouter = require('./elastic/nursingHospitalAuto
 //const chatRoutes = require('./routes/chatRoutes');
 const { reindex } = require('./elastic/elastics'); // reindex 불러오기
 const { reindexMap } = require('./elastic/elastics'); // reindexMap 불러오기
-const { reindexSgguCoord } = require('./elastic/elastics'); // reindexSgguCoord 불러오기
 const { reindexPharmacies } = require('./elastic/elastics'); // reindexPharmacies 불러오기
-const { reindexBoundaries } = require('./elastic/elastics'); // reindexBoundaries 불러오기
 const { reindexMapCluster } = require('./elastic/elastics'); // reindexMapCluster 불러오기
-const User = require('./models/User');
 const cors = require('cors');
 const cookieParser = require('cookie-parser'); // cookie-parser 추가
 const { router: authRouter, authenticateToken, isAdmin } = require('./routes/authRoutes');
@@ -133,25 +129,7 @@ reindex()
 //    console.error("Stack trace:", err.stack);
 //  });
 
-// Elasticsearch SgguCoord Reindexing
-//reindexSgguCoord()
-//  .then(() => {
-//    console.log("✅ Elasticsearch SgguCoord Reindexing Complete!");
-//  })
-//  .catch(err => {
-//   console.error("❌ Error in reindexing:", err);
-//   console.error("Stack trace:", err.stack);
-// });
 
-// Elasticsearch Boundaries Reindexing
-//reindexBoundaries()
-//.then(() => {
-//  console.log("✅ Elasticsearch Boundaries Reindexing Complete!");
-//})  
-//.catch(err => {
-//  console.error("❌ Error in reindexing:", err);
-//  console.error("Stack trace:", err.stack);
-//});
 
 //reindexMapCluster()
 //.then(() => {
