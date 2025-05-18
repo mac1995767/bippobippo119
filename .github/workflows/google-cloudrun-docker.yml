@@ -23,7 +23,7 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v3
 
-      # 2) Google Cloud 인증 (서비스 계정 JSON 사용)
+      # 2) Google Cloud 인증 (서비스 계정 JSON 사용).
       - name: 🔑 Authenticate with Google Cloud
         uses: google-github-actions/auth@v1
         with:
