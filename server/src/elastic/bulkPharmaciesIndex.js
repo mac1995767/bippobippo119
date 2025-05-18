@@ -1,6 +1,6 @@
 const client = require('../config/elasticsearch');
 const mongoose = require('mongoose');
-const Pharmacy = require('../models/pharmacy');
+const { Pharmacy } = require('../models/pharmacy');
 
 const BULK_SIZE = 1000;
 

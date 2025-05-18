@@ -30,26 +30,6 @@ jobs:
         uses: google-github-actions/setup-gcloud@v1
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
-      
-      - name: 📄 Create Server .env File
-        run: |
-          cat <<EOF > server/.env
-          NODE_ENV=production
-          API_KEY=${{ secrets.API_KEY }}
-          ES_NODE=${{ secrets.ES_NODE }}
-          MONGO_URI=${{ secrets.MONGO_URI }}
-          EOF
-          
-        
-      - name: 📄 Create Client .env File
-        run: |
-          cat <<EOF > client/.env
-          REACT_APP_BACKEND_URI=${{ secrets.REACT_APP_BACKEND_URI }}
-          REACT_APP_ES_USERNAME=${{ secrets.REACT_APP_ES_USERNAME }}
-          REACT_APP_ES_PASSWORD=${{ secrets.REACT_APP_ES_PASSWORD }}
-          REACT_APP_GA_MEASUREMENT_ID=${{ secrets.REACT_APP_GA_MEASUREMENT_ID }}
-          EOF
-        
 
       # 4) Docker 인증 설정
       - name: 🐳 Configure Docker
@@ -81,25 +61,6 @@ jobs:
       (추가) gke-gcloud-auth-plugin 설치
       - name: Install gke-gcloud-auth-plugin
         run: gcloud components install gke-gcloud-auth-plugin --quiet
-
-      # 7) GKE 클러스터 자격 증명 가져오기 (MongoDB 배포 및 데이터 복원용)
-      #- name: 🔧 Get GKE Cluster Credentials
-      #  run: |
-          gcloud container clusters get-credentials hospital-cluster --region asia-northeast3
-
-      # 8) Kubernetes 매니페스트 (MongoDB) 적용
-      #- name: 🚀 Deploy MongoDB to GKE
-      #  run: |
-      #   cd k8s
-      #   kubectl apply -f mongodb.yaml
-
-      # 9) 데이터 복원 Job 실행
-      #- name: 🚀 Run MongoDB Restore Job
-      #  run: |
-      #    cd k8s
-      #    kubectl apply -f mongo-restore-job.yaml
-         # Job 완료까지 잠시 대기 (예시로 300초)
-      #    sleep 300
 
       # 11) 서버 이미지 Cloud Run에 배포 (최종 단계)
       - name: 🚀 Deploy Server to Cloud Run

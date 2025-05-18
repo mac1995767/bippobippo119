@@ -7,5 +7,8 @@ RUN npm install
 
 COPY . .
 
+# 환경변수 파일이 있다면 사용
+COPY .env.production .env
+
 EXPOSE 3001
 CMD ["npm", "start"]
