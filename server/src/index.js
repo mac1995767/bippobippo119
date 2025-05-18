@@ -131,14 +131,14 @@ addDefaultOrigins();
 
 
 
-reindexMapCluster()
-.then(() => {
-  console.log("✅ Elasticsearch Map Cluster Reindexing Complete!");
-})
-.catch(err => {
-  console.error("❌ Error in reindexing:", err);
-  console.error("Stack trace:", err.stack);
-});
+//reindexMapCluster()
+//.then(() => {
+//  console.log("✅ Elasticsearch Map Cluster Reindexing Complete!");
+//})
+//.catch(err => {
+//  console.error("❌ Error in reindexing:", err);
+//  console.error("Stack trace:", err.stack);
+//});
 
 // API 라우트 설정
 console.log('라우터 설정 시작');

@@ -58,8 +58,8 @@ jobs:
           docker build -t asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-server/client:latest -f Dockerfile .
           docker push asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-server/client:latest
 
-      (추가) gke-gcloud-auth-plugin 설치
-      - name: Install gke-gcloud-auth-plugin
+      # 7) gke-gcloud-auth-plugin 설치
+      - name: 🔧 Install gke-gcloud-auth-plugin
         run: gcloud components install gke-gcloud-auth-plugin --quiet
 
       # 11) 서버 이미지 Cloud Run에 배포 (최종 단계)
