@@ -55,7 +55,6 @@ const popularMajor = [
   { label: "내과", icon: "💊" },
   { label: "외과", icon: "🔪" },
   { label: "소아청소년과", icon: "🧒" },
-  { label: "치과", icon: "🦷" },
   { label: "산부인과", icon: "🤰" },
   { label: "정형외과", icon: "🦴" },
   { label: "피부과", icon: "🧴" },

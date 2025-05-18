@@ -79,9 +79,17 @@ const OperatingStatus = ({ times }) => {
     const daySchedule = dayMap[today];
     if (!daySchedule) return { openTime: null, closeTime: null };
 
+    const openTime = parsedTimes[daySchedule.start];
+    const closeTime = parsedTimes[daySchedule.end];
+
+    // 데이터가 없거나 "-"인 경우 null 반환
+    if (!openTime || !closeTime || openTime === "-" || closeTime === "-") {
+      return { openTime: null, closeTime: null };
+    }
+
     return {
-      openTime: parsedTimes[daySchedule.start],
-      closeTime: parsedTimes[daySchedule.end]
+      openTime: openTime,
+      closeTime: closeTime
     };
   };
 
@@ -103,8 +111,13 @@ const OperatingStatus = ({ times }) => {
 
   // 일요일인 경우
   if (today === "Sunday") {
-    status = parsedTimes.noTrmtSun === "휴무" ? "휴무일 ❌" : "영업 중 ✅";
-    statusClass = parsedTimes.noTrmtSun === "휴무" ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600";
+    if (parsedTimes.noTrmtSun === "휴무") {
+      status = "휴무일 ❌";
+      statusClass = "bg-red-100 text-red-600";
+    } else {
+      status = "알수 없음";
+      statusClass = "bg-blue-100 text-blue-600";
+    }
   }
   // 평일/토요일인 경우
   else if (openTime !== null && closeTime !== null) {
@@ -171,13 +184,13 @@ const OperatingStatus = ({ times }) => {
               <div key={day} className="flex justify-between text-sm py-1">
                 <span>{dayKoreanMap[day]}</span>
                 {day === "Sunday" ? (
-                  <span>{parsedTimes.noTrmtSun || "휴무"}</span>
-                ) : startTime && endTime ? (
+                  <span>{parsedTimes.noTrmtSun || "알수 없음"}</span>
+                ) : startTime && endTime && startTime !== "-" && endTime !== "-" ? (
                   <span>
                     {formatTime(startTime)} ~ {formatTime(endTime)}
                   </span>
                 ) : (
-                  <span>휴무</span>
+                  <span>알수 없음</span>
                 )}
               </div>
             );

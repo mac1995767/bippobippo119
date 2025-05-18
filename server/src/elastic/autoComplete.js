@@ -14,32 +14,21 @@ router.get("/", async (req, res) => {
   res.set("Cache-Control", "no-store");
 
   try {
-    // URL 파라미터 파싱
     const rawQuery = req.query.query;
     const latitude = req.query.latitude;
     const longitude = req.query.longitude;
 
     const query = rawQuery?.trim();
-    // 이중 인코딩된 쿼리 디코딩
-
-    if (!query || query.trim() === "") {
+    if (!query || query === "") {
       return res.json({ hospital: [] });
     }
 
-    // 위치 정보 유효성 검사
-    const hasValidLocation = latitude != null && longitude != null &&
-    !isNaN(parseFloat(latitude)) &&
-    !isNaN(parseFloat(longitude)) &&
-    parseFloat(latitude) >= -90 && parseFloat(latitude) <= 90 &&
-    parseFloat(longitude) >= -180 && parseFloat(longitude) <= 180;
-
-    console.log("유효한 위치 정보:", hasValidLocation);
-    if (hasValidLocation) {
-      console.log("위치 정보 값:", {
-        latitude: parseFloat(latitude),
-        longitude: parseFloat(longitude)
-      });
-    }
+    const hasValidLocation =
+      latitude != null && longitude != null &&
+      !isNaN(parseFloat(latitude)) &&
+      !isNaN(parseFloat(longitude)) &&
+      parseFloat(latitude) >= -90 && parseFloat(latitude) <= 90 &&
+      parseFloat(longitude) >= -180 && parseFloat(longitude) <= 180;
 
     const region = extractRegion(query);
     const searchQuery = query.replace(region || '', '').trim();
@@ -51,61 +40,49 @@ router.get("/", async (req, res) => {
         query: {
           bool: {
             should: [
-              // 정확한 병원명 매칭 (가중치 10)
               {
                 match_phrase: {
-                  "yadmNm": {
-                    query: searchQuery,
-                    boost: 10
-                  }
+                  "yadmNm": { query: query, boost: 20 }
                 }
               },
-              // 병원명 부분 매칭 (가중치 5)
-              {
-                match: {
-                  "yadmNm": {
-                    query: searchQuery,
-                    boost: 5,
-                    fuzziness: "AUTO"
-                  }
-                }
-              },
-              // 정확한 주소 매칭 (가중치 8)
               {
                 match_phrase: {
-                  "addr": {
-                    query: searchQuery,
-                    boost: 8
-                  }
+                  "yadmNm": { query: searchQuery, boost: 15 }
                 }
               },
-              // 주소 부분 매칭 (가중치 4)
               {
                 match: {
-                  "addr": {
-                    query: searchQuery,
-                    boost: 4,
-                    fuzziness: "AUTO"
-                  }
+                  "yadmNm": { query: searchQuery, fuzziness: "AUTO", boost: 7 }
                 }
               },
-              // 정확한 진료과목 매칭 (가중치 3)
               {
                 match_phrase: {
-                  "major": {
-                    query: searchQuery,
-                    boost: 3
-                  }
+                  "addr": { query: searchQuery, boost: 10 }
                 }
               },
-              // 진료과목 부분 매칭 (가중치 2)
               {
                 match: {
-                  "major": {
-                    query: searchQuery,
-                    boost: 2,
-                    fuzziness: "AUTO"
-                  }
+                  "addr": { query: searchQuery, fuzziness: "AUTO", boost: 5 }
+                }
+              },
+              {
+                match_phrase: {
+                  "major": { query: searchQuery, boost: 8 }
+                }
+              },
+              {
+                match: {
+                  "major": { query: searchQuery, fuzziness: "AUTO", boost: 4 }
+                }
+              },
+              {
+                match_phrase: {
+                  "speciality": { query: searchQuery, boost: 6 }
+                }
+              },
+              {
+                match: {
+                  "speciality": { query: searchQuery, fuzziness: "AUTO", boost: 3 }
                 }
               }
             ],
@@ -120,7 +97,7 @@ router.get("/", async (req, res) => {
               }] : []),
               ...(hasValidLocation ? [{
                 geo_distance: {
-                  distance: "50km",  // 거리 제한을 50km로 늘림
+                  distance: "50km",
                   location: {
                     lat: parseFloat(latitude),
                     lon: parseFloat(longitude)
@@ -140,7 +117,9 @@ router.get("/", async (req, res) => {
                 lon: parseFloat(longitude)
               },
               order: "asc",
-              unit: "km"
+              unit: "km",
+              mode: "min",
+              distance_type: "plane"
             }
           }] : [])
         ]
@@ -149,22 +128,16 @@ router.get("/", async (req, res) => {
 
     const response = await client.search(searchParams);
     const hits = response.hits?.hits || [];
-        
+
     const suggestions = {
       hospital: hits.map(hit => {
         const source = hit._source;
-        let score = hit._score;
-        
-        // 추가 점수 계산
-        if (source.yadmNm && source.yadmNm.includes(searchQuery)) {
-          score += 5; // 정확한 병원명 매칭
-        }
-        if (region && source.region === region) {
-          score += 3; // 지역 정확히 일치
-        }
-        if (source.major && source.major.includes(searchQuery)) {
-          score += 2; // 진료과목 매칭
-        }
+        let score = hit._score || 0;
+
+        if (source.yadmNm?.includes(searchQuery)) score += 7;
+        if (source.yadmNm === query) score += 10;
+        if (region && source.region === region) score += 4;
+        if (source.major?.includes(searchQuery)) score += 2;
 
         return {
           id: hit._id,
@@ -176,14 +149,13 @@ router.get("/", async (req, res) => {
           speciality: source.speciality || [],
           score: score,
           ...(hasValidLocation && {
-            distance: hit.sort[1]
+            distance: hit.sort?.[1] ?? null
           })
         };
       })
     };
 
     res.json(suggestions);
-
   } catch (error) {
     console.error("❌ 자동완성 라우트 오류:", error);
     res.status(500).json({ message: "자동완성 검색 중 오류가 발생했습니다." });
@@ -194,7 +166,6 @@ router.get("/", async (req, res) => {
 router.get("/search", async (req, res) => {
   try {
     const { query, page = 1, size = 20 } = req.query;
-    console.log("검색어:", query, "페이지:", page, "크기:", size);
 
     if (!query || query.trim() === "") {
       return res.json({ 

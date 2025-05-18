@@ -297,7 +297,7 @@ async function processHospitalBatch(hospitals, batchNumber) {
   }
 
   try {
-    const resp = await client.bulk({ refresh: false, body });
+    const resp = await client.bulk({ refresh: true, body });
     if (resp.errors) {
       const erroredDocuments = resp.items.filter(item => item.update && item.update.error);
       erroredDocuments.forEach(doc => {

@@ -24,9 +24,8 @@ const HospitalDetailPage = () => {
 
   // 운영 시간 표시 함수 (openTime, closeTime)
   const displayOperatingTime = (openTime, closeTime) => {
-    if (!openTime) return "휴무";
-    if (openTime === "휴무") return "휴무";
-    if (!closeTime) return `${formatTime(openTime)} ~`;
+    if (!openTime || openTime === "-") return "알수 없음";
+    if (!closeTime || closeTime === "-") return `${formatTime(openTime)} ~ 알수 없음`;
     return `${formatTime(openTime)} ~ ${formatTime(closeTime)}`;
   };
 
@@ -361,15 +360,15 @@ const HospitalDetailPage = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <p className="font-medium">일요일</p>
-                      <p>{hospital.times?.noTrmtSun || "휴무"}</p>
+                      <p>{hospital.times?.noTrmtSun || "알수 없음"}</p>
                     </div>
                     <div className="flex justify-between items-center">
                       <p className="font-medium">공휴일</p>
-                      <p>{hospital.times?.noTrmtHoli || "휴무"}</p>
+                      <p>{hospital.times?.noTrmtHoli || "알수 없음"}</p>
                     </div>
                     <div className="flex justify-between items-center">
                       <p className="font-medium">점심시간</p>
-                      <p>{hospital.times?.lunchWeek || "정보 없음"}</p>
+                      <p>{hospital.times?.lunchWeek || "알수 없음"}</p>
                     </div>
                   </div>
                 </div>

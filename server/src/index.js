@@ -23,7 +23,7 @@ const { reindexPharmacies } = require('./elastic/elastics'); // reindexPharmacie
 const { reindexMapCluster } = require('./elastic/elastics'); // reindexMapCluster 불러오기
 const cors = require('cors');
 const cookieParser = require('cookie-parser'); // cookie-parser 추가
-const { router: authRouter, authenticateToken, isAdmin } = require('./routes/authRoutes');
+const { router: authRouter } = require('./routes/authRoutes');
 const emailRouter = require('./routes/emailRoutes');
 const HospitalOrigin = require('./models/HospitalOrigin');
 const hospitalOriginRoutes = require('./routes/hospitalOriginRoutes');
@@ -101,14 +101,14 @@ addDefaultOrigins();
 
 // Elasticsearch Reindexing
 //console.log("🔄 Starting Elasticsearch reindexing process...");
-reindex()
-  .then(() => {
-    console.log("✅ Elasticsearch Reindexing Complete!");
-  })
-  .catch(err => {
-    console.error("❌ Error in reindexing:", err);
-    console.error("Stack trace:", err.stack);
-  });
+//reindex()
+//  .then(() => {
+//    console.log("✅ Elasticsearch Reindexing Complete!");
+//  })
+//  .catch(err => {
+//    console.error("❌ Error in reindexing:", err);
+//    console.error("Stack trace:", err.stack);
+//  });
 
 // Elasticsearch Map Reindexing
 //reindexMap()

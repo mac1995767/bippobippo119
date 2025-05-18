@@ -91,41 +91,39 @@ router.get('/', async (req, res) => {
         };
         const currentDay = now.format('dddd').toLowerCase();
         const dayKey = dayMap[currentDay];
-
-        console.log('=== 영업중 필터 디버깅 ===');
-        console.log('현재 시간:', now.format('YYYY-MM-DD HH:mm:ss'));
-        console.log('현재 요일:', currentDay);
-        console.log('변환된 요일:', dayKey);
-        console.log('현재 분:', currentTime);
-
+        
         filter.push({
-          bool: {
-            must: [
-              {
-                exists: {
-                  field: `times.trmt${dayKey}Start`
+          script: {
+            script: {
+              source: `
+                if (!doc.containsKey('times.trmt' + params.dayKey + 'Start') || 
+                    !doc.containsKey('times.trmt' + params.dayKey + 'End')) {
+                  return false;
                 }
-              },
-              {
-                exists: {
-                  field: `times.trmt${dayKey}End`
+                
+                def startTime = doc['times.trmt' + params.dayKey + 'Start'].value;
+                def endTime = doc['times.trmt' + params.dayKey + 'End'].value;
+                
+                if (startTime == null || endTime == null) {
+                  return false;
                 }
-              },
-              {
-                range: {
-                  [`times.trmt${dayKey}Start`]: {
-                    lte: now.format('HHmm')
-                  }
-                }
-              },
-              {
-                range: {
-                  [`times.trmt${dayKey}End`]: {
-                    gt: now.format('HHmm')
-                  }
-                }
+                
+                def currentTime = params.currentTime;
+                def startHour = startTime / 100;
+                def startMin = startTime % 100;
+                def endHour = endTime / 100;
+                def endMin = endTime % 100;
+                
+                def startMinutes = startHour * 60 + startMin;
+                def endMinutes = endHour * 60 + endMin;
+                
+                return currentTime >= startMinutes && currentTime < endMinutes;
+              `,
+              params: {
+                currentTime: currentTime,
+                dayKey: dayKey
               }
-            ]
+            }
           }
         });
       } else {
