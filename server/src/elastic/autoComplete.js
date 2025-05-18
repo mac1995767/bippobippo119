@@ -70,6 +70,25 @@ router.get("/", async (req, res) => {
                   }
                 }
               },
+              // 정확한 주소 매칭 (가중치 8)
+              {
+                match_phrase: {
+                  "addr": {
+                    query: searchQuery,
+                    boost: 8
+                  }
+                }
+              },
+              // 주소 부분 매칭 (가중치 4)
+              {
+                match: {
+                  "addr": {
+                    query: searchQuery,
+                    boost: 4,
+                    fuzziness: "AUTO"
+                  }
+                }
+              },
               // 정확한 진료과목 매칭 (가중치 3)
               {
                 match_phrase: {
@@ -101,7 +120,7 @@ router.get("/", async (req, res) => {
               }] : []),
               ...(hasValidLocation ? [{
                 geo_distance: {
-                  distance: "10km",
+                  distance: "50km",  // 거리 제한을 50km로 늘림
                   location: {
                     lat: parseFloat(latitude),
                     lon: parseFloat(longitude)

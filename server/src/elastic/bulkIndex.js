@@ -288,15 +288,12 @@ async function processHospitalBatch(hospitals, batchNumber) {
 
     // upsert 방식으로 변경
     body.push({ 
-      update: { 
+      index: { 
         _index: "hospitals", 
         _id: hospitalData.ykiho 
       } 
     });
-    body.push({ 
-      doc: hospitalData,
-      doc_as_upsert: true 
-    });
+    body.push(hospitalData);
   }
 
   try {
