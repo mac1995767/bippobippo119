@@ -32,52 +32,16 @@
 
 ## 기술 스택
 
-### 프론트엔드
-- React 18
-- Redux Toolkit (상태 관리)
-- Material-UI (@mui/material)
-- Tailwind CSS
-- Styled Components
-- React Router DOM
-- Chart.js (데이터 시각화)
-- Framer Motion (애니메이션)
-- React Joyride (온보딩)
-- TinyMCE (리치 텍스트 에디터)
-- Swiper (슬라이더)
-- React Helmet (SEO)
-
-### 백엔드
-- Node.js
-- Express.js
-- Sequelize (ORM)
-- JWT (인증)
-- Swagger (API 문서화)
-- Nodemailer (이메일)
-- Multer (파일 업로드)
-
-### 데이터베이스
-- MongoDB (Mongoose)
-- PostgreSQL
-- MySQL
-- Elasticsearch (검색 엔진)
-
-### AI/ML
-- TensorFlow.js
-- LangChain
-- OpenAI API
-
-### 인프라/DevOps
-- Docker
-- Kubernetes
-- Google Cloud Platform
-- GitHub Actions (CI/CD)
-
-### 기타
-- Axios (HTTP 클라이언트)
-- Proj4 (좌표 변환)
-- Turf.js (지리공간 분석)
-- Google Analytics 4
-- Google Tag Manager
+| 프론트엔드 | 백엔드 | 데이터베이스 | AI/ML | 인프라/DevOps | 기타 |
+|------------|--------|--------------|-------|--------------|------|
+| React 18 | Node.js | MongoDB | TensorFlow.js | Docker | Axios |
+| Redux Toolkit | Express.js | PostgreSQL | LangChain | Kubernetes | Proj4 |
+| Material-UI | Sequelize | MySQL | OpenAI API | GCP | Turf.js |
+| Tailwind CSS | JWT | Elasticsearch | | GitHub Actions | GA4 |
+| Styled Components | Swagger | | | | GTM |
+| React Router DOM | Nodemailer | | | | |
+| Chart.js | Multer | | | | |
+| Framer Motion | | | | | |
 
 ---
 
