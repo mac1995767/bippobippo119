@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { fetchMapTypeData, fetchClusterData } from '../service/api';
-import MapCategoryTabs from './MapCategoryTabs';
-import MapFilterBar from './MapFilterBar';
+// import MapCategoryTabs from './MapCategoryTabs';
+//  import MapFilterBar from './MapFilterBar';
 import debounce from 'lodash.debounce';
 import MapToolbar from './map/MapToolbar';
 import InfoSidebar from './InfoSidebar';
@@ -397,8 +397,8 @@ const MapPage = () => {
 
   return (
     <div className="w-screen h-screen flex flex-col p-0 m-0">
-      <MapCategoryTabs />
-        <MapFilterBar />       
+       {/* <MapCategoryTabs /> */}
+        {/* <MapFilterBar /> */}
       <MapToolbar 
         onZoomIn={handleZoomIn} 
         onZoomOut={handleZoomOut} 

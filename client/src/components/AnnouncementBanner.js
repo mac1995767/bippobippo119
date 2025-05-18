@@ -52,8 +52,8 @@ const AnnouncementBanner = () => {
 
   return (
     <>
-      <ModalOverlay visible={modalVisible} />
-      <ModalWrapper visible={modalVisible}>
+      <ModalOverlay $visible={modalVisible ? 'true' : 'false'} />
+      <ModalWrapper $visible={modalVisible ? 'true' : 'false'}>
         <ModalInner>
           <ModalContent>
             <div 
@@ -107,7 +107,7 @@ const AnnouncementBanner = () => {
 
 const ModalOverlay = styled.div`
   box-sizing: border-box;
-  display: ${(props) => (props.visible ? 'block' : 'none')};
+  display: ${(props) => (props.$visible === 'true' ? 'block' : 'none')};
   position: fixed;
   top: 0;
   left: 0;
@@ -119,7 +119,7 @@ const ModalOverlay = styled.div`
 
 const ModalWrapper = styled.div`
   box-sizing: border-box;
-  display: ${(props) => (props.visible ? 'block' : 'none')};
+  display: ${(props) => (props.$visible === 'true' ? 'block' : 'none')};
   position: fixed;
   top: 0;
   right: 0;

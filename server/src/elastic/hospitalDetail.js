@@ -49,7 +49,6 @@ router.get('/:id', async (req, res) => {
     }
 
     const hospitalDetail = hits[0]._source;
-    console.log('찾은 병원 정보:', hospitalDetail);
 
     // 응답 데이터 정리
     const formattedResponse = {

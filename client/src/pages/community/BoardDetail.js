@@ -44,9 +44,9 @@ const BoardDetail = () => {
     }
 
     const timer = setTimeout(() => {
-      axios.get(`${getApiUrl()}/api/autocomplete?query=${encodeURIComponent(searchTerm)}`)
+      axios.get(`${getApiUrl()}/api/autoComplete/search?query=${encodeURIComponent(searchTerm)}`)
         .then((response) => {
-          setSuggestions(response.data.hospital || []);
+          setSuggestions(response.data.hospitals || []);
         })
         .catch(() => {
           setSuggestions([]);
@@ -884,23 +884,6 @@ const BoardDetail = () => {
                 <div className="mt-4">
                   <p className="text-sm text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: board.content }}></p>
                 </div>
-
-                {/* 태그된 병원 표시 */}
-                {taggedHospitals.length > 0 && (
-                  <div className="mt-4 lg:mt-6">
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">태그된 병원</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {taggedHospitals.map(hospital => (
-                        <span
-                          key={hospital.id}
-                          className="px-2 lg:px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs lg:text-sm"
-                        >
-                          {hospital.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {/* 댓글 섹션 */}
                 <div className="mt-4 mb-8">

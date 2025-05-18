@@ -35,10 +35,6 @@ const HospitalDetailPage = () => {
       try {
         setLoading(true);
         const data = await fetchHospitalDetail(id);
-        console.log('병원 상세 정보:', data);
-        if (data.nearby_pharmacies) {
-          console.log('주변 약국 정보:', data.nearby_pharmacies);
-        }
         setHospital(data);
       } catch (error) {
         console.error('병원 상세 정보 로딩 실패:', error);
