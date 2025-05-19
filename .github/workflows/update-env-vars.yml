@@ -1,0 +1,80 @@
+name: Update Environment Variables
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: '업데이트할 서비스 선택'
+        required: true
+        type: choice
+        options:
+          - server
+          - client
+          - both
+
+jobs:
+  update-env-vars:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) 소스코드 체크아웃
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v3
+
+      # 2) Google Cloud 인증
+      - name: 🔑 Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # 3) gcloud CLI 설치 및 프로젝트 설정
+      - name: 🔧 Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      # 4) 서버 .env 파일 생성 및 업데이트
+      - name: 🔄 Update Server .env File
+        if: ${{ inputs.service == 'server' || inputs.service == 'both' }}
+        run: |
+          cd server
+          cat <<EOF > .env
+          NODE_ENV=production
+          API_KEY=${{ secrets.API_KEY }}
+          ES_NODE=${{ secrets.ES_NODE }}
+          MONGO_URI=${{ secrets.MONGO_URI }}
+          GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
+          PORT=3001
+          CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          REDIS_URL=${{ secrets.REDIS_URL }}
+          ELASTICSEARCH_URL=${{ secrets.ELASTICSEARCH_URL }}
+          ELASTICSEARCH_USERNAME=${{ secrets.ELASTICSEARCH_USERNAME }}
+          ELASTICSEARCH_PASSWORD=${{ secrets.ELASTICSEARCH_PASSWORD }}
+          EOF
+          
+          # 변경사항 커밋 및 푸시
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add .env
+          git commit -m "Update server .env file"
+          git push
+
+      # 5) 클라이언트 .env 파일 생성 및 업데이트
+      - name: 🔄 Update Client .env File
+        if: ${{ inputs.service == 'client' || inputs.service == 'both' }}
+        run: |
+          cd client
+          cat <<EOF > .env
+          REACT_APP_API_URL=${{ secrets.REACT_APP_API_URL }}
+          REACT_APP_NAVER_MAP_CLIENT_ID=${{ secrets.REACT_APP_NAVER_MAP_CLIENT_ID }}
+          REACT_APP_NAVER_MAP_CLIENT_SECRET=${{ secrets.REACT_APP_NAVER_MAP_CLIENT_SECRET }}
+          REACT_APP_GA_MEASUREMENT_ID=${{ secrets.REACT_APP_GA_MEASUREMENT_ID }}
+          EOF
+          
+          # 변경사항 커밋 및 푸시
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add .env
+          git commit -m "Update client .env file"
+          git push 
