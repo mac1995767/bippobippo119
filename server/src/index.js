@@ -48,7 +48,7 @@ const addDefaultOrigins = async () => {
     const origins = await HospitalOrigin.findAll({});
     if (origins.length === 0) {
       await HospitalOrigin.create({
-        origin_url: 'http://localhost:3000',
+        origin_url: process.env.CORS_ORIGIN || 'http://localhost:3000',
         environment: process.env.ENVIRONMENT,
         is_active: true,
         description: '기본 개발 환경 origin'

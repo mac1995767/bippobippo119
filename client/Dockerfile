@@ -9,9 +9,6 @@ COPY package*.json ./
 # 의존성 설치
 RUN npm install
 
-# 환경변수 파일 설정
-COPY .env.production .env
-
 # React 소스 전체 복사
 COPY . .
 
