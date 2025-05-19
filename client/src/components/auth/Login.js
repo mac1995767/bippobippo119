@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../../contexts/AuthContext';
+import { getApiUrl } from '../../utils/api';
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
     password: ''
@@ -24,13 +27,14 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('https://my-server-284451238916.asia-northeast3.run.app/api/auth/login', formData);
+      const response = await axios.post(`${getApiUrl()}/api/auth/login`, formData, {
+        withCredentials: true
+      });
       
-      if (response.data.success) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('userRole', response.data.role);
+      if (response.data.user) {
+        await login(response.data.user);
         
-        if (response.data.role === 'admin') {
+        if (response.data.user.role === 'admin') {
           navigate('/admin/dashboard');
         } else {
           navigate('/');
