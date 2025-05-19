@@ -109,8 +109,9 @@ jobs:
             --platform managed \
             --region asia-northeast3 \
             --port 3001 \
-            --allow-unauthenticated
-            
+            --allow-unauthenticated \
+            --set-env-vars="OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }},MYSQL_HOST=${{ secrets.MYSQL_HOST }},MYSQL_USER=${{ secrets.MYSQL_USER }},MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }},MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }},NODE_ENV=production,ENVIRONMENT=${{ secrets.ENVIRONMENT }},API_KEY=${{ secrets.API_KEY }},ES_NODE=${{ secrets.ES_NODE }},MONGO_URI=${{ secrets.MONGO_URI }},GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},JWT_SECRET=${{ secrets.JWT_SECRET }},EMAIL_USER=${{ secrets.EMAIL_USER }},EMAIL_PASS=${{ secrets.EMAIL_PASS }},NAVER_CLIENT_ID=${{ secrets.NAVER_CLIENT_ID }},NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }},CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}"
+
       # 11) 클라이언트 이미지 Cloud Run에 배포
       - name: 🚀 Deploy Client to Cloud Run
         run: |
