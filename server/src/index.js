@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '.env.local' }); // .env.local 파일에서 환경 변수 로드
+require('dotenv').config();  // .env.local 대신 기본 .env 파일 사용
 const express = require('express');
 const connectDB = require('./config/mongoose'); // MongoDB 연결
 const hospitalRoutes = require('./routes/hospitalRoutes');
@@ -190,6 +190,6 @@ app.use((err, req, res, next) => {
 
 // 서버 실행
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
