@@ -45,6 +45,11 @@ const upload = multer({
 // JWT 시크릿 키 설정
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
+// CSRF 토큰 발급 함수
+function generateCsrfToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
 // 로그인
 router.post('/login', async (req, res) => {
   try {
@@ -86,12 +91,23 @@ router.post('/login', async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    // HTTPOnly 쿠키로 토큰 저장
+    // CSRF 토큰 생성
+    const csrfToken = generateCsrfToken();
+
+    // JWT 토큰을 HTTPOnly 쿠키로 저장
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // HTTPS에서만 전송
-      sameSite: 'strict', // CSRF 방지
-      maxAge: 24 * 60 * 60 * 1000 // 24시간
+      secure: true, // 실전에서는 무조건 true
+      sameSite: 'none',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    // CSRF 토큰을 별도 쿠키(HTTPOnly 아님)로 저장
+    res.cookie('csrfToken', csrfToken, {
+      httpOnly: false, // JS에서 읽을 수 있어야 함
+      secure: true,
+      sameSite: 'none',
+      maxAge: 24 * 60 * 60 * 1000
     });
 
     // 사용자 정보에서 비밀번호 제외
@@ -112,8 +128,13 @@ router.post('/login', async (req, res) => {
 router.post('/logout', (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict'
+    secure: true,
+    sameSite: 'none'
+  });
+  res.clearCookie('csrfToken', {
+    httpOnly: false,
+    secure: true,
+    sameSite: 'none'
   });
   res.json({ message: '로그아웃 성공' });
 });
@@ -152,8 +173,18 @@ router.get('/check-admin', authenticateToken, (req, res) => {
   res.json({ isAdmin: req.user.role === 'admin' });
 });
 
-// 인증 상태 확인
-router.get('/check-auth', authenticateToken, async (req, res) => {
+// CSRF 검증 미들웨어
+function verifyCsrfToken(req, res, next) {
+  const csrfCookie = req.cookies.csrfToken;
+  const csrfHeader = req.headers['x-csrf-token'];
+  if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
+    return res.status(403).json({ message: 'CSRF 토큰이 유효하지 않습니다.' });
+  }
+  next();
+}
+
+// 인증 상태 확인 (CSRF 검증 추가)
+router.get('/check-auth', authenticateToken, verifyCsrfToken, async (req, res) => {
   console.log('==== [CHECK-AUTH] req.headers.cookie:', req.headers.cookie);
   console.log('==== [CHECK-AUTH] req.cookies:', req.cookies);
   console.log('==== [CHECK-AUTH] req.cookies.token:', req.cookies.token);
@@ -336,7 +367,7 @@ router.get('/naver/start', async (req, res) => {
     res.cookie('naver_oauth_state', state, {
       httpOnly: true,
       secure: false, 
-      sameSite: 'lax', 
+      sameSite: 'none', 
       maxAge: 5 * 60 * 1000 
     });
 
@@ -371,7 +402,7 @@ router.post('/naver/callback', async (req, res) => {
 
     if (!returnedState || !originalState || returnedState !== originalState) {
       if (originalState) {
-         res.clearCookie('naver_oauth_state', { httpOnly: true, secure: false, sameSite: 'lax' });
+         res.clearCookie('naver_oauth_state', { httpOnly: true, secure: false, sameSite: 'none' });
       }
       return res.status(400).json({
         success: false,
@@ -379,7 +410,7 @@ router.post('/naver/callback', async (req, res) => {
       });
     }
 
-    res.clearCookie('naver_oauth_state', { httpOnly: true, secure: false, sameSite: 'lax' });
+    res.clearCookie('naver_oauth_state', { httpOnly: true, secure: false, sameSite: 'none' });
 
     const [configs] = await pool.query(
       'SELECT * FROM hospital_social_configs WHERE provider = ? AND is_active = 1',
@@ -444,7 +475,7 @@ router.post('/naver/callback', async (req, res) => {
       res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'none',
         maxAge: 24 * 60 * 60 * 1000
       });
 
@@ -680,7 +711,7 @@ router.post('/google/callback', async (req, res) => {
       res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'none',
         maxAge: 24 * 60 * 60 * 1000
       });
 
