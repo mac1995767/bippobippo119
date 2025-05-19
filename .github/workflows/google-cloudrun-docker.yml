@@ -42,8 +42,7 @@ jobs:
       # 5) 환경 변수 파일 생성
       - name: 🔐 Create Environment File
         run: |
-          cd server
-          cat <<EOF > .env
+          cat <<EOF > server/.env
           MYSQL_HOST=${{ secrets.MYSQL_HOST }}
           MYSQL_USER=${{ secrets.MYSQL_USER }}
           MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
@@ -62,7 +61,6 @@ jobs:
           EMAIL_PASS=${{ secrets.EMAIL_PASS }}
           NAVER_CLIENT_ID=${{ secrets.NAVER_CLIENT_ID }}
           NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }}
-          PORT=3001
           CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
           EOF
 
@@ -85,8 +83,7 @@ jobs:
       # 7) 클라이언트 환경 변수 파일 생성
       - name: 🔐 Create Client Environment File
         run: |
-          cd client
-          cat <<EOF > .env
+          cat <<EOF > client/.env
           REACT_APP_API_URL=${{ secrets.REACT_APP_API_URL }}
           REACT_APP_NAVER_MAP_CLIENT_ID=${{ secrets.REACT_APP_NAVER_MAP_CLIENT_ID }}
           REACT_APP_NAVER_MAP_CLIENT_SECRET=${{ secrets.REACT_APP_NAVER_MAP_CLIENT_SECRET }}

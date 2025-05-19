@@ -11,7 +11,10 @@
     
     # React 소스 전체 복사
     COPY . .
-        
+    
+    # 빌드 시점에 API 호출 URL 설정 (Express 서버 컨테이너 이름 사용)
+    ENV REACT_APP_API_URL=http://express_server:3001/api
+    
     # 프로덕션 빌드
     RUN npm run build
     

@@ -5,7 +5,6 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm install
 
-# 나머지 소스 코드 복사
 COPY . .
 
 EXPOSE 3001
