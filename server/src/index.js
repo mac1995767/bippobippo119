@@ -190,6 +190,6 @@ app.use((err, req, res, next) => {
 
 // 서버 실행
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
