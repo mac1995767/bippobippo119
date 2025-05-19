@@ -14,7 +14,6 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const updateAuthState = useCallback((userData) => {
-    // console.log('Updating Auth State with:', userData);
     if (userData) {
       setIsLoggedIn(true);
       setUserRole(userData.role);
@@ -22,7 +21,6 @@ export const AuthProvider = ({ children }) => {
       setUsername(userData.username);
       setUserProfileImage(userData.profile_image);
       setUser(userData);
-      // console.log('Updated User State:', userData);
     } else {
       setIsLoggedIn(false);
       setUserRole(null);

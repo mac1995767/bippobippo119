@@ -3,16 +3,13 @@ import { getApiUrl } from './api';
 
 const instance = axios.create({
   baseURL: `${getApiUrl()}/api`,
-  withCredentials: true
+  withCredentials: true  // 쿠키를 주고받기 위해 필요
 });
 
 // 요청 인터셉터
 instance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    // 토큰은 쿠키로 자동 전송되므로 별도의 헤더 설정이 필요 없음
     return config;
   },
   (error) => {
@@ -25,10 +22,10 @@ instance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // 토큰이 만료되었거나 유효하지 않은 경우
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // 현재 페이지가 로그인 페이지가 아닌 경우에만 리다이렉트
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
