@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import Cookies from 'js-cookie';
 
 import { api } from '../utils/api';
 
@@ -34,7 +35,11 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await api.get('/api/auth/check-auth');
+        const csrfToken = Cookies.get('csrfToken');
+        const response = await api.get('/api/auth/check-auth', {
+          withCredentials: true,
+          headers: { 'x-csrf-token': csrfToken }
+        });
         if (response.data && response.data.user) {
           updateAuthState(response.data.user);
         } else {
