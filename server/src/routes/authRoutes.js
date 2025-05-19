@@ -120,6 +120,9 @@ router.post('/logout', (req, res) => {
 
 // 토큰 검증 미들웨어
 const authenticateToken = (req, res, next) => {
+  console.log('==== [AUTH] req.headers.cookie:', req.headers.cookie);
+  console.log('==== [AUTH] req.cookies:', req.cookies);
+  console.log('==== [AUTH] req.cookies.token:', req.cookies.token);
   const token = req.cookies.token;
 
   if (!token) {
@@ -151,6 +154,9 @@ router.get('/check-admin', authenticateToken, (req, res) => {
 
 // 인증 상태 확인
 router.get('/check-auth', authenticateToken, async (req, res) => {
+  console.log('==== [CHECK-AUTH] req.headers.cookie:', req.headers.cookie);
+  console.log('==== [CHECK-AUTH] req.cookies:', req.cookies);
+  console.log('==== [CHECK-AUTH] req.cookies.token:', req.cookies.token);
   try {
     
     // 사용자 정보 조회 (roles 테이블과 JOIN)
