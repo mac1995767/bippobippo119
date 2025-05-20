@@ -99,12 +99,14 @@ router.post('/login', async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',        // 배포 시에만 true
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      domain: process.env.NODE_ENV === 'production' ? '.bippobippo119.com' : 'localhost',
       maxAge: 24 * 60 * 60 * 1000
     });
     res.cookie('csrfToken', csrfToken, {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      domain: process.env.NODE_ENV === 'production' ? '.bippobippo119.com' : 'localhost',
       maxAge: 24 * 60 * 60 * 1000
     });
 
