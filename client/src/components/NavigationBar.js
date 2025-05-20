@@ -51,6 +51,7 @@ const NavigationBar = () => {
     { path: '/pharmacies', label: '약국 찾기' },
     { path: '/community', label: '커뮤니티' },
     { path: '/map', label: '지도' },
+    //{ path: '/bigdata', label: '데이터' },
   ];
 
   return (

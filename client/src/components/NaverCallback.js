@@ -32,7 +32,12 @@ const NaverCallback = () => {
         }
         hasCalledApi.current = true;
 
-        const response = await axios.post('/auth/naver/callback', { code, state: returnedState });
+        const response = await axios.post('/auth/naver/callback', {
+          code,
+          state: returnedState
+        }, {
+          withCredentials: true
+        });
 
         if (response.data.success) {
           if (response.data.isNewUser) {
