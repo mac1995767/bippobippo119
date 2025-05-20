@@ -73,13 +73,9 @@ router.get('/search', async (req, res) => {
       }
     };
 
-    console.log('Elasticsearch 쿼리:', JSON.stringify(esQuery, null, 2));
-
     const esResp = await client.search(esQuery);
     const body = esResp.body || esResp;
     const hits = body.hits?.hits || [];
-
-    console.log('검색 결과 수:', hits.length);
 
     if (hits.length === 0) {
       return res.status(404).json({ error: '검색 결과가 없습니다.' });
@@ -106,7 +102,6 @@ router.get('/search', async (req, res) => {
 // type별 map_data 조회 API
 router.get('/map-data', async (req, res) => {
   const { type, swLat, swLng, neLat, neLng, limit } = req.query;
-  console.log('map-data 요청:', { type, swLat, swLng, neLat, neLng, limit });
   
   try {
     let must = [];
@@ -143,14 +138,10 @@ router.get('/map-data', async (req, res) => {
       }
     };
 
-    console.log('Elasticsearch 쿼리:', JSON.stringify(esQuery, null, 2));
-    
     const esResp = await client.search(esQuery);
     const body = esResp.body || esResp;
     const hits = body.hits?.hits || [];
-    
-    console.log('검색 결과 수:', hits.length);
-    
+        
     const results = hits.map(hit => ({
       ...hit._source,
       lat: hit._source.location?.lat,

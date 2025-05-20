@@ -105,13 +105,13 @@ const filterMajor = [
 ];
 
 const filterAdditionFilters = [
-  { label: "전체", icon: "📌" },
-  { label: "영업중", icon: "🏥" },
+  //{ label: "전체", icon: "📌" },
+  // { label: "영업중", icon: "🏥" },
 ];
 
 const additionalFilters = [
-  { label: "전체", icon: "📌" },
-  { label: "영업중", icon: "🏥" },
+  //{ label: "전체", icon: "📌" },
+  // { label: "영업중", icon: "🏥" },
 ];
 
 const HospitalListPage = () => {
@@ -146,7 +146,7 @@ const HospitalListPage = () => {
     { name: "지역", options: filterRegions, state: selectedRegion, setState: setSelectedRegion },
     { name: "타입", options: filterSubjects, state: selectedSubject, setState: setSelectedSubject },
     { name: "전공", options: filterMajor, state: selectedMajor, setState: setSelectedMajor },
-    { name: "진료시간", options: filterAdditionFilters, state: selectedAdditionalFilter, setState: setSelectedAdditionalFilter },
+    //{ name: "진료시간", options: filterAdditionFilters, state: selectedAdditionalFilter, setState: setSelectedAdditionalFilter },
   ];
   
   const handleFilterChange = (categoryName, option) => {

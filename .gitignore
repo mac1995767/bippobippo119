@@ -9,6 +9,8 @@ yarn.lock
 # Ignore Python virtual environments
 venv/
 
+vernal-signal-459907-a5-d9952b42f731.json
+
 # 환경 변수 파일
 .env
 .env.local

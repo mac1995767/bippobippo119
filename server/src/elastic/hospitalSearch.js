@@ -57,27 +57,7 @@ router.get('/', async (req, res) => {
 
     // category 필터 처리
     if (category && category !== "전체") {
-      if (category === "응급야간진료") {
-        filter.push({
-          bool: {
-            should: [
-              { term: { emergencyNight: true } },
-              { term: { nightCare: true } },
-              { term: { twentyfourCare: true } }
-            ]
-          }
-        });
-      } else if (category === "응급주말진료") {
-        filter.push({
-          bool: {
-            should: [
-              { term: { emergencyDay: true } },
-              { term: { weekendCare: true } },
-              { term: { twentyfourCare: true } }
-            ]
-          }
-        });
-      } else if (category === "영업중") {
+      if (category === "영업중") {
         const now = moment().tz('Asia/Seoul');
         const currentTime = now.hours() * 60 + now.minutes(); // 분 단위
         const dayMap = {
@@ -259,11 +239,8 @@ router.get('/', async (req, res) => {
     };
 
     // 실행 전 Elasticsearch 쿼리 로깅 (필요시 주석 해제)
-    // console.log("Elasticsearch 쿼리:", JSON.stringify(searchParams.body, null, 2));
-
     const response = await client.search(searchParams);
     const result = (typeof response.body !== 'undefined') ? response.body : response;
-    console.log("Full search response:", JSON.stringify(result, null, 2));
 
     let hits, totalCount;
     if (result && result.hits) {

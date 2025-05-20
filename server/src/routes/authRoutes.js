@@ -97,16 +97,14 @@ router.post('/login', async (req, res) => {
     // JWT 토큰을 HTTPOnly 쿠키로 저장
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true, // 실전에서는 무조건 true
-      sameSite: 'none',
+      secure: process.env.NODE_ENV === 'production',        // 배포 시에만 true
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000
     });
-
-    // CSRF 토큰을 별도 쿠키(HTTPOnly 아님)로 저장
     res.cookie('csrfToken', csrfToken, {
-      httpOnly: false, // JS에서 읽을 수 있어야 함
-      secure: true,
-      sameSite: 'none',
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000
     });
 
@@ -126,16 +124,13 @@ router.post('/login', async (req, res) => {
 
 // 로그아웃
 router.post('/logout', (req, res) => {
-  res.clearCookie('token', {
+  const cookieOpts = {
     httpOnly: true,
-    secure: true,
-    sameSite: 'none'
-  });
-  res.clearCookie('csrfToken', {
-    httpOnly: false,
-    secure: true,
-    sameSite: 'none'
-  });
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+  };
+  res.clearCookie('token', cookieOpts);
+  res.clearCookie('csrfToken', { ...cookieOpts, httpOnly: false });
   res.json({ message: '로그아웃 성공' });
 });
 
@@ -177,6 +172,14 @@ router.get('/check-admin', authenticateToken, (req, res) => {
 function verifyCsrfToken(req, res, next) {
   const csrfCookie = req.cookies.csrfToken;
   const csrfHeader = req.headers['x-csrf-token'];
+
+  // 로그 추가
+  console.log('==== [CSRF 검증] 쿠키에서 읽은 csrfToken:', csrfCookie);
+  console.log('==== [CSRF 검증] 헤더에서 읽은 x-csrf-token:', csrfHeader);
+  console.log('==== [CSRF 검증] 전체 쿠키:', req.cookies);
+  console.log('==== [CSRF 검증] 전체 헤더:', req.headers);
+
+  
   if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
     return res.status(403).json({ message: 'CSRF 토큰이 유효하지 않습니다.' });
   }

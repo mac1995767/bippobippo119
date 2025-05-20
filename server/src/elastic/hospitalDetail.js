@@ -31,10 +31,8 @@ router.get('/:id', async (req, res) => {
       }
     };
 
-    console.log('Elasticsearch 쿼리:', JSON.stringify(searchParams, null, 2));
 
     const response = await client.search(searchParams);
-    console.log('Elasticsearch 응답:', JSON.stringify(response, null, 2));
 
     // 응답 구조 확인
     if (!response || !response.hits || !response.hits.hits) {

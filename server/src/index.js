@@ -42,7 +42,7 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 
-// 기본 origin 추가 함수
+// 1. 기본 origin 추가 함수
 const addDefaultOrigins = async () => {
   try {
     const origins = await HospitalOrigin.findAll({});
@@ -60,36 +60,45 @@ const addDefaultOrigins = async () => {
   }
 };
 
-// CORS 설정을 위한 미들웨어
-const corsMiddleware = async (req, res, next) => {
+// 2. 동적 CORS 미들웨어
+const dynamicCors = async (req, res, next) => {
   try {
+    // 반드시 where로 감싸야 함!
     const origins = await HospitalOrigin.findAll({
       is_active: true,
       environment: process.env.ENVIRONMENT
     });
-    
     const allowedOrigins = origins.map(origin => origin.origin_url);
-    
-    cors({
+
+    const corsOptions = {
       origin: function (origin, callback) {
+        // 서버-서버, Postman 등 origin이 없을 때 허용
         if (!origin || allowedOrigins.includes(origin)) {
           callback(null, true);
         } else {
-          console.log('차단된 Origin:', origin); // 디버깅용 로그
           callback(new Error('Not allowed by CORS'));
         }
       },
       credentials: true,
-      methods: 'GET, POST, PUT, DELETE, OPTIONS',
-      allowedHeaders: 'Content-Type, Authorization, Cookie'
-    })(req, res, next);
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'x-csrf-token'],
+      exposedHeaders: ['Set-Cookie']
+    };
+
+    // cors 미들웨어 실행
+    cors(corsOptions)(req, res, next);
   } catch (error) {
-    console.error('CORS 설정 중 오류 발생:', error);
+    console.error('CORS 미들웨어 오류:', error);
     next(error);
   }
 };
 
-app.use(corsMiddleware);
+// 3. 서버 시작 시 기본 origin 추가
+addDefaultOrigins();
+
+// 4. CORS 미들웨어를 모든 라우트보다 먼저 적용
+app.use(dynamicCors);
+
 app.use(express.json());
 app.use(cookieParser()); // cookie-parser 미들웨어 추가
 
