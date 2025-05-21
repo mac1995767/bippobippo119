@@ -31,6 +31,7 @@ const path = require('path');
 const fs = require('fs');
 const mapRouter = require('./routes/map');
 const mapSummaryRouter = require('./routes/map-summary');
+const { upload } = require('./utils/gcs');
 const app = express();
 
 connectDB();
@@ -40,7 +41,6 @@ const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
-
 
 // 1. 기본 origin 추가 함수
 const addDefaultOrigins = async () => {

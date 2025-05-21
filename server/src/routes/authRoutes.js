@@ -7,40 +7,9 @@ const User = require('../models/User');
 const axios = require('axios');
 const SocialConfig = require('../models/SocialConfig');
 const crypto = require('crypto');
-const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-
-// uploads 폴더 생성 (서버 쪽)
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// multer 설정
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir)
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB 제한
-  },
-  fileFilter: function (req, file, cb) {
-    // 이미지 파일만 허용
-    if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-      return cb(new Error('이미지 파일만 업로드 가능합니다.'), false);
-    }
-    cb(null, true);
-  }
-});
+const { upload, uploadToGCS, deleteFromGCS } = require('../utils/gcs');
 
 // JWT 시크릿 키 설정
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -801,28 +770,28 @@ router.get('/users/:id', authenticateToken, async (req, res) => {
 });
 
 // 프로필 업데이트
-router.put('/users/:id', authenticateToken, upload.single('profile_image'), async (req, res) => {
+router.put('/users/:id', authenticateToken, upload.single('profile_image'), uploadToGCS, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     const { nickname, interests, current_password, new_password } = req.body;
-
+    
     // 현재 사용자 확인
     if (req.user.id !== userId) {
       return res.status(403).json({ message: '자신의 프로필만 수정할 수 있습니다.' });
     }
 
+    // 현재 사용자 정보 조회
+    const [users] = await pool.query(
+      'SELECT * FROM hospital_users WHERE id = ?',
+      [userId]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+    }
+
     // 비밀번호 변경이 있는 경우
     if (new_password) {
-      // 현재 비밀번호 확인
-      const [users] = await pool.query(
-        'SELECT password FROM hospital_users WHERE id = ?',
-        [userId]
-      );
-
-      if (users.length === 0) {
-        return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
-      }
-
       const isValid = await bcrypt.compare(current_password, users[0].password);
       if (!isValid) {
         return res.status(400).json({ message: '현재 비밀번호가 일치하지 않습니다.' });
@@ -836,58 +805,50 @@ router.put('/users/:id', authenticateToken, upload.single('profile_image'), asyn
       );
     }
 
-    // 프로필 이미지 업데이트
-    let profileImagePath = null;
+    // 프로필 이미지 처리
+    let profileImageUrl = users[0].profile_image;
     if (req.file) {
-      // 기존 프로필 이미지 조회
-      const [users] = await pool.query(
-        'SELECT profile_image FROM hospital_users WHERE id = ?',
-        [userId]
-      );
-
-      if (users.length > 0 && users[0].profile_image) {
-        // 기존 이미지 파일 삭제
-        const oldImagePath = path.join(__dirname, '../../client/public', users[0].profile_image);
-        if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath);
+      
+      // 이전 이미지가 있다면 삭제
+      if (users[0].profile_image) {
+        try {
+          const oldFileName = users[0].profile_image.split(`${process.env.GCS_BUCKET_NAME}/`)[1];
+          if (oldFileName) {
+            await deleteFromGCS(oldFileName);
+          }
+        } catch (error) {
+          console.error('이전 이미지 삭제 중 오류:', error);
         }
       }
-
-      // 새 이미지 저장
-      profileImagePath = `/uploads/${req.file.filename}`;
+      
+      // 새 이미지 URL 사용
+      profileImageUrl = req.file.cloudStoragePublicUrl;
     }
+    
+    // 사용자 정보 업데이트
+    const updateQuery = `
+      UPDATE hospital_users 
+      SET nickname = ?,
+          interests = ?,
+          profile_image = ?
+      WHERE id = ?
+    `;
+     
+    const [result] = await pool.query(updateQuery, [nickname, interests, profileImageUrl, userId]);
+    
+    // 업데이트된 사용자 정보 조회
+    const [updatedUser] = await pool.query(
+      'SELECT id, username, email, nickname, interests, profile_image FROM hospital_users WHERE id = ?',
+      [userId]
+    );
 
-    // 프로필 정보 업데이트
-    const updateFields = [];
-    const updateValues = [];
-
-    if (nickname) {
-      updateFields.push('nickname = ?');
-      updateValues.push(nickname);
-    }
-
-    if (interests) {
-      updateFields.push('interests = ?');
-      updateValues.push(interests);
-    }
-
-    if (profileImagePath) {
-      updateFields.push('profile_image = ?');
-      updateValues.push(profileImagePath);
-    }
-
-    if (updateFields.length > 0) {
-      updateValues.push(userId);
-      await pool.query(
-        `UPDATE hospital_users SET ${updateFields.join(', ')} WHERE id = ?`,
-        updateValues
-      );
-    }
-
-    res.json({ message: '프로필이 성공적으로 업데이트되었습니다.' });
+    res.json({ 
+      message: '프로필이 성공적으로 업데이트되었습니다.',
+      user: updatedUser[0]
+    });
   } catch (error) {
     console.error('프로필 업데이트 오류:', error);
-    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    res.status(500).json({ message: '프로필 업데이트 중 오류가 발생했습니다.' });
   }
 });
 

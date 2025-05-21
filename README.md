@@ -10,6 +10,7 @@
 - [주요 기능](#주요-기능)
 - [보안 및 민감 정보 관리](#보안-및-민감-정보-관리)
 - [라이선스](#라이선스)
+- [Google Cloud Storage 설정](#google-cloud-storage-설정)
 
 ---
 
@@ -76,3 +77,26 @@
 ## 라이선스
 
 이 프로젝트는 상업용으로 사용되며, 무단 복제 및 배포를 금합니다.
+
+## Google Cloud Storage 설정
+
+1. Google Cloud Console에서 서비스 계정 키 생성
+   - IAM & 관리자 > 서비스 계정으로 이동
+   - 서비스 계정 생성 또는 선택
+   - 키 생성 (JSON 형식)
+   - 다운로드한 키 파일을 `server/config/` 디렉토리에 저장
+
+2. 환경 변수 설정
+   - `server/.env` 파일에 다음 변수들을 설정:
+   ```
+   GOOGLE_CLOUD_PROJECT=your-project-id
+   GCS_BUCKET_NAME=your-bucket-name
+   GOOGLE_APPLICATION_CREDENTIALS=./config/your-service-account-key.json
+   ```
+
+3. 버킷 권한 설정
+   - Cloud Storage > 버킷으로 이동
+   - 해당 버킷 선택
+   - IAM 탭에서 서비스 계정에 다음 역할 부여:
+     - Storage Object Admin
+     - Storage Object Viewer

@@ -14,7 +14,8 @@ const ProfilePage = () => {
     interests: '',
     currentPassword: '',
     newPassword: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    profile_image: ''
   });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -53,9 +54,10 @@ const ProfilePage = () => {
           username: response.data.username,
           email: response.data.email,
           nickname: response.data.nickname,
-          interests: response.data.interests || ''
+          interests: response.data.interests || '',
+          profile_image: response.data.profile_image
         }));
-        setPreviewUrl(response.data.profile_image ? `${getApiUrl()}${response.data.profile_image}` : '');
+        setPreviewUrl(response.data.profile_image || '');
       } catch (error) {
         console.error('프로필 로딩 실패:', error);
         setError('프로필 정보를 불러오는데 실패했습니다.');
@@ -171,7 +173,8 @@ const ProfilePage = () => {
   const getProfileImageUrl = (imagePath) => {
     if (!imagePath) return null;
     if (imagePath.startsWith('http')) return imagePath;
-    return `${getApiUrl()}/uploads/${imagePath}`;
+    if (imagePath.startsWith('https://storage.googleapis.com')) return imagePath;
+    return `${getApiUrl()}${imagePath}`;
   };
 
   return (
@@ -208,6 +211,12 @@ const ProfilePage = () => {
                 {previewUrl ? (
                   <img
                     src={previewUrl}
+                    alt="프로필 이미지"
+                    className="w-24 h-24 rounded-full object-cover"
+                  />
+                ) : profile.profile_image ? (
+                  <img
+                    src={profile.profile_image}
                     alt="프로필 이미지"
                     className="w-24 h-24 rounded-full object-cover"
                   />
@@ -368,16 +377,6 @@ const ProfilePage = () => {
               </button>
             </div>
           </form>
-
-          {profile.profile_image && (
-            <div className="mt-4">
-              <img
-                src={getProfileImageUrl(profile.profile_image)}
-                alt="프로필 이미지"
-                className="w-32 h-32 rounded-full object-cover mx-auto"
-              />
-            </div>
-          )}
 
           <style jsx>{`
             @keyframes float {

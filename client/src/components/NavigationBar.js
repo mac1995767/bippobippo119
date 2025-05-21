@@ -89,7 +89,7 @@ const NavigationBar = () => {
                   >
                     {userProfileImage ? (
                       <img
-                        src={`${getApiUrl()}${userProfileImage}`}
+                        src={userProfileImage.startsWith('http') ? userProfileImage : `${getApiUrl()}${userProfileImage}`}
                         alt="프로필"
                         className="w-10 h-10 rounded-full object-cover border-2 border-gray-200 hover:border-indigo-500 transition-colors duration-200"
                       />
@@ -183,7 +183,7 @@ const NavigationBar = () => {
                 <div className="flex items-center px-5">
                   {userProfileImage ? (
                     <img
-                      src={`${getApiUrl()}${userProfileImage}`}
+                      src={userProfileImage.startsWith('http') ? userProfileImage : `${getApiUrl()}${userProfileImage}`}
                       alt="프로필"
                       className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
                     />

@@ -68,3 +68,14 @@ config/secret-config.js
 client/.env.bak
 client/.env.bak
 client/.env.bak
+
+# Google Cloud Storage
+server/config/
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+
+# Google Cloud Service Account Key
+server/config/*.json
+server/config/vernal-signal-459907-a5-08afa841a7da.json
