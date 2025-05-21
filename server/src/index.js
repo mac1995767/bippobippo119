@@ -76,7 +76,7 @@ const dynamicCors = async (req, res, next) => {
         if (!origin || allowedOrigins.includes(origin)) {
           callback(null, true);
         } else {
-          callback(new Error('Not allowed by CORS'));
+          callback(new Error('일시적으로 서비스가 지연되고 있습니다. 잠시 후에 다시 이용해주시기 바랍니다.'));
         }
       },
       credentials: true,
@@ -102,52 +102,44 @@ app.use(dynamicCors);
 app.use(express.json());
 app.use(cookieParser()); // cookie-parser 미들웨어 추가
 
+
+// API 직접 접근 방지
+app.use('/api/', (req, res, next) => {
+  const origin = req.get('Origin');
+  const referer = req.get('Referer');
+  const userAgent = req.get('User-Agent') || '';
+  const acceptHeader = req.get('Accept');
+
+  const allowedDomain = process.env.CORS_ORIGIN || 'http://localhost:3000'; // ★ 프론트 도메인
+
+  // 조건 1: User-Agent 없거나 비정상적일 때 (봇 또는 curl/postman 등)
+  if (!userAgent || userAgent.length < 10) {
+    return block(res);
+  }
+
+  // 조건 2: 브라우저로 직접 주소창 입력 시 (text/html 요청)
+  if (acceptHeader && acceptHeader.includes('text/html')) {
+    return block(res);
+  }
+
+  // 조건 3: Referer 또는 Origin이 내 사이트가 아닐 경우 (크롤링 또는 외부 사이트 요청)
+  if (!origin?.startsWith(allowedDomain) && !referer?.startsWith(allowedDomain)) {
+    return block(res);
+  }
+
+  next(); // 모두 통과 시 다음 미들웨어로 이동
+
+  function block(res) {
+    return res.status(400).json({
+      code: 400,
+      msg: '일시적으로 서비스가 지연되고 있습니다. 잠시 후에 다시 이용해주시기 바랍니다.',
+      errorDetails: null,
+      responseTime: new Date().toISOString().replace('T', ' ').substring(0, 19)
+    });
+  }
+});
 // uploads 디렉토리를 정적 파일로 서빙
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// 기본 origin 추가
-addDefaultOrigins();
-
-// Elasticsearch Reindexing
-//console.log("🔄 Starting Elasticsearch reindexing process...");
-//reindex()
-//  .then(() => {
-//    console.log("✅ Elasticsearch Reindexing Complete!");
-//  })
-//  .catch(err => {
-//    console.error("❌ Error in reindexing:", err);
-//    console.error("Stack trace:", err.stack);
-//  });
-
-// Elasticsearch Map Reindexing
-//reindexMap()
-//  .then(() => {
-//    console.log("✅ Elasticsearch Map Reindexing Complete!");
-//  })
-//  .catch(err => {
-//    console.error("❌ Error in reindexing:", err);
-//    console.error("Stack trace:", err.stack);
-//  });
-
-//reindexPharmacies()
-//.then(() => {
-//    console.log("✅ Elasticsearch Reindexing Complete!");
-//  })
-//  .catch(err => {
-//    console.error("❌ Error in reindexing:", err);
-//    console.error("Stack trace:", err.stack);
-//  });
-
-
-
-//reindexMapCluster()
-//.then(() => {
-//  console.log("✅ Elasticsearch Map Cluster Reindexing Complete!");
-//})
-//.catch(err => {
-//  console.error("❌ Error in reindexing:", err);
-//  console.error("Stack trace:", err.stack);
-//});
 
 // API 라우트 설정
 console.log('라우터 설정 시작');
@@ -173,11 +165,14 @@ app.use('/api/map-summary', mapSummaryRouter);
 // map 라우터 설정
 console.log('map 라우터 설정');
 app.use('/api/map', mapRouter);
-// 라우터 디버깅 미들웨어
+
+// 라우터 디버깅 미들웨어 (보안 강화)
 app.use((req, res, next) => {
-  console.log(`요청 경로: ${req.path}`);
-  console.log(`요청 메서드: ${req.method}`);
-  console.log(`요청 쿼리:`, req.query);
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`요청 경로: ${req.path}`);
+    console.log(`요청 메서드: ${req.method}`);
+    console.log(`요청 쿼리:`, req.query);
+  }
   next();
 });
 

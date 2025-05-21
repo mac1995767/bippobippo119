@@ -54,21 +54,18 @@ function generateCsrfToken() {
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    console.log('==== [LOGIN] 로그인 시도:', username);
     
     // 사용자 정보 조회
     const [users] = await pool.query('SELECT * FROM hospital_users WHERE username = ?', [username]);
     const user = users[0];
 
     if (!user) {
-      console.log('==== [LOGIN] 사용자를 찾을 수 없음:', username);
       return res.status(401).json({ message: '아이디 또는 비밀번호가 일치하지 않습니다.' });
     }
 
     // 비밀번호 검증
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
-      console.log('==== [LOGIN] 비밀번호 불일치:', username);
       return res.status(401).json({ message: '아이디 또는 비밀번호가 일치하지 않습니다.' });
     }
 
@@ -82,7 +79,6 @@ router.post('/login', async (req, res) => {
     );
 
     const userRole = roles.length > 0 ? roles[0].role_name : 'user';
-    console.log('==== [LOGIN] 사용자 역할:', userRole);
 
     // JWT 토큰 생성
     const token = jwt.sign(
@@ -94,9 +90,6 @@ router.post('/login', async (req, res) => {
       JWT_SECRET,
       { expiresIn: '24h' }
     );
-
-    console.log('==== [LOGIN] 생성된 토큰:', token);
-
     // CSRF 토큰 생성
     const csrfToken = generateCsrfToken();
 
@@ -115,9 +108,6 @@ router.post('/login', async (req, res) => {
       domain: process.env.NODE_ENV === 'production' ? '.bippobippo119.com' : 'localhost',
       maxAge: 24 * 60 * 60 * 1000
     });
-
-    console.log('==== [LOGIN] 쿠키 설정 완료');
-
     // 사용자 정보에서 비밀번호 제외
     const { password: _, ...userWithoutPassword } = user;
     userWithoutPassword.role = userRole;
@@ -127,7 +117,6 @@ router.post('/login', async (req, res) => {
       user: userWithoutPassword
     });
   } catch (error) {
-    console.error('==== [LOGIN] 로그인 오류:', error);
     res.status(500).json({ message: '서버 오류가 발생했습니다.' });
   }
 });
@@ -145,42 +134,30 @@ router.post('/logout', (req, res) => {
 });
 
 // 토큰 검증 미들웨어
-const authenticateToken = (req, res, next) => {
-  console.log('==== [AUTH] 전체 쿠키:', req.cookies);
-  console.log('==== [AUTH] 토큰 쿠키:', req.cookies.token);
-  
+const authenticateToken = (req, res, next) => {  
   const token = req.cookies.token;
 
   if (!token) {
-    console.log('==== [AUTH] 토큰 없음');
     return res.status(401).json({ message: '인증이 필요합니다.' });
   }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    console.log('==== [AUTH] 디코딩된 토큰:', decoded);
     req.user = decoded;
     next();
   } catch (error) {
-    console.error('==== [AUTH] 토큰 검증 오류:', error);
     res.status(401).json({ message: '유효하지 않은 토큰입니다.' });
   }
 };
 
 // 관리자 권한 체크
 router.get('/check-admin', authenticateToken, (req, res) => {
-  console.log('==== [CHECK-ADMIN] 요청된 사용자 정보:', req.user);
-  console.log('==== [CHECK-ADMIN] 사용자 역할:', req.user.role);
-  console.log('==== [CHECK-ADMIN] 토큰 정보:', req.cookies.token);
   res.json({ isAdmin: req.user.role === 'admin' });
 });
 
 // 관리자 권한 검증 미들웨어
 const isAdmin = (req, res, next) => {
-  console.log('==== [IS-ADMIN] 요청된 사용자 정보:', req.user);
-  console.log('==== [IS-ADMIN] 사용자 역할:', req.user.role);
   if (!req.user || req.user.role !== 'admin') {
-    console.log('==== [IS-ADMIN] 권한 없음 - 사용자:', req.user);
     return res.status(403).json({ message: '관리자 권한이 필요합니다.' });
   }
   next();
@@ -191,13 +168,6 @@ function verifyCsrfToken(req, res, next) {
   const csrfCookie = req.cookies.csrfToken;
   const csrfHeader = req.headers['x-csrf-token'];
 
-  // 로그 추가
-  console.log('==== [CSRF 검증] 쿠키에서 읽은 csrfToken:', csrfCookie);
-  console.log('==== [CSRF 검증] 헤더에서 읽은 x-csrf-token:', csrfHeader);
-  console.log('==== [CSRF 검증] 전체 쿠키:', req.cookies);
-  console.log('==== [CSRF 검증] 전체 헤더:', req.headers);
-
-  
   if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
     return res.status(403).json({ message: 'CSRF 토큰이 유효하지 않습니다.' });
   }
@@ -206,9 +176,6 @@ function verifyCsrfToken(req, res, next) {
 
 // 인증 상태 확인 (CSRF 검증 추가)
 router.get('/check-auth', authenticateToken, verifyCsrfToken, async (req, res) => {
-  console.log('==== [CHECK-AUTH] req.headers.cookie:', req.headers.cookie);
-  console.log('==== [CHECK-AUTH] req.cookies:', req.cookies);
-  console.log('==== [CHECK-AUTH] req.cookies.token:', req.cookies.token);
   try {
     
     // 사용자 정보 조회 (roles 테이블과 JOIN)
@@ -235,7 +202,6 @@ router.get('/check-auth', authenticateToken, verifyCsrfToken, async (req, res) =
       }
     });
   } catch (error) {
-    console.error('인증 상태 확인 오류:', error);
     res.status(500).json({ message: '서버 오류가 발생했습니다.' });
   }
 });
