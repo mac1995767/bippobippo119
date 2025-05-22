@@ -1,4 +1,24 @@
 # https://www.robotstxt.org/robotstxt.html
+
+# 구글 검색엔진 로봇 설정
+User-agent: Googlebot
+Allow: /
+
+# 네이버 검색엔진 로봇 설정
+User-agent: Yeti
+Allow: /
+
+# 기타 검색엔진 로봇 설정
 User-agent: *
-Disallow: /
+Allow: /
+
+# 제외할 페이지 설정
+User-agent: *
+Disallow: /admin/
+Disallow: /private/
+Disallow: /api/
+Disallow: /auth/
+
+# Sitemap
+Sitemap: https://www.bippobippo119.com/sitemap.xml
 
