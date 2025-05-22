@@ -324,7 +324,8 @@ router.get('/naver/start', async (req, res) => {
     res.cookie('naver_oauth_state', state, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none', 
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      domain: process.env.NODE_ENV === 'production' ? '.bippobippo119.com' : 'localhost',
       maxAge: 5 * 60 * 1000 
     });
 
@@ -359,7 +360,12 @@ router.post('/naver/callback', async (req, res) => {
 
     if (!returnedState || !originalState || returnedState !== originalState) {
       if (originalState) {
-         res.clearCookie('naver_oauth_state', { httpOnly: true, secure: false, sameSite: 'none' });
+         res.clearCookie('naver_oauth_state', { 
+           httpOnly: true, 
+           secure: process.env.NODE_ENV === 'production',
+           sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+           domain: process.env.NODE_ENV === 'production' ? '.bippobippo119.com' : 'localhost'
+         });
       }
       return res.status(400).json({
         success: false,
@@ -367,7 +373,12 @@ router.post('/naver/callback', async (req, res) => {
       });
     }
 
-    res.clearCookie('naver_oauth_state', { httpOnly: true, secure: false, sameSite: 'none' });
+    res.clearCookie('naver_oauth_state', { 
+      httpOnly: true, 
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      domain: process.env.NODE_ENV === 'production' ? '.bippobippo119.com' : 'localhost'
+    });
 
     const [configs] = await pool.query(
       'SELECT * FROM hospital_social_configs WHERE provider = ? AND is_active = 1',
@@ -429,8 +440,20 @@ router.post('/naver/callback', async (req, res) => {
         { expiresIn: '24h' }
       );
 
+      // CSRF 토큰 생성
+      const csrfToken = generateCsrfToken();
+
       res.cookie('token', token, {
         httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        domain: process.env.NODE_ENV === 'production' ? '.bippobippo119.com' : 'localhost',
+        maxAge: 24 * 60 * 60 * 1000
+      });
+
+      // CSRF 토큰 쿠키 설정
+      res.cookie('csrfToken', csrfToken, {
+        httpOnly: false,
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         domain: process.env.NODE_ENV === 'production' ? '.bippobippo119.com' : 'localhost',
@@ -537,10 +560,23 @@ router.post('/kakao/callback', async (req, res) => {
           { expiresIn: '24h' }
         );
 
+        // CSRF 토큰 생성
+        const csrfToken = generateCsrfToken();
+
         res.cookie('token', token, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'none',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+          domain: process.env.NODE_ENV === 'production' ? '.bippobippo119.com' : 'localhost',
+          maxAge: 24 * 60 * 60 * 1000
+        });
+
+        // CSRF 토큰 쿠키 설정
+        res.cookie('csrfToken', csrfToken, {
+          httpOnly: false,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+          domain: process.env.NODE_ENV === 'production' ? '.bippobippo119.com' : 'localhost',
           maxAge: 24 * 60 * 60 * 1000
         });
 
@@ -666,10 +702,23 @@ router.post('/google/callback', async (req, res) => {
         { expiresIn: '24h' }
       );
 
+      // CSRF 토큰 생성
+      const csrfToken = generateCsrfToken();
+
       res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'none',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        domain: process.env.NODE_ENV === 'production' ? '.bippobippo119.com' : 'localhost',
+        maxAge: 24 * 60 * 60 * 1000
+      });
+
+      // CSRF 토큰 쿠키 설정
+      res.cookie('csrfToken', csrfToken, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        domain: process.env.NODE_ENV === 'production' ? '.bippobippo119.com' : 'localhost',
         maxAge: 24 * 60 * 60 * 1000
       });
 

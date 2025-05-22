@@ -47,7 +47,6 @@ const RegisterPage = () => {
       setFormData(prev => ({
         ...prev,
         email: socialData.email || '',
-        nickname: socialData.nickname || '',
         username: socialData.username || '',
         // 소셜 로그인의 경우 비밀번호는 필요 없음
         is_email_verified: true
@@ -58,14 +57,13 @@ const RegisterPage = () => {
   useEffect(() => {
     // 소셜 로그인 데이터가 있는 경우 필드 자동 채우기
     if (location.state?.socialLoginData) {
-      const { email, nickname, profile_image, social_id, provider, name, given_name } = location.state.socialLoginData;
+      const { email, profile_image, social_id, provider, name, given_name } = location.state.socialLoginData;
       
       console.log('소셜 로그인 데이터:', location.state.socialLoginData); // 디버깅용 로그
 
       setFormData(prev => ({
         ...prev,
         email,
-        nickname: nickname || '',
         profile_image: profile_image || '',
         social_id,
         social_provider: provider,
@@ -74,6 +72,7 @@ const RegisterPage = () => {
         interests: [],
         username: '', // 사용자가 직접 입력하도록 비워둠
         password: '', // 사용자가 직접 입력하도록 비워둠
+        nickname: '' // 닉네임도 비워둠
       }));
       setIsVerified(true);
     }
@@ -487,22 +486,24 @@ const RegisterPage = () => {
               </div>
             </div>
 
-            <style jsx>{`
-              @keyframes float {
-                0% {
-                  transform: translateY(0px);
+            <style>
+              {`
+                @keyframes float {
+                  0% {
+                    transform: translateY(0px);
+                  }
+                  50% {
+                    transform: translateY(-5px);
+                  }
+                  100% {
+                    transform: translateY(0px);
+                  }
                 }
-                50% {
-                  transform: translateY(-5px);
+                .animate-float {
+                  animation: float 3s ease-in-out infinite;
                 }
-                100% {
-                  transform: translateY(0px);
-                }
-              }
-              .animate-float {
-                animation: float 3s ease-in-out infinite;
-              }
-            `}</style>
+              `}
+            </style>
 
             {error && (
               <div className="text-red-600 text-sm">
