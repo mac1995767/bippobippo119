@@ -1,11 +1,7 @@
 const express = require('express');
 const pool = require('../config/mysql');
 const { authenticateToken, isAdmin } = require('./authRoutes');      
-const adminAuth = require('../middleware/adminAuth');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const { upload, uploadToGCS, deleteFromGCS, bucket } = require('../utils/gcs');
+const { upload, uploadToGCS, bucket } = require('../utils/gcs');
 const { Client } = require('@elastic/elasticsearch');
 
 const router = express.Router();
