@@ -85,11 +85,19 @@ const CreateBoardPage = () => {
 
   const handleTagInputChange = (e) => {
     const value = e.target.value;
-    if (value.endsWith(' ') && value.trim().startsWith('#')) {
-      const newTag = value.trim();
-      if (!selectedTags.includes(newTag)) {
-        setSelectedTags([...selectedTags, newTag]);
+    if (value.endsWith(' ')) {
+      if (selectedTags.length >= 5) {
+        alert('태그는 최대 5개까지 입력 가능합니다.');
+        setTagInput('');
+        return;
       }
+      const newTag = `#${value.trim()}`;
+      if (selectedTags.includes(newTag)) {
+        alert('이미 존재하는 태그입니다.');
+        setTagInput('');
+        return;
+      }
+      setSelectedTags([...selectedTags, newTag]);
       setTagInput('');
     } else {
       setTagInput(value);
@@ -99,11 +107,6 @@ const CreateBoardPage = () => {
   const handleTagKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const newTag = tagInput.trim();
-      if (newTag.startsWith('#') && !selectedTags.includes(newTag)) {
-        setSelectedTags([...selectedTags, newTag]);
-        setTagInput('');
-      }
     }
   };
 
@@ -124,12 +127,20 @@ const CreateBoardPage = () => {
     }
 
     try {
+      // 1. 먼저 게시글을 생성
       const response = await axios.post(`${getApiUrl()}/api/boards`, {
         title,
         content,
         category_id: selectedCategory,
-        tags: selectedTags.map(tag => tag.substring(1)) // # 제거하고 저장
       }, { withCredentials: true });
+
+      // 2. 태그 처리
+      if (selectedTags.length > 0) {
+        const tagNames = selectedTags.map(tag => tag.substring(1)); // # 제거
+        await axios.post(`${getApiUrl()}/api/boards/${response.data.id}/tags`, {
+          tags: tagNames
+        }, { withCredentials: true });
+      }
 
       navigate(`/community/boards/${response.data.id}`);
     } catch (error) {
@@ -228,7 +239,8 @@ const CreateBoardPage = () => {
                 onChange={handleTagInputChange}
                 onKeyDown={handleTagKeyDown}
                 className="w-full p-2 border border-gray-300 rounded-md"
-                placeholder="#태그 입력 후 스페이스바 또는 엔터"
+                placeholder={`태그 입력 후 스페이스바 (최대 5개) - ${selectedTags.length}/5`}
+                disabled={selectedTags.length >= 5}
               />
             </div>
 

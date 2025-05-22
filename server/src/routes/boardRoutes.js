@@ -5,9 +5,11 @@ const adminAuth = require('../middleware/adminAuth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { upload, uploadToGCS, deleteFromGCS, bucket } = require('../utils/gcs');
 const { Client } = require('@elastic/elasticsearch');
 
 const router = express.Router();
+
 
 // Elasticsearch 클라이언트 설정
 const elasticClient = new Client({
@@ -77,48 +79,30 @@ router.get('/categories/:id', async (req, res) => {
   }
 });
 
-// 이미지 업로드 설정
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = 'uploads';
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir);
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB 제한
-  },
-  fileFilter: function (req, file, cb) {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('지원하지 않는 파일 형식입니다.'));
-    }
-  }
-});
 
 // 이미지 업로드 엔드포인트
-router.post('/upload', authenticateToken, upload.single('file'), async (req, res) => {
+router.post('/upload', authenticateToken, upload.single('file'), uploadToGCS, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: '파일이 업로드되지 않았습니다.' });
     }
 
-    const fileUrl = `/uploads/${req.file.filename}`;
-    res.json({ url: fileUrl });
+    const publicUrl = req.file.cloudStoragePublicUrl;
+    
+    // 데이터베이스에 파일 정보 저장
+    const [result] = await pool.query(
+      'INSERT INTO hospital_board_attachments (file_name, file_path, file_size, mime_type) VALUES (?, ?, ?, ?)',
+      [req.file.originalname, publicUrl, req.file.size, req.file.mimetype]
+    );
+
+    res.json({ 
+      id: result.insertId,
+      url: publicUrl,
+      name: req.file.originalname
+    });
   } catch (error) {
-    console.error('이미지 업로드 오류:', error);
-    res.status(500).json({ message: '서버 오류가 발생했습니다.' });
+    console.error('파일 업로드 오류:', error);
+    res.status(500).json({ message: '파일 업로드에 실패했습니다.' });
   }
 });
 
@@ -189,26 +173,46 @@ router.get('/tags/search', async (req, res) => {
 });
 
 // 태그 생성
-router.post('/tags', authenticateToken, async (req, res) => {
-  const { name } = req.body;
+router.post('/:boardId/tags', authenticateToken, async (req, res) => {
+  const { boardId } = req.params;
+  const { tags } = req.body;
+  
   try {
-    // 이미 존재하는 태그인지 확인
-    const [existingTags] = await pool.query(
-      'SELECT * FROM hospital_board_tags WHERE name = ?',
-      [name]
-    );
+    const tagIds = await Promise.all(tags.map(async (name) => {
+      // 이미 존재하는 태그인지 확인
+      const [existingTags] = await pool.query(
+        'SELECT * FROM hospital_board_tags WHERE name = ?',
+        [name]
+      );
 
-    if (existingTags.length > 0) {
-      return res.json({ id: existingTags[0].id });
-    }
+      let tagId;
+      if (existingTags.length > 0) {
+        tagId = existingTags[0].id;
+      } else {
+        // slug 생성 (한글 태그를 위한 처리)
+        const slug = name.toLowerCase()
+          .replace(/[^a-z0-9가-힣]/g, '-') // 특수문자를 하이픈으로 변경
+          .replace(/-+/g, '-') // 연속된 하이픈을 하나로
+          .replace(/^-|-$/g, ''); // 앞뒤 하이픈 제거
 
-    // 새 태그 생성
-    const [result] = await pool.query(
-      'INSERT INTO hospital_board_tags (name) VALUES (?)',
-      [name]
-    );
+        // 새 태그 생성
+        const [result] = await pool.query(
+          'INSERT INTO hospital_board_tags (name, slug) VALUES (?, ?)',
+          [name, slug]
+        );
+        tagId = result.insertId;
+      }
 
-    res.json({ id: result.insertId });
+      // 게시글과 태그 연결
+      await pool.query(
+        'INSERT INTO hospital_board_post_tags (board_id, tag_id) VALUES (?, ?)',
+        [boardId, tagId]
+      );
+
+      return tagId;
+    }));
+
+    res.json({ success: true, tagIds });
   } catch (error) {
     console.error('태그 생성 오류:', error);
     res.status(500).json({ error: '태그 생성에 실패했습니다.' });
@@ -241,13 +245,45 @@ router.post('/upload', upload.array('files'), async (req, res) => {
   }
 });
 
+// 게시글 작성/수정 시 이미지 처리 함수
+async function processBase64Image(base64Image, boardId, conn) {
+  try {
+    const matches = base64Image.match(/^data:image\/([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) return null;
+
+    const imageBuffer = Buffer.from(matches[2], 'base64');
+    const fileName = `boards/${Date.now()}-${Math.round(Math.random() * 1E9)}.${matches[1]}`;
+    const file = bucket.file(fileName);
+
+    // 파일 업로드
+    await file.save(imageBuffer, {
+      metadata: {
+        contentType: `image/${matches[1]}`
+      }
+    });
+
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+    
+    // 이미지 정보를 attachments 테이블에 저장
+    await conn.query(
+      'INSERT INTO hospital_board_attachments (board_id, file_name, file_path, file_size, mime_type) VALUES (?, ?, ?, ?, ?)',
+      [boardId, fileName, publicUrl, imageBuffer.length, `image/${matches[1]}`]
+    );
+
+    return publicUrl;
+  } catch (error) {
+    console.error('이미지 처리 오류:', error);
+    throw error;
+  }
+}
+
 // 게시글 작성
 router.post('/', authenticateToken, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
 
-    const { title, content, category_id, meta_data, tags, attachments } = req.body;
+    const { title, content, category_id, meta_data, tags } = req.body;
     const userId = req.user.id;
 
     // 게시글 기본 정보 저장
@@ -256,6 +292,17 @@ router.post('/', authenticateToken, async (req, res) => {
       [userId, category_id, title]
     );
     const boardId = boardResult.insertId;
+
+    // content에서 base64 이미지 추출 및 처리
+    const base64Images = content.match(/data:image\/[^;]+;base64,[^"]+/g) || [];
+    let processedContent = content;
+
+    for (const base64Image of base64Images) {
+      const publicUrl = await processBase64Image(base64Image, boardId, conn);
+      if (publicUrl) {
+        processedContent = processedContent.replace(base64Image, publicUrl);
+      }
+    }
 
     // 게시글 상세 정보 저장
     let parsedMetaData;
@@ -268,7 +315,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
     await conn.query(
       'INSERT INTO hospital_board_details (board_id, content, meta_data) VALUES (?, ?, ?)',
-      [boardId, content, JSON.stringify(parsedMetaData)]
+      [boardId, processedContent, JSON.stringify(parsedMetaData)]
     );
 
     // 태그 연결
@@ -277,21 +324,6 @@ router.post('/', authenticateToken, async (req, res) => {
       await conn.query(
         'INSERT INTO hospital_board_post_tags (board_id, tag_id) VALUES ?',
         [tagValues]
-      );
-    }
-
-    // 첨부파일 연결
-    if (attachments && attachments.length > 0) {
-      const attachmentValues = attachments.map(attachment => [
-        boardId,
-        attachment.name,
-        attachment.url,
-        attachment.size || 0,
-        attachment.type || 'application/octet-stream'
-      ]);
-      await conn.query(
-        'INSERT INTO hospital_board_attachments (board_id, file_name, file_path, file_size, mime_type) VALUES ?',
-        [attachmentValues]
       );
     }
 
@@ -463,10 +495,19 @@ router.get('/', async (req, res) => {
         u.username as author_name,
         u.nickname,
         u.profile_image,
-        (SELECT COUNT(*) FROM hospital_board_comments WHERE board_id = b.id) as comment_count
+        (SELECT COUNT(*) FROM hospital_board_comments WHERE board_id = b.id) as comment_count,
+        JSON_ARRAYAGG(
+          JSON_OBJECT(
+            'id', t.id,
+            'name', t.name,
+            'slug', t.slug
+          )
+        ) as tags
       FROM hospital_board b
       JOIN hospital_board_categories c ON b.category_id = c.id
       JOIN hospital_users u ON b.user_id = u.id
+      LEFT JOIN hospital_board_post_tags pt ON b.id = pt.board_id
+      LEFT JOIN hospital_board_tags t ON pt.tag_id = t.id
     `;
 
     let countQuery = 'SELECT COUNT(*) as total FROM hospital_board b';
@@ -480,7 +521,7 @@ router.get('/', async (req, res) => {
       countParams.push(categoryId);
     }
 
-    query += ` ORDER BY b.created_at DESC LIMIT ? OFFSET ?`;
+    query += ` GROUP BY b.id ORDER BY b.created_at DESC LIMIT ? OFFSET ?`;
     params.push(parseInt(limit), parseInt(offset));
 
     const [posts] = await pool.query(query, params);
@@ -568,7 +609,7 @@ router.delete('/categories/:id', authenticateToken, isAdmin, async (req, res) =>
 
 // 게시글 수정
 router.put('/:id', authenticateToken, async (req, res) => {
-  const { category_id, title, summary, content, additional_info } = req.body;
+  const { category_id, title, summary, content, additional_info, tags } = req.body;
   const userId = req.user.id;
   let connection;
 
@@ -603,6 +644,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: '카테고리를 찾을 수 없습니다.' });
     }
 
+    // content에서 base64 이미지 추출 및 처리
+    const base64Images = content.match(/data:image\/[^;]+;base64,[^"]+/g) || [];
+    let processedContent = content;
+
+    for (const base64Image of base64Images) {
+      const publicUrl = await processBase64Image(base64Image, req.params.id, connection);
+      if (publicUrl) {
+        processedContent = processedContent.replace(base64Image, publicUrl);
+      }
+    }
+
     // 게시글 기본 정보 수정
     await connection.query(
       'UPDATE hospital_board SET category_id = ?, title = ?, summary = ? WHERE id = ?',
@@ -612,8 +664,43 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // 게시글 상세 정보 수정
     await connection.query(
       'UPDATE hospital_board_details SET content = ?, additional_info = ? WHERE board_id = ?',
-      [content, additional_info, req.params.id]
+      [processedContent, additional_info, req.params.id]
     );
+
+    // 기존 태그 삭제
+    await connection.query(
+      'DELETE FROM hospital_board_post_tags WHERE board_id = ?',
+      [req.params.id]
+    );
+
+    // 새로운 태그 추가
+    if (tags && tags.length > 0) {
+      for (const tagName of tags) {
+        // 태그 존재 여부 확인
+        const [existingTags] = await connection.query(
+          'SELECT id FROM hospital_board_tags WHERE name = ?',
+          [tagName]
+        );
+
+        let tagId;
+        if (existingTags.length > 0) {
+          tagId = existingTags[0].id;
+        } else {
+          // 새 태그 생성
+          const [result] = await connection.query(
+            'INSERT INTO hospital_board_tags (name, slug) VALUES (?, ?)',
+            [tagName, tagName.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')]
+          );
+          tagId = result.insertId;
+        }
+
+        // 게시글과 태그 연결
+        await connection.query(
+          'INSERT INTO hospital_board_post_tags (board_id, tag_id) VALUES (?, ?)',
+          [req.params.id, tagId]
+        );
+      }
+    }
 
     await connection.commit();
     res.json({ 

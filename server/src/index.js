@@ -91,7 +91,8 @@ addDefaultOrigins();
 // 4. CORS 미들웨어를 모든 라우트보다 먼저 적용
 app.use(dynamicCors);
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser()); // cookie-parser 미들웨어 추가
 
 

@@ -885,6 +885,20 @@ const BoardDetail = () => {
                   <p className="text-sm text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: board.content }}></p>
                 </div>
 
+                {/* 태그 섹션 */}
+                {board.tags && board.tags.length > 0 && (
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    {board.tags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-blue-50 text-blue-600 text-sm rounded-full"
+                      >
+                        #{tag.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 {/* 댓글 섹션 */}
                 <div className="mt-4 mb-8">
                   <h3 className="text-lg lg:text-xl font-bold text-gray-800 mb-4 font-['Pretendard']">

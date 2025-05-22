@@ -164,12 +164,26 @@ const CommunityPage = () => {
                           <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
                             {post.category_name}
                           </span>
+                          {post.tags && post.tags.length > 0 && post.tags[0]?.name && (
+                            <div className="flex items-center space-x-1">
+                              {post.tags.slice(0, 2).map((tag, index) => (
+                                <span key={index} className="text-xs px-2 py-1 bg-gray-100 text-gray-800 rounded-full">
+                                  #{tag.name}
+                                </span>
+                              ))}
+                              {post.tags.length > 2 && (
+                                <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
+                                  +{post.tags.length - 2}
+                                </span>
+                              )}
+                            </div>
+                          )}
                           {post.hospital_info && (
-                            <div className="relative group">
-                              <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full cursor-pointer hover:bg-green-200">
+                            <div className="relative">
+                              <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full cursor-pointer hover:bg-green-200 hospital-tag">
                                 @{post.hospital_info.name}
                               </span>
-                              <div className="absolute -top-12 right-0 bg-white shadow-lg rounded-lg p-1.5 min-w-[120px] max-w-[160px] z-10 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200">
+                              <div className="absolute -top-12 right-0 bg-white shadow-lg rounded-lg p-1.5 min-w-[120px] max-w-[160px] z-10 opacity-0 pointer-events-none hospital-tag-tooltip">
                                 <div className="text-xs font-medium text-gray-900 truncate">{post.hospital_info.name}</div>
                                 <div className="text-xs text-gray-500 mt-0.5 truncate">{post.hospital_info.address}</div>
                               </div>
@@ -250,12 +264,26 @@ const CommunityPage = () => {
                           <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
                             {post.category_name}
                           </span>
+                          {post.tags && post.tags.length > 0 && post.tags[0]?.name && (
+                            <div className="flex items-center space-x-1">
+                              {post.tags.slice(0, 2).map((tag, index) => (
+                                <span key={index} className="text-xs px-2 py-1 bg-gray-100 text-gray-800 rounded-full">
+                                  #{tag.name}
+                                </span>
+                              ))}
+                              {post.tags.length > 2 && (
+                                <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
+                                  +{post.tags.length - 2}
+                                </span>
+                              )}
+                            </div>
+                          )}
                           {post.hospital_info && (
-                            <div className="relative group">
-                              <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full cursor-pointer hover:bg-green-200">
+                            <div className="relative">
+                              <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full cursor-pointer hover:bg-green-200 hospital-tag">
                                 @{post.hospital_info.name}
                               </span>
-                              <div className="absolute -top-12 right-0 bg-white shadow-lg rounded-lg p-1.5 min-w-[120px] max-w-[160px] z-10 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200">
+                              <div className="absolute -top-12 right-0 bg-white shadow-lg rounded-lg p-1.5 min-w-[120px] max-w-[160px] z-10 opacity-0 pointer-events-none hospital-tag-tooltip">
                                 <div className="text-xs font-medium text-gray-900 truncate">{post.hospital_info.name}</div>
                                 <div className="text-xs text-gray-500 mt-0.5 truncate">{post.hospital_info.address}</div>
                               </div>
@@ -329,6 +357,20 @@ const CommunityPage = () => {
                         <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
                           {post.category_name}
                         </span>
+                        {post.tags && post.tags.length > 0 && post.tags[0]?.name && (
+                          <div className="flex items-center space-x-1">
+                            {post.tags.slice(0, 2).map((tag, index) => (
+                              <span key={index} className="text-xs px-2 py-1 bg-gray-100 text-gray-800 rounded-full">
+                                #{tag.name}
+                              </span>
+                            ))}
+                            {post.tags.length > 2 && (
+                              <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
+                                +{post.tags.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         {post.hospital_info && (
                           <div className="relative">
                             <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full cursor-pointer hover:bg-green-200 hospital-tag">

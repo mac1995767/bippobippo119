@@ -58,7 +58,7 @@ const EditBoardPage = () => {
         setContent(board.content);
         setSelectedCategory(board.category_id);
         setSidebarSelectedCategory(board.category_id);
-        setSelectedTags(board.tags || []);
+        setSelectedTags(board.tags ? board.tags.map(tag => `#${tag.name}`) : []);
         setCategories(categoriesResponse.data);
 
         // 메타 필드 로드
@@ -107,11 +107,19 @@ const EditBoardPage = () => {
 
   const handleTagInputChange = (e) => {
     const value = e.target.value;
-    if (value.endsWith(' ') && value.trim().startsWith('#')) {
-      const newTag = value.trim();
-      if (!selectedTags.includes(newTag)) {
-        setSelectedTags([...selectedTags, newTag]);
+    if (value.endsWith(' ')) {
+      if (selectedTags.length >= 5) {
+        alert('태그는 최대 5개까지 입력 가능합니다.');
+        setTagInput('');
+        return;
       }
+      const newTag = `#${value.trim()}`;
+      if (selectedTags.includes(newTag)) {
+        alert('이미 존재하는 태그입니다.');
+        setTagInput('');
+        return;
+      }
+      setSelectedTags([...selectedTags, newTag]);
       setTagInput('');
     } else {
       setTagInput(value);
@@ -121,11 +129,6 @@ const EditBoardPage = () => {
   const handleTagKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const newTag = tagInput.trim();
-      if (newTag.startsWith('#') && !selectedTags.includes(newTag)) {
-        setSelectedTags([...selectedTags, newTag]);
-        setTagInput('');
-      }
     }
   };
 
@@ -146,12 +149,13 @@ const EditBoardPage = () => {
     }
 
     try {
+      // 게시글 수정 (태그 포함)
       await axios.put(`${getApiUrl()}/api/boards/${id}`, {
         title,
         content,
         category_id: selectedCategory,
         meta_values: JSON.stringify(metaValues),
-        tags: selectedTags.map(tag => tag.substring(1)) // # 제거하고 저장
+        tags: selectedTags.map(tag => tag.substring(1)) // # 제거
       }, { withCredentials: true });
 
       navigate(`/community/boards/${id}`);
@@ -277,11 +281,12 @@ const EditBoardPage = () => {
                 onChange={handleTagInputChange}
                 onKeyDown={handleTagKeyDown}
                 className="w-full p-2 border border-gray-300 rounded-md"
-                placeholder="#태그 입력 후 스페이스바 또는 엔터"
+                placeholder={`태그 입력 후 스페이스바 (최대 5개) - ${selectedTags.length}/5`}
+                disabled={selectedTags.length >= 5}
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-4">
+            <div className="mt-8 flex flex-col sm:flex-row justify-end gap-2 sm:gap-4">
               <button
                 onClick={() => navigate(-1)}
                 className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
