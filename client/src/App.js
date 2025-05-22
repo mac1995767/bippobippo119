@@ -8,7 +8,7 @@ import HospitalListPage from "./pages/HospitalListPage";
 import HospitalDetailPage from "./pages/HospitalDetailPage";
 import PharmaciesList from "./pages/PharmaciesList";
 import Footer from "./components/Footer";
-//import AdSense from "./components/AdSense"; // 광고는 허가 나면 부착 
+import AdSense from "./components/AdSense"; // 광고는 허가 나면 부착 
 import LoginPage from "./pages/LoginPage";
 import LogoutPage from "./pages/LogoutPage";
 import AdminRoute from "./components/AdminRoute";
