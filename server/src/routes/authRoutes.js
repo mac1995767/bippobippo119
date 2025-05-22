@@ -95,7 +95,8 @@ router.post('/logout', (req, res) => {
   const cookieOpts = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    domain: process.env.NODE_ENV === 'production' ? '.bippobippo119.com' : 'localhost'
   };
   res.clearCookie('token', cookieOpts);
   res.clearCookie('csrfToken', { ...cookieOpts, httpOnly: false });
